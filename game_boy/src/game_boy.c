@@ -1,34 +1,45 @@
 #include "game_boy.h"
 
 int main(int argc,char* argv[]){
-	argv = malloc(sizeof(char*)*argc);
+	iniciar_logger();
 	if(argc ==0){
 		printf("No se han ingresado los parametros");
 		return -1;
 	}
+    log_info(logger, "el size del comando es:%i", argc);
     leer_config();
-	iniciar_logger();
-    preparar_mensaje(argc,argv);
-    int socket;
-	log_info(logger, "El ip es : %s", config_game_boy -> ip_broker);
-	log_info(logger, "El port es : %s ", config_game_boy -> puerto_broker);
+    int socket = seleccionar_proceso(argv);
 	terminar_programa(socket, logger, config_game_boy);
 }
-void preparar_mensaje(int cantidad_parametros, char *parametros[]){
-      char* proceso = malloc(sizeof(parametros)*cantidad_parametros);
-      memcpy(proceso ,&parametros[0],10);///toma el proceso
-      log_info(logger, "el proceso recibido es:%s",proceso);
-      free(parametros);
-      free(proceso);
+
+int seleccionar_proceso(char *parametros[]){
+	  int conexion;
+   	  log_info(logger, "el proceso recibido es:%s", parametros[0]);
+      char* proceso =  strdup(parametros[1]);
+      log_info(logger, "el proceso recibido es:%s", proceso);
+      if (strcmp(proceso, "BROKER") == 0)
+    	  conexion = crear_conexion(config_game_boy -> ip_broker,config_game_boy-> puerto_broker );
+
+      if (strcmp(proceso, "GAMECARD") == 0)
+      		  conexion = crear_conexion(config_game_boy -> ip_gameCard,config_game_boy-> puerto_gameCard );
+
+      if (strcmp(proceso, "TEAM") == 0)
+      		  conexion = crear_conexion(config_game_boy -> ip_team,config_game_boy-> puerto_team );
+
+      if(conexion<0){
+    	  log_info(logger,"No se puedo realizar la conexion");
+    	  return conexion;
+      }
+     log_info(logger,"Se puedo realizar la conexion");
+     free(proceso);
+     return conexion;
 }
 
 void iniciar_logger(void) {
-
 	logger = log_create("gameBoy.log", "gameBoy", 1, LOG_LEVEL_INFO);
-
 	if (logger == NULL){
 		printf("ERROR EN LA CREACION DEL LOGGER/n");
-		exit(1);
+		exit(-3);
 	}
 }
 
@@ -36,20 +47,20 @@ void leer_config() {
 
     config_game_boy = malloc(sizeof(t_config_game_boy));
 
-	t_config* config = config_create("Debug/gameBoy.config");
-
+	t_config* config = config_create("game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
+    if(config == NULL){
+    	log_info(logger,"no se pudo encontrar el path del config");
+    	return exit(-2);
+    }
 	config_game_boy -> ip_broker = strdup(config_get_string_value(config,"IP_BROKER"));
 	config_game_boy-> puerto_broker = strdup(config_get_string_value(config,"PUERTO_BROKER"));
 	config_game_boy -> ip_team = strdup(config_get_string_value(config,"IP_TEAM"));
 	config_game_boy-> puerto_team = strdup(config_get_string_value(config,"PUERTO_TEAM"));
-	config_game_boy -> ip_gameCard = strdup(config_get_string_value(config,"IP_GAMECARD"));
+	config_game_boy -> ip_gameCard = config_get_string_value(config,"IP_GAMECARD");
 	config_game_boy-> puerto_gameCard = strdup(config_get_string_value(config,"PUERTO_GAMECARD"));
 
 	config_destroy(config);
 }
-
-
-
 
 void liberar_config(t_config_game_boy* config) {
     free(config -> ip_broker);

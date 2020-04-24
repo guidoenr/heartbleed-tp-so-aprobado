@@ -7,7 +7,6 @@
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.h"
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 
-
 typedef struct {
 	char* ip_broker;
 	char* puerto_broker;
@@ -21,7 +20,7 @@ t_log* logger;
 t_config_game_boy* config_game_boy;
 void iniciar_logger(void);
 void leer_config(void);
-void preparar_mensaje(int cantidad_parametros,char *parametros[]);
+int seleccionar_proceso(char *parametros[]);
 void terminar_programa(int, t_log*, t_config_game_boy*);
 void liberar_conexion(int);
 void mostrar_menu(void);
