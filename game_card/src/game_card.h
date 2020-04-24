@@ -13,6 +13,11 @@ typedef struct {
 	char* punto_montaje_tallgrass;
 	char* ip_broker;
 	char* puerto_broker;
+	char* ip_gameBoy;
+	char* puerto_gameBoy;
+	char* ip_gameCard;
+	char* puerto_gameCard;
+
 } t_config_game_card;
 
 t_log* logger;

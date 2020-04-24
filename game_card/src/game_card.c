@@ -4,12 +4,13 @@ int main(void) {
 	t_config_game_card* config = leer_config();
 	logger = iniciar_logger();
 
-	int socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+
+	int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 
 	enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket);
+	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
 
-	log_info(logger, "El ip es : %s", config -> ip_broker);
-	log_info(logger, "El port es : %s ", config -> puerto_broker);
 	terminar_programa(socket, logger, config);
 }
 
@@ -36,6 +37,11 @@ t_config_game_card* leer_config() {
 	config_game_card -> punto_montaje_tallgrass = strdup(config_get_string_value(config, "PUNTO_MONTAJE_TALLGRASS"));
 	config_game_card -> ip_broker = strdup(config_get_string_value(config, "IP_BROKER"));
 	config_game_card -> puerto_broker = strdup(config_get_string_value(config, "PUERTO_BROKER"));
+	config_game_card -> ip_gameBoy= strdup(config_get_string_value(config, "IP_GAMEBOY"));
+	config_game_card -> puerto_gameBoy= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
+	config_game_card -> ip_gameCard= strdup(config_get_string_value(config, "IP_GAMEBOY"));
+	config_game_card -> puerto_gameCard= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
+
 
 	config_destroy(config);
 
@@ -54,3 +60,5 @@ void terminar_programa(int conexion,t_log* logger, t_config_game_card* config) {
 	liberar_logger(logger);
 	liberar_conexion(conexion);
 }
+
+
