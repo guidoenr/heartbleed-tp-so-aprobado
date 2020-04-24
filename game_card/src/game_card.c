@@ -61,4 +61,34 @@ void terminar_programa(int conexion,t_log* logger, t_config_game_card* config) {
 	liberar_conexion(conexion);
 }
 
+int escribirArchivoBin(char* pathArchivo,char* palabra){
+	FILE* file = open(pathArchivo,"wb"); //write-binary
+
+	if (file == NULL){
+		log_warning(logger,"no existe el archivo a escribir");
+		return 0;
+	}
+
+	fwrite(&palabra,sizeof(char),1,file);
+
+	fclose(file);
+
+}
+
+int leerArchivoBin(char* pathArchivo){
+
+	FILE* file = open(pathArchivo,"rb"); //read-binary
+
+	if (file == NULL){
+		log_warning(logger,"no existe el archivo a leer");
+		return 0;
+	}
+	char *palabra;
+
+	while (fread(&palabra,sizeof(char),1,file)) {
+		//vemos que hacemos dsp
+	}
+	fclose(file);
+
+}
 
