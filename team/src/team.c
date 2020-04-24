@@ -5,6 +5,8 @@ int main(void) {
 	leer_config();
 	iniciar_logger();
 
+	t_lista_pokemons* objetivo_global = obtener_objetivo_global();
+
 	int socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
 
 
@@ -27,15 +29,36 @@ void iniciar_logger(void) {
 	}
 }
 
+t_lista_pokemons* obtener_objetivo_global(){
+
+	t_lista_pokemons* objetivos;
+	t_lista_lista_pokemons* aux_lista_lista = config -> objetivos_entrenadores;
+	t_lista_pokemons* aux_lista = aux_lista_lista -> pokemons;
+
+
+	while(aux_lista_lista -> next != NULL){
+		while(aux_lista -> next != NULL){
+
+			objetivos -> pokemon = aux_lista -> pokemon;
+			objetivos -> next = aux_lista -> next;
+			aux_lista = aux_lista -> next;
+		}
+
+		aux_lista_lista = aux_lista_lista -> next;
+	}
+
+	return objetivos;
+}
+
 void leer_config(void) {
 
 	t_config_team* config_team = malloc(sizeof(t_config_team));
 
 	t_config* config = config_create("Debug/team.config");
 
-	config_team -> posiciones_entrenadores = (int**) config_get_array_value(config, "POSICIONES_ENTRENADORES");
-	config_team -> pokemon_entrenadores = config_get_array_value(config, "POKEMON_ENTRENADORES");
-	config_team -> objetivos_entrenadores = config_get_array_value(config, "OBJETIVOS_ENTRENADORES");
+	config_team -> posiciones_entrenadores = (t_lista_posiciones*) config_get_array_value(config, "POSICIONES_ENTRENADORES");
+	config_team -> pokemon_entrenadores = (t_lista_lista_pokemons*) config_get_array_value(config, "POKEMON_ENTRENADORES");
+	config_team -> objetivos_entrenadores = (t_lista_lista_pokemons*) config_get_array_value(config, "OBJETIVOS_ENTRENADORES");
 	config_team -> tiempo_reconexion = config_get_int_value(config, "TIEMPO_RECONEXION");
 	config_team -> retardo_cpu = config_get_int_value(config, "RETARDO_CICLO_CPU");
 	config_team -> algoritmo_planificacion = strdup(config_get_string_value(config, "ALGORITMO_PLANIFICACION"));
