@@ -92,3 +92,11 @@ int leerArchivoBin(char* pathArchivo){
 
 }
 
+int fileSize(char* filename){
+	FILE* f = fopen(filename,"r");
+	fseek(f, 0L, SEEK_END);
+	int i = ftell(f);
+	fclose(f);
+	return i;
+}
+
