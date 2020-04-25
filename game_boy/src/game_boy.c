@@ -26,11 +26,16 @@ int seleccionar_proceso(char *parametros[]){
       if (strcmp(proceso, "TEAM") == 0)
       		  conexion = crear_conexion(config_game_boy -> ip_team,config_game_boy-> puerto_team );
 
+      /*if (strcmp(proceso, "SUBSCRIPTOR") == 0){
+    	   tiene instrucciones espcailes
+      }*/
+
       if(conexion<0){
     	  log_info(logger,"No se puedo realizar la conexion");
     	  return conexion;
       }
      log_info(logger,"Se puedo realizar la conexion");
+     enviar_mensaje(GB_NEW_POKEMON_BR, "Get Pokemon", socket);
      free(proceso);
      return conexion;
 }
