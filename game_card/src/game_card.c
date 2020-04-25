@@ -4,12 +4,12 @@ int main(void) {
 	t_config_game_card* config = leer_config();
 	logger = iniciar_logger();
 
-
 	int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
-	int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
-
+//	int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket);
-	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
+//	iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
+
+	//escribirArchivoBin();
 
 	terminar_programa(socket, logger, config);
 }
@@ -30,7 +30,7 @@ t_config_game_card* leer_config() {
 
 	t_config_game_card* config_game_card = malloc(sizeof(t_config_game_card));
 
-	t_config* config = config_create("Debug/gameCard.config");
+	t_config* config = config_create("Debug/game_card.config");
 
 	config_game_card -> tiempo_reintento_conexion = config_get_int_value(config, "TIEMPO_DE_REINTENTO_CONEXION");
 	config_game_card -> tiempo_reintento_operacion = config_get_int_value(config, "TIEMPO_DE_REINTENTO_OPERACION");
@@ -61,35 +61,42 @@ void terminar_programa(int conexion,t_log* logger, t_config_game_card* config) {
 	liberar_conexion(conexion);
 }
 
-int escribirArchivoBin(char* pathArchivo,char* palabra){
-	FILE* file = open(pathArchivo,"wb"); //write-binary
+
+int escribirArchivoBin(){
+
+	char* blockSize = "BLOCK_SIZE=64";
+	char* blocks = "BLOCKS=5192";
+	char* magic = "TALL_GRASS";
+
+	FILE* file = open("/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/metadata.bin","wb"); //write-binary
 
 	if (file == NULL){
 		log_warning(logger,"no existe el archivo a escribir");
+
 		return 0;
 	}
 
-	fwrite(&palabra,sizeof(char),1,file);
+	fwrite(&blockSize,14,1,file);
+	fwrite(&blockSize,12,1,file);
+	fwrite(&blockSize,11,1,file);
 
 	fclose(file);
+	return 1;
 
 }
 
 int leerArchivoBin(char* pathArchivo){
 
-	FILE* file = open(pathArchivo,"rb"); //read-binary
+
+	FILE* file = open("/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/metadata.bin","rb"); //read-binary
 
 	if (file == NULL){
 		log_warning(logger,"no existe el archivo a leer");
 		return 0;
 	}
-	char *palabra;
 
-	while (fread(&palabra,sizeof(char),1,file)) {
-		//vemos que hacemos dsp
-	}
+
 	fclose(file);
-
 }
 
 int fileSize(char* filename){
