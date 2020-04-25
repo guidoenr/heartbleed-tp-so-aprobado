@@ -1,5 +1,15 @@
 #include "Utils.h"
 
+void iniciar_logger(char* file, char* program_name) {
+
+	t_log* logger = log_create(file, program_name, 1, LOG_LEVEL_INFO);
+
+	if (logger == NULL){
+		printf("ERROR EN LA CREACION DEL LOGGER/n");
+		exit(1);
+	}
+}
+
 void* serializar_paquete(t_paquete* paquete, int* bytes) {
 	int malloc_size = paquete -> buffer -> size + sizeof(op_code) + sizeof(int);
 	void* stream = malloc(malloc_size);
