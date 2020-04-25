@@ -36,7 +36,6 @@ int seleccionar_proceso(char *parametros[]){
       }
      log_info(logger,"Se puedo realizar la conexion");
      enviar_mensaje(GB_NEW_POKEMON_BR, "Get Pokemon", socket);
-     free(proceso);
      return conexion;
 }
 
@@ -52,7 +51,7 @@ void leer_config() {
 
     config_game_boy = malloc(sizeof(t_config_game_boy));
 
-	t_config* config = config_create("game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
+	t_config* config = config_create("Debug/game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
     if(config == NULL){
     	log_info(logger,"no se pudo encontrar el path del config");
     	return exit(-2);
@@ -61,7 +60,7 @@ void leer_config() {
 	config_game_boy-> puerto_broker = strdup(config_get_string_value(config,"PUERTO_BROKER"));
 	config_game_boy -> ip_team = strdup(config_get_string_value(config,"IP_TEAM"));
 	config_game_boy-> puerto_team = strdup(config_get_string_value(config,"PUERTO_TEAM"));
-	config_game_boy -> ip_gameCard = config_get_string_value(config,"IP_GAMECARD");
+	config_game_boy -> ip_gameCard = strdup(config_get_string_value(config,"IP_GAMECARD"));
 	config_game_boy-> puerto_gameCard = strdup(config_get_string_value(config,"PUERTO_GAMECARD"));
 
 	config_destroy(config);
@@ -79,7 +78,6 @@ void liberar_config(t_config_game_boy* config) {
 
 void terminar_programa(int conexion,t_log* logger, t_config_game_boy* config) {
 	liberar_config(config);
-
 	liberar_logger(logger);
 	liberar_conexion(conexion);
 }

@@ -4,13 +4,13 @@ int main(void) {
 	t_config_game_card* config = leer_config();
 	logger = iniciar_logger();
 
+//	int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
+//	int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
+//	enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket);
 
-	int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
-	int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
-
-	enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
-
+	escribirArchivoBin();
+	leerArchivoBin();
 	terminar_programa(socket, logger, config);
 }
 
@@ -20,7 +20,7 @@ t_log* iniciar_logger(void) {
 	t_log* logger = log_create("gameCard.log", "gameCard", 1, LOG_LEVEL_INFO);
 
 	if (logger == NULL){
-		printf("ERROR EN LA CREACION DEL LOGGER/n");
+		printf("error en la creacion del logger/n");
 		exit(1);
 	}
 	return logger;
@@ -30,7 +30,7 @@ t_config_game_card* leer_config() {
 
 	t_config_game_card* config_game_card = malloc(sizeof(t_config_game_card));
 
-	t_config* config = config_create("Debug/gameCard.config");
+	t_config* config = config_create("Debug/game_card.config");
 
 	config_game_card -> tiempo_reintento_conexion = config_get_int_value(config, "TIEMPO_DE_REINTENTO_CONEXION");
 	config_game_card -> tiempo_reintento_operacion = config_get_int_value(config, "TIEMPO_DE_REINTENTO_OPERACION");
@@ -61,35 +61,46 @@ void terminar_programa(int conexion,t_log* logger, t_config_game_card* config) {
 	liberar_conexion(conexion);
 }
 
-int escribirArchivoBin(char* pathArchivo,char* palabra){
-	FILE* file = open(pathArchivo,"wb"); //write-binary
 
-	if (file == NULL){
-		log_warning(logger,"no existe el archivo a escribir");
-		return 0;
-	}
+void escribirArchivoBin(){
 
-	fwrite(&palabra,sizeof(char),1,file);
+	FILE* file = fopen("metadata.bin","wb"); //write-binary
 
-	fclose(file);
+		t_metadata metadata;
+		metadata.blocksize = 64;
+		metadata.blocks = 5192;
+		metadata.magic = "TALL_GRASS";
+
+		fwrite(&metadata,tamanio_de_metadata(metadata),1,file);
+		log_info(logger,"se creo el archivo metadata.bin");
+
+		fclose(file);
+
 
 }
+int tamanio_de_metadata(t_metadata metadata){
+	int stringLong = strlen(metadata.magic)+1 ;
+	return stringLong + (sizeof(int) *2) ;
+}
 
-int leerArchivoBin(char* pathArchivo){
+void leerArchivoBin(char* pathArchivo){
 
-	FILE* file = open(pathArchivo,"rb"); //read-binary
+	FILE* file = fopen("metadata.bin","rb"); //read-binary
 
 	if (file == NULL){
 		log_warning(logger,"no existe el archivo a leer");
-		return 0;
 	}
-	char *palabra;
 
-	while (fread(&palabra,sizeof(char),1,file)) {
-		//vemos que hacemos dsp
-	}
+	t_metadata metadataLeido;
+
+
+	fread(&(metadataLeido.blocksize),sizeof(int),1,file);
+	fread(&(metadataLeido.blocks),sizeof(int),1,file);
+	fread(&(metadataLeido.magic),13,1,file);
+
+	log_info(logger, "se leyo el metadata ");
+
 	fclose(file);
-
 }
 
 int fileSize(char* filename){
