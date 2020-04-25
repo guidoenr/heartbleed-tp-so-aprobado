@@ -20,6 +20,14 @@ typedef struct {
 
 } t_config_game_card;
 
+
+typedef struct {
+    int blocksize;
+	int blocks;
+	char* magic;
+}t_metadata;
+
+
 t_log* logger;
 t_log* iniciar_logger(void);
 t_config_game_card* leer_config(void);
