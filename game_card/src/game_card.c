@@ -9,8 +9,8 @@ int main(void) {
 //	enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket);
 
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
-	escribirArchivoBin();
-	leerArchivoBin();
+	crearArchivoMetadata();
+	leerMetadata();
 	terminar_programa(socket, logger, config);
 }
 
@@ -62,7 +62,7 @@ void terminar_programa(int conexion,t_log* logger, t_config_game_card* config) {
 }
 
 
-void escribirArchivoBin(){
+void crearArchivoMetadata(){
 
 	FILE* file = fopen("metadata.bin","wb"); //write-binary
 
@@ -70,9 +70,9 @@ void escribirArchivoBin(){
 		metadata.blocksize = 64;
 		metadata.blocks = 5192;
 		metadata.magic = "TALL_GRASS";
-
-		fwrite(&metadata,tamanio_de_metadata(metadata),1,file);
-		log_info(logger,"se creo el archivo metadata.bin");
+		int tam = tamanio_de_metadata(metadata);
+		fwrite(&metadata,tam,1,file);
+		log_info(logger,"se creo el archivo metadata.bin de tamaño: %d",tam);
 
 		fclose(file);
 
@@ -83,7 +83,7 @@ int tamanio_de_metadata(t_metadata metadata){
 	return stringLong + (sizeof(int) *2) ;
 }
 
-void leerArchivoBin(char* pathArchivo){
+void leerMetadata(){
 
 	FILE* file = fopen("metadata.bin","rb"); //read-binary
 
@@ -98,7 +98,7 @@ void leerArchivoBin(char* pathArchivo){
 	fread(&(metadataLeido.blocks),sizeof(int),1,file);
 	fread(&(metadataLeido.magic),13,1,file);
 
-	log_info(logger, "se leyo el metadata ");
+	log_info(logger, "se leyo el metadata con tamaño %d",tamanio_de_metadata(metadataLeido));
 
 	fclose(file);
 }
