@@ -15,19 +15,10 @@ int main(void) {
 }
 
 void iniciar_programa(){
-
-	iniciar_logger(config -> log_file, "team");
-	crear_listas();
+	iniciar_logger("team.log", "team");
 	leer_config(); // aca agregamos los elementos a los campos q corresponde
 	//objetivo_global = obtener_objetivo_global();
 	//crear_hilos_entrenadores(); // iniciar a los entrenadores
-}
-
-void crear_listas(){
-
-	config -> posiciones_entrenadores = list_create();
-	config -> pokemon_entrenadores = list_create();
-	config -> objetivos_entrenadores = list_create();
 }
 
 /*t_list* obtener_objetivo_global(){ // usar el iterate
@@ -59,11 +50,15 @@ void leer_config(void) {
 
 	t_config* config = config_create("Debug/team.config");
 
-	char** posiciones, pokemons, objetivos;
+	config_team -> log_file = strdup(config_get_string_value(config, "LOG_FILE"));
 
-	posiciones = config_get_array_value(config, "POSICIONES_ENTRENADORES");
-	pokemons = config_get_array_value(config, "POKEMON_ENTRENADORES");
-	objetivos = config_get_array_value(config, "OBJETIVOS_ENTRENADORES");
+	char** posiciones = config_get_array_value(config, "POSICIONES_ENTRENADORES");
+	char** pokemons = config_get_array_value(config, "POKEMON_ENTRENADORES");
+	char** objetivos = config_get_array_value(config, "OBJETIVOS_ENTRENADORES");
+
+	void* posicion = parsear(posiciones);
+	posicion = parsear(pokemons);
+
 
 	config_team -> tiempo_reconexion = config_get_int_value(config, "TIEMPO_RECONEXION");
 	config_team -> retardo_cpu = config_get_int_value(config, "RETARDO_CICLO_CPU");
@@ -71,18 +66,35 @@ void leer_config(void) {
 	config_team -> ip_broker = strdup(config_get_string_value(config, "IP_BROKER"));
 	config_team -> puerto_broker = strdup(config_get_string_value(config, "PUERTO_BROKER"));
 	config_team -> estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
-	config_team -> log_file = strdup(config_get_string_value(config, "LOG_FILE"));
 
-	parsear(posiciones); //si esto retorna un t_list* podria usarse add all
-	parsear(pokemons);
-	parsear(objetivos);
+	//parsear(posiciones); //si esto retorna un t_list* podria usarse add all
+	//parsear(pokemons);
+	//parsear(objetivos);
 
 	config_destroy(config);
 
 }
 
-void parsear(char** datos_de_config){ // no se si void o q retorne lo parseado y asignarlo al struct en leer_config
+void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado y asignarlo al struct en leer_config
+	t_list* lista = list_create();
+	printf("%d", sizeof(datos_de_config));
+	char e;
+	char* palabra;
+	for (char* c = *datos_de_config; c; c=*++datos_de_config) {
+		for (char* d = c; d; d++) {
+			e = *d;
 
+			if(!e) {
+				break;
+			} else if(e != '|') {
+				concatenar(palabra, e);
+				//string_append(&palabra, (char*) e);
+			} else {
+				//list_add(lista, palabra);
+				palabra = ""; // limpiar char *
+			}
+		}
+	}
 }
 
 /*void crear_hilos_entrenadores(){
@@ -96,7 +108,14 @@ void parsear(char** datos_de_config){ // no se si void o q retorne lo parseado y
 	}
 }*/
 
-void* iniciar_entrenador()
+//void* iniciar_entrenador() {
+
+//}
+
+void concatenar(char* palabra, char caracter) {
+	int len = string_length(palabra);
+	palabra[len] = caracter;
+}
 
 void liberar_config(t_config_team* config) {
 	free(config -> algoritmo_planificacion);

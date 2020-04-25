@@ -7,22 +7,10 @@
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.h"
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 
-/*
-typedef struct {
-	char* pokemon;
-	int* next;
-} t_lista_pokemons;
-
 typedef struct { // capaz tengamos que agregar un id
-    int posicion[2];
-	int* next;
-} t_lista_posiciones;
-
-typedef struct {
-	t_lista_pokemons* pokemons;
-	int* next;
-} t_lista_lista_pokemons;
-*/
+    int id;
+	int posicion[2];
+} t_entrenador;
 
 typedef struct {
 	t_list* posiciones_entrenadores;
@@ -48,6 +36,8 @@ t_list* estado_exec;
 t_list* estado_block;
 t_list* estado_exit;
 
+void concatenar(char* palabra, char c);
+void* parsear(char** datos_de_config);
 
 void iniciar_programa();
 void leer_config(void);
