@@ -54,9 +54,9 @@ void leer_config(void) {
 	char** pokemons = config_get_array_value(config, "POKEMON_ENTRENADORES"); // solo trae lo primero antes de la ,
 	char** objetivos = config_get_array_value(config, "OBJETIVOS_ENTRENADORES"); // aca tambien
 
-	parsear(posiciones);
-	parsear(pokemons);
-	parsear(objetivos);
+	//t_list* lista_posiciones = parsear_posiciones(posiciones);
+	t_list* lista_pokemons = parsear(pokemons);
+	t_list* lista_objetivos = parsear(objetivos);
 
 	config_team -> tiempo_reconexion = config_get_int_value(config, "TIEMPO_RECONEXION");
 	config_team -> retardo_cpu = config_get_int_value(config, "RETARDO_CICLO_CPU");
@@ -69,7 +69,7 @@ void leer_config(void) {
 	config_destroy(config);
 
 }
-
+/*
 void parsear_dato(char* cadena){
 	char** palabra;
 	palabra = string_split(cadena,"|");
@@ -80,40 +80,87 @@ void parsear(char** datos_a_parsear){
 	string_iterate_lines(datos_a_parsear,parsear_dato);
 
 }
+*/
 
-
-
-/*void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado y asignarlo al struct en leer_config
+void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado y asignarlo al struct en leer_config
 	t_list* lista = list_create();
+	t_list* lista_lista = list_create();
 	printf("%d", sizeof(datos_de_config));
 	char e;
-	char* palabra;
+	char* palabra = "";
 	for (char* c = *datos_de_config; c; c=*++datos_de_config) {
 		for (char* d = c; d; d++) {
 			e = *d;
 
-			if(!e) {
-				break;
-			} else if(e != '|') {
-				//concatenar(palabra, e);
-				//string_append(&palabra, (char*) e);
+			if(e != '|' && e) {
+				palabra = append(palabra, e);
 			} else {
-void agregar_a_entrenador(char ** palabra){
-
-}
-				//list_add(lista, palabra);
+				list_add(lista, palabra);
 				palabra = ""; // limpiar char *
+			}
+			if(!e){
+				break;
+			}
+		}
+		t_list* lista_aux = list_duplicate(lista);
+		list_add(lista_lista, lista_aux);
+		list_destroy(lista_aux);
+		list_clean(lista);
+	}
+	return lista_lista;
+}
+
+void* parsear_posiciones(char** datos_de_config) { // no se si void o q retorne lo parseado y asignarlo al struct en leer_config
+	t_list* lista = list_create();
+	printf("%d", sizeof(datos_de_config));
+	char e;
+	char* palabra;
+	int posicion[2];
+	for (char* c = *datos_de_config; c; c=*++datos_de_config) {
+		palabra = "";
+		posicion[0] = 0;
+		posicion[1] = 0;
+		for (char* d = c; d; d++) {
+			e = *d;
+			if(e != '|' && e) {
+				palabra = append(palabra, e);
+			} else {
+				if(posicion[0] == 0) {
+					posicion[0] = (int)*palabra;
+				} else {
+					posicion[1] = (int)*palabra;
+					list_add(lista, posicion);
+				}
+				palabra = ""; // limpiar char*
+			}
+			if(!e){
+				break;
 			}
 		}
 	}
 	return lista;
 }
 
+char* append(const char *s, char c) {
+    int len = strlen(s);
+    char buf[len+2];
+    strcpy(buf, s);
+    buf[len] = c;
+    buf[len + 1] = 0;
+    return strdup(buf);
+}
+
 void concatenar(char* palabra, char caracter) {
 	int largo = string_length(palabra);
 	palabra[largo] = caracter;
 }
+/*
+ *
+void agregar_a_entrenador(char ** palabra){
 
+}
+ *
+ *
 void crear_hilos_entrenadores(){
 
 	while(posiciones_entrenadores != NULL){ // o iterate si se puede

@@ -37,7 +37,9 @@ t_list* estado_block;
 t_list* estado_exit;
 
 /*void concatenar(char* palabra, char c);*/
-void parsear(char** datos_de_config);
+char* append(const char *s, char c);
+void* parsear(char** datos_de_config);
+void* parsear_posiciones(char** datos_de_config);
 
 void iniciar_programa();
 void leer_config(void);
