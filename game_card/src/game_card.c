@@ -12,6 +12,9 @@ int main(void) {
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
 	crearMetadata();
 	leerMetadata();
+	crearBitmap();
+	log_info(logger,"el bitmap.bin se encuentra en status %d",estadoBitmap());
+
 	terminar_programa(socket,config);
 }
 
@@ -31,7 +34,6 @@ t_config_game_card* leer_config() {
 	config_game_card -> puerto_gameBoy= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
 	config_game_card -> ip_gameCard= strdup(config_get_string_value(config, "IP_GAMEBOY"));
 	config_game_card -> puerto_gameCard= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
-
 
 	config_destroy(config);
 
@@ -54,9 +56,9 @@ void terminar_programa(int conexion,t_config_game_card* config) {
 
 void crearMetadata(){
 
-	FILE* file = fopen("metadata.bin","wb"); //write-binary
+	FILE* file = fopen("montaje/metadata.bin","wb"); //write-binary
 	if (file==NULL){
-		FILE* file = fopen("metadata.bin","wb");
+		FILE* file = fopen("montaje/metadata.bin","wb");
 		fclose(file);
 		log_info(logger,"se creo el archivo metadata.bin VACIO");
 
@@ -75,7 +77,6 @@ void crearMetadata(){
 
 	}
 
-
 }
 
 void escribirMetadata(){
@@ -90,14 +91,13 @@ int tamanio_de_metadata(t_metadata metadata){
 
 void leerMetadata(){
 
-	FILE* file = fopen("metadata.bin","rb"); //read-binary
+	FILE* file = fopen("montaje/metadata.bin","rb"); //read-binary
 
-	if (file == NULL){
+	if (!existeElMetadata()){
 		log_warning(logger,"no existe el archivo a leer");
 	}
 
-	t_metadata metadataLeido;
-
+	t_metadata metadataLeido; //despues vemos como se usa esta verga
 
 	fread(&(metadataLeido.blocksize),sizeof(int),1,file);
 	fread(&(metadataLeido.blocks),sizeof(int),1,file);
@@ -114,5 +114,26 @@ int fileSize(char* filename){
 	int i = ftell(f);
 	fclose(f);
 	return i;
+}
+
+int existeElMetadata(){
+	return fopen("montaja/metadata.bin","rb") == NULL;
+}
+
+void crearBitmap(){
+	FILE* file = fopen("montaje/bitmap.bin","wb");
+	int status;
+	status=0; //arranca en 0
+	fwrite(&status,sizeof(int),1,file);
+	log_info(logger,"se creo el bitmap.bin con status: %d",status);
+	fclose(file);
+}
+
+int estadoBitmap(){
+	FILE* file = fopen("montaje/bitmap.bin","rb");
+	int status;
+	fread(&status,sizeof(int),1,file);
+	fclose(file);
+	return status;
 }
 
