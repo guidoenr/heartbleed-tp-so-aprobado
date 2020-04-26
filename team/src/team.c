@@ -51,8 +51,8 @@ void leer_config(void) {
 	t_config* config = config_create("Debug/team.config");
 
 	char** posiciones = config_get_array_value(config, "POSICIONES_ENTRENADORES"); // no se porq solo trae "1|2", quizas hay q traer los datos con un while
-	char** pokemons = config_gray_value(config, "POKEMON_ENTRENADORES"); // solo trae lo primero antes de la ,
-	char** objetivos = config_get_array_vet_aralue(config, "OBJETIVOS_ENTRENADORES"); // aca tambien
+	char** pokemons = config_get_array_value(config, "POKEMON_ENTRENADORES"); // solo trae lo primero antes de la ,
+	char** objetivos = config_get_array_value(config, "OBJETIVOS_ENTRENADORES"); // aca tambien
 
 	parsear(posiciones);
 	parsear(pokemons);
@@ -70,16 +70,18 @@ void leer_config(void) {
 
 }
 
+void parsear_dato(char* cadena){
+	char** palabra;
+	palabra = string_split(cadena,"|");
+	//agregar_a_entrenador(palabra);
+}
+
 void parsear(char** datos_a_parsear){
 	string_iterate_lines(datos_a_parsear,parsear_dato);
 
 }
 
-void parsear_dato(char* cadena){
-	char** palabra;
-	palabra = string_split(cadena,"|");
-	agregar_a_entrenador(palabra);
-}
+
 
 /*void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado y asignarlo al struct en leer_config
 	t_list* lista = list_create();
