@@ -3,10 +3,8 @@
 int main(void) {
 
 	iniciar_programa();
-	//abrir_conexion(); abrir socket con el gameBoy
 	int socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
-
-	enviar_mensaje(TE_GET_POKEMON_BR, "Get Pokemon", socket);
+	enviar_mensaje(TE_GET_POKEMON_BR, "Get Pokemon", socket); // se va
 
 	//t_buffer* recibido = recibir_mensaje(socket, strlen("Hola")+ 1);
 	log_info(logger, "El ip es : %s", config -> ip_broker);
@@ -19,6 +17,8 @@ void iniciar_programa(){
 	leer_config(); // aca agregamos los elementos a los campos q corresponde
 	//objetivo_global = obtener_objetivo_global();
 	//crear_hilos_entrenadores(); // iniciar a los entrenadores
+	//iniciar_conexion(); abrir socket con el gameBoy (pthread_create)
+
 }
 
 /*t_list* obtener_objetivo_global(){ // usar el iterate
@@ -57,7 +57,8 @@ void leer_config(void) {
 	char** objetivos = config_get_array_value(config, "OBJETIVOS_ENTRENADORES");
 
 	void* posicion = parsear(posiciones);
-	posicion = parsear(pokemons);
+	void* pokemon = parsear(pokemons);
+	void* objetivo = parsear(objetivos);
 
 
 	config_team -> tiempo_reconexion = config_get_int_value(config, "TIEMPO_RECONEXION");
@@ -66,10 +67,6 @@ void leer_config(void) {
 	config_team -> ip_broker = strdup(config_get_string_value(config, "IP_BROKER"));
 	config_team -> puerto_broker = strdup(config_get_string_value(config, "PUERTO_BROKER"));
 	config_team -> estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
-
-	//parsear(posiciones); //si esto retorna un t_list* podria usarse add all
-	//parsear(pokemons);
-	//parsear(objetivos);
 
 	config_destroy(config);
 
@@ -95,6 +92,7 @@ void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado
 			}
 		}
 	}
+	return lista;
 }
 
 /*void crear_hilos_entrenadores(){

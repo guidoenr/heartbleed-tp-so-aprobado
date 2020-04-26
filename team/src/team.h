@@ -46,5 +46,3 @@ void terminar_programa(int, t_log*, t_config_team*);
 void liberar_conexion(int);
 void liberar_logger(t_log* logger);
 void liberar_config(t_config_team*);
-
-
