@@ -1,15 +1,25 @@
 #include "game_boy.h"
 
 int main(int argc,char* argv[]){
-	iniciar_logger();
-	if(argc ==0){
-		printf("No se han ingresado los parametros");
-		return -1;
-	}
-    log_info(logger, "el size del comando es:%i", argc);
-    leer_config();
+
+	leer_config();
+	iniciar_programa(argc);
+
     int socket = seleccionar_proceso(argv);
+
 	terminar_programa(socket, logger, config_game_boy);
+}
+
+void iniciar_programa(int argc){
+
+	if(argc == 0){
+			printf("No se han ingresado los parametros.");
+			exit(-1);
+	}
+	log_info(logger, "El size del comando es: %i", argc);
+
+	char * log_file = config_get_string_value(config_game_boy, "LOG_FILE");
+	iniciar_logger(log_file, "gameboy");
 }
 
 int seleccionar_proceso(char *parametros[]){
@@ -39,20 +49,13 @@ int seleccionar_proceso(char *parametros[]){
      return conexion;
 }
 
-void iniciar_logger(void) {
-	logger = log_create("gameBoy.log", "gameBoy", 1, LOG_LEVEL_INFO);
-	if (logger == NULL){
-		printf("ERROR EN LA CREACION DEL LOGGER/n");
-		exit(-3);
-	}
-}
-
 void leer_config() {
 
     config_game_boy = malloc(sizeof(t_config_game_boy));
 
 	t_config* config = config_create("Debug/game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
-    if(config == NULL){
+
+	if(config == NULL){
     	log_info(logger,"no se pudo encontrar el path del config");
     	return exit(-2);
     }

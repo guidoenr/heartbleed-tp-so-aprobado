@@ -18,7 +18,8 @@ typedef struct {
 
 t_log* logger;
 t_config_game_boy* config_game_boy;
-void iniciar_logger(void);
+void iniciar_programa(int cantidad_parametros);
+void iniciar_logger(char* file, char* program_name);
 void leer_config(void);
 int seleccionar_proceso(char *parametros[]);
 void terminar_programa(int, t_log*, t_config_game_boy*);
