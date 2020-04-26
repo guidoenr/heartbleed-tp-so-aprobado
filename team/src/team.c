@@ -50,29 +50,38 @@ void leer_config(void) {
 
 	t_config* config = config_create("Debug/team.config");
 
-	config_team -> log_file = strdup(config_get_string_value(config, "LOG_FILE"));
+	char** posiciones = config_get_array_value(config, "POSICIONES_ENTRENADORES"); // no se porq solo trae "1|2", quizas hay q traer los datos con un while
+	char** pokemons = config_gray_value(config, "POKEMON_ENTRENADORES"); // solo trae lo primero antes de la ,
+	char** objetivos = config_get_array_vet_aralue(config, "OBJETIVOS_ENTRENADORES"); // aca tambien
 
-	char** posiciones = config_get_array_value(config, "POSICIONES_ENTRENADORES");
-	char** pokemons = config_get_array_value(config, "POKEMON_ENTRENADORES");
-	char** objetivos = config_get_array_value(config, "OBJETIVOS_ENTRENADORES");
-
-	void* posicion = parsear(posiciones);
-	void* pokemon = parsear(pokemons);
-	void* objetivo = parsear(objetivos);
-
+	parsear(posiciones);
+	parsear(pokemons);
+	parsear(objetivos);
 
 	config_team -> tiempo_reconexion = config_get_int_value(config, "TIEMPO_RECONEXION");
 	config_team -> retardo_cpu = config_get_int_value(config, "RETARDO_CICLO_CPU");
-	config_team -> algoritmo_planificacion = strdup(config_get_string_value(config, "ALGORITMO_PLANIFICACION"));
-	config_team -> ip_broker = strdup(config_get_string_value(config, "IP_BROKER"));
-	config_team -> puerto_broker = strdup(config_get_string_value(config, "PUERTO_BROKER"));
+	config_team -> algoritmo_planificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
+	config_team -> ip_broker = config_get_string_value(config, "IP_BROKER");
+	config_team -> puerto_broker = config_get_string_value(config, "PUERTO_BROKER");
 	config_team -> estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
+	config_team -> log_file = config_get_string_value(config, "LOG_FILE");
 
 	config_destroy(config);
 
 }
 
-void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado y asignarlo al struct en leer_config
+void parsear(char** datos_a_parsear){
+	string_iterate_lines(datos_a_parsear,parsear_dato);
+
+}
+
+void parsear_dato(char* cadena){
+	char** palabra;
+	palabra = string_split(cadena,"|");
+	agregar_a_entrenador(palabra);
+}
+
+/*void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado y asignarlo al struct en leer_config
 	t_list* lista = list_create();
 	printf("%d", sizeof(datos_de_config));
 	char e;
@@ -84,9 +93,12 @@ void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado
 			if(!e) {
 				break;
 			} else if(e != '|') {
-				concatenar(palabra, e);
+				//concatenar(palabra, e);
 				//string_append(&palabra, (char*) e);
 			} else {
+void agregar_a_entrenador(char ** palabra){
+
+}
 				//list_add(lista, palabra);
 				palabra = ""; // limpiar char *
 			}
@@ -95,7 +107,12 @@ void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado
 	return lista;
 }
 
-/*void crear_hilos_entrenadores(){
+void concatenar(char* palabra, char caracter) {
+	int largo = string_length(palabra);
+	palabra[largo] = caracter;
+}
+
+void crear_hilos_entrenadores(){
 
 	while(posiciones_entrenadores != NULL){ // o iterate si se puede
 		int err = pthread_create(hilo, NULL, iniciar_entrenador, entrenador);
@@ -106,14 +123,6 @@ void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado
 	}
 }*/
 
-//void* iniciar_entrenador() {
-
-//}
-
-void concatenar(char* palabra, char caracter) {
-	int len = string_length(palabra);
-	palabra[len] = caracter;
-}
 
 void liberar_config(t_config_team* config) {
 	free(config -> algoritmo_planificacion);
