@@ -7,7 +7,7 @@ void iniciar_logger(char* file, char* program_name) {
 			return exit(-1);
 	}
 
-	t_log* logger = log_create(file, program_name, 1, LOG_LEVEL_INFO);
+	logger = log_create(file, program_name, 1, LOG_LEVEL_INFO);
 
 	if (logger == NULL){
 		printf("ERROR EN LA CREACION DEL LOGGER/n");

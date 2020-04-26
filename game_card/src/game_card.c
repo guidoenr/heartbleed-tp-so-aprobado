@@ -2,29 +2,19 @@
 
 int main(void) {
 	t_config_game_card* config = leer_config();
-	logger = iniciar_logger();
+	iniciar_logger("gameCard.log","gamercard");
+
 
 //	int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
 //	int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 //	enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket);
 
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
-	crearArchivoMetadata();
+	crearMetadata();
 	leerMetadata();
-	terminar_programa(socket, logger, config);
+	terminar_programa(socket,config);
 }
 
-
-t_log* iniciar_logger(void) {
-
-	t_log* logger = log_create("gameCard.log", "gameCard", 1, LOG_LEVEL_INFO);
-
-	if (logger == NULL){
-		printf("error en la creacion del logger/n");
-		exit(1);
-	}
-	return logger;
-}
 
 t_config_game_card* leer_config() {
 
@@ -55,16 +45,22 @@ void liberar_config(t_config_game_card* config) {
 	free(config);
 }
 
-void terminar_programa(int conexion,t_log* logger, t_config_game_card* config) {
+void terminar_programa(int conexion,t_config_game_card* config) {
 	liberar_config(config);
 	liberar_logger(logger);
 	liberar_conexion(conexion);
 }
 
 
-void crearArchivoMetadata(){
+void crearMetadata(){
 
 	FILE* file = fopen("metadata.bin","wb"); //write-binary
+	if (file==NULL){
+		FILE* file = fopen("metadata.bin","wb");
+		fclose(file);
+		log_info(logger,"se creo el archivo metadata.bin VACIO");
+
+	}else{
 
 		t_metadata metadata;
 		metadata.blocksize = 64;
@@ -72,9 +68,18 @@ void crearArchivoMetadata(){
 		metadata.magic = "TALL_GRASS";
 		int tam = tamanio_de_metadata(metadata);
 		fwrite(&metadata,tam,1,file);
+
 		log_info(logger,"se creo el archivo metadata.bin de tamaño: %d",tam);
 
 		fclose(file);
+
+	}
+
+
+}
+
+void escribirMetadata(){
+
 
 
 }
