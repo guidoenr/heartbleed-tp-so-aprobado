@@ -29,7 +29,6 @@ typedef struct {
 
 
 t_log* logger;
-void iniciar_logger(char* file, char* program_name);
 t_config_game_card* leer_config(void);
 void terminar_programa(int, t_config_game_card*);
 void liberar_conexion(int);
