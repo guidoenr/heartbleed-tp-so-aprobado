@@ -16,10 +16,9 @@ void iniciar_programa(int argc){
 			printf("No se han ingresado los parametros.");
 			exit(-1);
 	}
+	iniciar_logger(config_game_boy->log_file, "gameboy");
 	log_info(logger, "El size del comando es: %i", argc);
 
-	char * log_file = config_get_string_value(config_game_boy, "LOG_FILE");
-	iniciar_logger(log_file, "gameboy");
 }
 
 int seleccionar_proceso(char *parametros[]){
@@ -53,10 +52,10 @@ void leer_config() {
 
     config_game_boy = malloc(sizeof(t_config_game_boy));
 
-	t_config* config = config_create("Debug/game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
+	t_config* config = config_create("game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
 
 	if(config == NULL){
-    	log_info(logger,"no se pudo encontrar el path del config");
+    	printf("no se pudo encontrar el path del config");
     	return exit(-2);
     }
 	config_game_boy -> ip_broker = strdup(config_get_string_value(config,"IP_BROKER"));
@@ -65,7 +64,7 @@ void leer_config() {
 	config_game_boy-> puerto_team = strdup(config_get_string_value(config,"PUERTO_TEAM"));
 	config_game_boy -> ip_gameCard = strdup(config_get_string_value(config,"IP_GAMECARD"));
 	config_game_boy-> puerto_gameCard = strdup(config_get_string_value(config,"PUERTO_GAMECARD"));
-
+	config_game_boy-> log_file = strdup(config_get_string_value(config,"LOG_FILE"));
 	config_destroy(config);
 }
 
@@ -76,6 +75,7 @@ void liberar_config(t_config_game_boy* config) {
 	free(config -> puerto_team);
 	free(config -> ip_gameCard);
 	free(config -> puerto_gameCard);
+	free(config -> log_file);
 	free(config);
 }
 

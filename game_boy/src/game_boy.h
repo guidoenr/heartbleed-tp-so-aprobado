@@ -14,6 +14,7 @@ typedef struct {
 	char* puerto_team;
 	char* ip_gameCard;
 	char* puerto_gameCard;
+	char* log_file;
 } t_config_game_boy;
 
 t_log* logger;
