@@ -44,7 +44,7 @@ int seleccionar_proceso(char *parametros[]){
     	  return conexion;
       }
      log_info(logger,"Se puedo realizar la conexion");
-     enviar_mensaje(GB_NEW_POKEMON_BR, "Get Pokemon", socket);
+     enviar_mensaje(GB_NEW_POKEMON_BR, "Get Pokemon", conexion);
      return conexion;
 }
 

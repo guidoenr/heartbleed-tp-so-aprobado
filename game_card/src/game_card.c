@@ -5,9 +5,9 @@ int main(void) {
 	iniciar_logger("gameCard.log","gamercard");
 
 
-//	int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
+int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
 //	int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
-//	enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket);
+	enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
 	crearMetadata();
