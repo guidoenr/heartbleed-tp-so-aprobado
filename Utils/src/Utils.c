@@ -261,7 +261,7 @@ void liberar_conexion(int socket_cliente) {
 	close(socket_cliente);
 }
 
-void liberar_logger(t_log* logger){
+void liberar_logger(){
 	if(logger != NULL){
 		log_destroy(logger);
 	}

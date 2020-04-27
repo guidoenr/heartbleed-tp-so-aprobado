@@ -9,7 +9,9 @@ int main(void) {
 	//t_buffer* recibido = recibir_mensaje(socket, strlen("Hola")+ 1);
 	log_info(logger, "El ip es : %s", config -> ip_broker);
 	log_info(logger, "El port es : %s ", config -> puerto_broker);
-	terminar_programa(socket, logger, config);
+	terminar_programa(socket);
+
+	return 0;
 }
 
 void iniciar_programa(){
@@ -46,27 +48,29 @@ void iniciar_programa(){
 
 void leer_config(void) {
 
-	t_config_team* config_team = malloc(sizeof(t_config_team));
+	config = malloc(sizeof(t_config_team));
 
-	t_config* config = config_create("Debug/team.config");
+	t_config* config_team = config_create("Debug/team.config");
 
-	char** posiciones = config_get_array_value(config, "POSICIONES_ENTRENADORES"); // no se porq solo trae "1|2", quizas hay q traer los datos con un while
-	char** pokemons = config_get_array_value(config, "POKEMON_ENTRENADORES"); // solo trae lo primero antes de la ,
-	char** objetivos = config_get_array_value(config, "OBJETIVOS_ENTRENADORES"); // aca tambien
+	char** posiciones = config_get_array_value(config_team, "POSICIONES_ENTRENADORES");
+	char** pokemons = config_get_array_value(config_team, "POKEMON_ENTRENADORES");
+	char** objetivos = config_get_array_value(config_team, "OBJETIVOS_ENTRENADORES");
 
-	//t_list* lista_posiciones = parsear_posiciones(posiciones);
+	t_list* lista_posiciones = parsear(posiciones);
 	t_list* lista_pokemons = parsear(pokemons);
 	t_list* lista_objetivos = parsear(objetivos);
 
-	config_team -> tiempo_reconexion = config_get_int_value(config, "TIEMPO_RECONEXION");
-	config_team -> retardo_cpu = config_get_int_value(config, "RETARDO_CICLO_CPU");
-	config_team -> algoritmo_planificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
-	config_team -> ip_broker = config_get_string_value(config, "IP_BROKER");
-	config_team -> puerto_broker = config_get_string_value(config, "PUERTO_BROKER");
-	config_team -> estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
-	config_team -> log_file = config_get_string_value(config, "LOG_FILE");
 
-	config_destroy(config);
+
+	config -> tiempo_reconexion = config_get_int_value(config_team, "TIEMPO_RECONEXION");
+	config -> retardo_cpu = config_get_int_value(config_team, "RETARDO_CICLO_CPU");
+	config -> algoritmo_planificacion = config_get_string_value(config_team, "ALGORITMO_PLANIFICACION");
+	config -> ip_broker = config_get_string_value(config_team, "IP_BROKER");
+	config -> puerto_broker = config_get_string_value(config_team, "PUERTO_BROKER");
+	config -> estimacion_inicial = config_get_int_value(config_team, "ESTIMACION_INICIAL");
+	config -> log_file = config_get_string_value(config_team, "LOG_FILE");
+
+	config_destroy(config_team);
 
 }
 /*
@@ -104,41 +108,9 @@ void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado
 		}
 		t_list* lista_aux = list_duplicate(lista);
 		list_add(lista_lista, lista_aux);
-		list_destroy(lista_aux);
 		list_clean(lista);
 	}
 	return lista_lista;
-}
-
-void* parsear_posiciones(char** datos_de_config) { // no se si void o q retorne lo parseado y asignarlo al struct en leer_config
-	t_list* lista = list_create();
-	printf("%d", sizeof(datos_de_config));
-	char e;
-	char* palabra;
-	int posicion[2];
-	for (char* c = *datos_de_config; c; c=*++datos_de_config) {
-		palabra = "";
-		posicion[0] = 0;
-		posicion[1] = 0;
-		for (char* d = c; d; d++) {
-			e = *d;
-			if(e != '|' && e) {
-				palabra = append(palabra, e);
-			} else {
-				if(posicion[0] == 0) {
-					posicion[0] = (int)*palabra;
-				} else {
-					posicion[1] = (int)*palabra;
-					list_add(lista, posicion);
-				}
-				palabra = ""; // limpiar char*
-			}
-			if(!e){
-				break;
-			}
-		}
-	}
-	return lista;
 }
 
 char* append(const char *s, char c) {
@@ -172,8 +144,18 @@ void crear_hilos_entrenadores(){
 	}
 }*/
 
+void load_entrenadores(t_list* entrenadores) {
+	t_link_element *element = entrenadores -> head;
+	t_link_element *aux = NULL;
+	while (element != NULL) {
 
-void liberar_config(t_config_team* config) {
+		aux = element -> next;
+
+		element = aux;
+	}
+}
+
+void liberar_config() {
 	free(config -> algoritmo_planificacion);
 	free(config -> log_file);
 	free(config -> ip_broker);
@@ -181,8 +163,8 @@ void liberar_config(t_config_team* config) {
 	free(config);
 }
 
-void terminar_programa(int conexion,t_log* logger,t_config_team* config) {
-	liberar_config(config);
-	liberar_logger(logger);
+void terminar_programa(int conexion) {
+	liberar_config();
+	liberar_logger();
 	liberar_conexion(conexion);
 }

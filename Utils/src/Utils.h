@@ -116,7 +116,7 @@ void reenviar_mensaje(int cod_op, int size, void* payload, int socket_cliente);
 
 void iniciar_logger(char* file, char* program_name);
 void liberar_conexion(int socket_cliente);
-void liberar_logger(t_log* logger);
+void liberar_logger();
 
 
 #endif /* UTILS_H_ */
