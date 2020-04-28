@@ -60,7 +60,7 @@ void leer_config(void) {
 	t_list* lista_pokemons = parsear(pokemons);
 	t_list* lista_objetivos = parsear(objetivos);
 
-	config -> entrenadores = load_entrenadores(lista_posiciones, lista_pokemons, lista_objetivos);
+	config -> entrenadores = load_entrenadores(lista_posiciones, lista_pokemons, lista_objetivos); // Falta hacer UNA BANDA DE FREE al final
 
 	config -> tiempo_reconexion = config_get_int_value(config_team, "TIEMPO_RECONEXION");
 	config -> retardo_cpu = config_get_int_value(config_team, "RETARDO_CICLO_CPU");
@@ -73,18 +73,6 @@ void leer_config(void) {
 	config_destroy(config_team);
 
 }
-/*
-void parsear_dato(char* cadena){
-	char** palabra;
-	palabra = string_split(cadena,"|");
-	//agregar_a_entrenador(palabra);
-}
-
-void parsear(char** datos_a_parsear){
-	string_iterate_lines(datos_a_parsear,parsear_dato);
-
-}
-*/
 
 void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado y asignarlo al struct en leer_config
 	t_list* lista = list_create();
@@ -144,16 +132,18 @@ t_list* load_entrenadores(t_list* lista_posiciones, t_list* lista_pokemons, t_li
 	t_link_element* head_pokemons = lista_pokemons -> head;
 	t_link_element* head_objetivos = lista_objetivos -> head;
 
-	int id = 1;
+	int id_entrenador = 1;
 
 	while(head_posiciones != NULL && head_pokemons != NULL && head_objetivos != NULL){
-		t_entrenador* entrenador;
+		t_entrenador* entrenador = malloc(sizeof(t_entrenador));
 
-		entrenador -> id = id;
+		entrenador -> id = id_entrenador;
+		entrenador -> pokemons = list_create();
+		entrenador -> objetivos = list_create();
 
 		// posicion
 		int pos[2];
-		t_list* aux_posiciones = lista_posiciones -> head -> data;
+		t_list* aux_posiciones = head_posiciones -> data;
 
 		pos[0] = atoi(aux_posiciones -> head -> data);
 		pos[1] = atoi(aux_posiciones -> head -> next -> data);
@@ -167,32 +157,21 @@ t_list* load_entrenadores(t_list* lista_posiciones, t_list* lista_pokemons, t_li
 
 		cargar_pokemons_a_entrenador(aux_pokemons, cabeza_pokemons, entrenador -> pokemons);
 
-		/*while(cabeza_pokemons != NULL){
-
-			list_add(entrenador -> pokemons, cabeza_pokemons -> data);
-			cabeza_pokemons = cabeza_pokemons -> next;
-		}*/
-
 		// objetivos
 		t_list* aux_objetivos = head_objetivos -> data;
 		t_link_element* cabeza_objetivos = aux_objetivos -> head;
 
 		cargar_pokemons_a_entrenador(aux_objetivos, cabeza_objetivos, entrenador -> objetivos);
 
-		/*while(cabeza_objetivos != NULL){
-
-			list_add(entrenador -> objetivo, cabeza_objetivos -> data);
-			cabeza_objetivoa = cabeza_objetivos -> next;
-		}
-		*/
-
+		// entrenador a entrenadores
 		list_add(entrenadores, entrenador);
+
+		// actualizo punteros
+		id_entrenador++;
 
 		head_posiciones = head_posiciones -> next;
 		head_pokemons = head_pokemons -> next;
 		head_objetivos = head_objetivos-> next;
-
-		id++;
 	}
 
 	return entrenadores;
