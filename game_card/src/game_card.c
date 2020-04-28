@@ -144,7 +144,7 @@ int isDirectory(char* path){
 
 int isOpen(char* path){
 	t_file_metadata fileMeta;
-	FILE* file = open(path,"rb");
+	FILE* file = fopen(path,"rb");
 	fread(&fileMeta.open,sizeof(char),1,file);
 		fclose(file);
 
