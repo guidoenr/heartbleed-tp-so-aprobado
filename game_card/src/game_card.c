@@ -4,16 +4,12 @@ int main(void) {
 	t_config_game_card* config = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
 
-
-int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
-//	int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
-	enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
-
+	//int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
+	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
-	crearMetadata();
-	leerMetadata();
-	crearBitmap();
-	log_info(logger,"el bitmap.bin se encuentra en status %d",estadoBitmap());
+
+
 
 	terminar_programa(socket,config);
 }
@@ -54,11 +50,11 @@ void terminar_programa(int conexion,t_config_game_card* config) {
 }
 
 
-void crearMetadata(){
+void crearMetadata(char* path){
 
-	FILE* file = fopen("montaje/metadata.bin","wb"); //write-binary
+	FILE* file = fopen(path,"wb"); //write-binary
 	if (file==NULL){
-		FILE* file = fopen("montaje/metadata.bin","wb");
+		FILE* file = fopen(path,"wb");
 		fclose(file);
 		log_info(logger,"se creo el archivo metadata.bin VACIO");
 
@@ -79,8 +75,7 @@ void crearMetadata(){
 
 }
 
-void escribirMetadata(){
-
+void escribirMetadata(char* path){
 
 
 }
@@ -89,11 +84,10 @@ int tamanio_de_metadata(t_metadata metadata){
 	return stringLong + (sizeof(int) *2) ;
 }
 
-void leerMetadata(){
+void leerMetadata(char* path){
+	FILE* file = fopen(path,"rb"); //read-binary
 
-	FILE* file = fopen("montaje/metadata.bin","rb"); //read-binary
-
-	if (!existeElMetadata()){
+	if (!isFile(path)){
 		log_warning(logger,"no existe el archivo a leer");
 	}
 
@@ -108,20 +102,22 @@ void leerMetadata(){
 	fclose(file);
 }
 
-int fileSize(char* filename){
-	FILE* f = fopen(filename,"r");
+int fileSize(char* path){
+	FILE* f = fopen(path,"r");
 	fseek(f, 0L, SEEK_END);
 	int i = ftell(f);
 	fclose(f);
 	return i;
 }
 
-int existeElMetadata(){
-	return fopen("montaja/metadata.bin","rb") == NULL;
+int isFile(char* path){
+	FILE* f = fopen(path,"rb");
+	fclose(f);
+	return f != NULL;
 }
 
-void crearBitmap(){
-	FILE* file = fopen("montaje/bitmap.bin","wb");
+void crearBitmap(char* path){
+	FILE* file = fopen(path,"wb");
 	int status;
 	status=0; //arranca en 0
 	fwrite(&status,sizeof(int),1,file);
@@ -129,11 +125,29 @@ void crearBitmap(){
 	fclose(file);
 }
 
-int estadoBitmap(){
-	FILE* file = fopen("montaje/bitmap.bin","rb");
+int estadoBitmap(char* path){
+	FILE* file = fopen(path,"rb");
 	int status;
 	fread(&status,sizeof(int),1,file);
 	fclose(file);
 	return status;
 }
 
+int isDirectory(char* path){
+	t_file_metadata fileMeta;
+	FILE* file = fopen(path,"rb");
+	fread(&fileMeta.directory,sizeof(char),1,file);
+	fclose(file);
+
+	return fileMeta.directory == 'Y';
+}
+
+int isOpen(char* path){
+	t_file_metadata fileMeta;
+	FILE* file = open(path,"rb");
+	fread(&fileMeta.open,sizeof(char),1,file);
+		fclose(file);
+
+		return fileMeta.open == 'Y';
+
+}

@@ -27,6 +27,12 @@ typedef struct {
 	char* magic;
 }t_metadata;
 
+typedef struct{
+	char directory;
+	int size;
+	int blocks; //TODO - array dinamico?
+	char open;
+}t_file_metadata;
 
 t_log* logger;
 t_config_game_card* leer_config(void);
