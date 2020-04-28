@@ -1,4 +1,3 @@
-
 #include<stdio.h>
 #include<stdlib.h>
 #include<commons/log.h>
@@ -52,3 +51,5 @@ void liberar_config(t_config_broker*);
 void crear_colas_de_mensajes(void);
 void crear_listas_de_suscriptores(void);
 void liberar_listas(void);
+void recibir_suscripcion(int, char*);
+void encolar_mensaje(t_paquete*, op_code);

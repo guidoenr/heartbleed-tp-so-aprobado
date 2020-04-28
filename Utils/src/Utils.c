@@ -91,6 +91,14 @@ void* recibir_mensaje(int socket_cliente, int* size) {
 	buffer = malloc(*size);
 	recv(socket_cliente, buffer, *size, MSG_WAITALL);
 	log_info(logger, "Mensaje recibido: %s", buffer);
+	//El broker suma el mensaje recibido a la cola (creo que broker va a tener que tener su propio recibir mensaje).
+
+	//paquete -> id_mensaje = id_mensje_univoco++;
+	//paquete -> buffer -> size = *size;
+	//paquete -> buffer -> stream = buffer;
+	//Se puede usar el cod_op para saber a que lista se tiene que agregar.
+	//encolar_mensaje(paquete, paquete -> codigo_operacion);
+
 	return buffer;
 }
 
@@ -100,7 +108,8 @@ void devolver_mensaje(int cod_op, int size, void* payload, int socket_cliente) {
 	log_info(logger, "socket_cliente: %d", socket_cliente);
 	log_info(logger, "payload: %s", (char*) payload);
 	t_paquete* paquete = malloc(sizeof(t_paquete));
-
+	//Broker debería enviar un id_mensaje al cliente.
+	//paquete -> id_mensaje = id_mensaje_univoco++;
 	paquete -> codigo_operacion = cod_op;
 	paquete -> buffer = malloc(sizeof(t_buffer));
 	paquete -> buffer -> size = size;

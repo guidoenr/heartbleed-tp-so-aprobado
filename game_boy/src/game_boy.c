@@ -16,8 +16,10 @@ void iniciar_programa(int argc){
 			printf("No se han ingresado los parametros.");
 			exit(-1);
 	}
-	iniciar_logger(config_game_boy->log_file, "gameboy");
 	log_info(logger, "El size del comando es: %i", argc);
+
+	char * log_file = config_get_string_value(config_game_boy, "LOG_FILE");
+	iniciar_logger(log_file, "gameboy");
 
 }
 

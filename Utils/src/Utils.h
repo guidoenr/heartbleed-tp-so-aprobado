@@ -86,13 +86,14 @@ typedef struct {
 } t_buffer;
 
 typedef struct {
+	int id_mensaje;
 	op_code codigo_operacion;
 	t_buffer* buffer;
 } t_paquete;
 
 pthread_t thread;
 t_log* logger;
-
+int id_mensaje_univoco;
 void* recibir_buffer(int*, int); /// este no esta definido en utils.c
 
 //client
