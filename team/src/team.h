@@ -7,11 +7,13 @@
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.h"
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 
-typedef struct { // capaz tengamos que agregar un id
+// agregar un id 0 al mensaje a mandar al broker
+
+typedef struct {
     int id;
 	int posicion[2];
 	t_list* pokemons;
-	t_list* objetivo;
+	t_list* objetivos;
 } t_entrenador;
 
 typedef struct {
@@ -36,13 +38,14 @@ t_list* estado_exec;
 t_list* estado_block;
 t_list* estado_exit;
 
-/*void concatenar(char* palabra, char c);*/
 char* append(const char *s, char c);
 void* parsear(char** datos_de_config);
 void* parsear_posiciones(char** datos_de_config);
 
 void iniciar_programa();
 void leer_config(void);
+t_list* load_entrenadores(t_list*, t_list*, t_list*);
+void cargar_pokemons_a_entrenador(t_list*, t_link_element*, t_list*);
 t_list* obtener_objetivo_global();
 void terminar_programa(int);
 void liberar_conexion(int);
