@@ -13,28 +13,13 @@
 #include<pthread.h>
 
 typedef enum {
-	//Team a Broker
-	TE_GET_POKEMON_BR = 1,
-	TE_CATCH_POKEMON_BR = 2,
-	//Gamecard a Broker
-	GC_LOCALIZED_POKEMON_BR = 3,
-	GC_CAUGHT_POKEMON_BR = 4,
-	//Gameboy a Team
-	GB_APPEARED_POKEMON_TE = 5,
-	//Gameboy a Gamecard
-	GB_NEW_POKEMON_GC = 6,
-	GB_GET_POKEMON_GC = 7,
-	GB_CATCH_POKEMON_GC = 8,
-	//Gameboy a Broker
-	GB_NEW_POKEMON_BR = 9,
-	GB_CAUGHT_POKEMON_BR = 10,
-	//Broker a Cola - Gamecard
-	BR_GET_POKEMON_GC = 11,
-	BR_CATCH_POKEMON_GC = 12,
-	BR_NEW_POKEMON_GC = 13,
-	//Broker a Cola - Team
-	BR_LOCALIZED_POKEMON_TE = 14,
-	BR_CAUGHT_POKEMON_TE = 15, // A ESTE LO PUEDEN ACCEDER PROVINIENDO DE GC O GB.
+	GET_POKEMON = 1,
+	CATCH_POKEMON= 2,
+	LOCALIZED_POKEMON = 3,
+	CAUGHT_POKEMON = 4,
+	APPEARED_POKEMON = 5,
+	NEW_POKEMON = 6,
+	SUBSCRIPTION = 7 //SOLO BROKER,NO BORRAR
 }op_code;
 
 typedef struct {
@@ -90,6 +75,11 @@ typedef struct {
 	op_code codigo_operacion;
 	t_buffer* buffer;
 } t_paquete;
+
+typedef struct{
+	char* ip;
+	char* puerto;
+} t_subscripcion
 
 pthread_t thread;
 t_log* logger;

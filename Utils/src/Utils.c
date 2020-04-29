@@ -81,51 +81,14 @@ void enviar_mensaje(int cod_op, char* mensaje, int socket_cliente) {
 }
 
 void* recibir_mensaje(int socket_cliente, int* size) {
-	//t_paquete* paquete = malloc(sizeof(t_paquete));
-	void * buffer;
-	log_info(logger, "Recibiendo mensaje.");
 
+	log_info(logger, "Recibiendo mensaje.");
 	recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
 	log_info(logger, "Tamano de paquete recibido: %d", *size);
-
-	buffer = malloc(*size);
+	void* buffer = malloc(*size);
 	recv(socket_cliente, buffer, *size, MSG_WAITALL);
 	log_info(logger, "Mensaje recibido: %s", buffer);
-	//El broker suma el mensaje recibido a la cola (creo que broker va a tener que tener su propio recibir mensaje).
-
-	//paquete -> id_mensaje = id_mensje_univoco++;
-	//paquete -> buffer -> size = *size;
-	//paquete -> buffer -> stream = buffer;
-	//Se puede usar el cod_op para saber a que lista se tiene que agregar.
-	//encolar_mensaje(paquete, paquete -> codigo_operacion);
-
 	return buffer;
-}
-
-void devolver_mensaje(int cod_op, int size, void* payload, int socket_cliente) {
-	log_info(logger, "Devolviendo mensaje");
-	log_info(logger, "size: %d", size);
-	log_info(logger, "socket_cliente: %d", socket_cliente);
-	log_info(logger, "payload: %s", (char*) payload);
-	t_paquete* paquete = malloc(sizeof(t_paquete));
-	//Broker debería enviar un id_mensaje al cliente.
-	//paquete -> id_mensaje = id_mensaje_univoco++;
-	paquete -> codigo_operacion = cod_op;
-	paquete -> buffer = malloc(sizeof(t_buffer));
-	paquete -> buffer -> size = size;
-	paquete -> buffer -> stream = malloc(paquete -> buffer -> size);
-	memcpy(paquete -> buffer -> stream, payload, paquete -> buffer -> size);
-
-	int bytes = paquete -> buffer -> size + 2 * sizeof(int);
-	void* a_enviar = serializar_paquete(paquete, &bytes);
-
-	send(socket_cliente, a_enviar, bytes, 0);
-
-	free(a_enviar);
-	free(paquete -> buffer -> stream);
-	free(paquete -> buffer);
-	free(paquete);
-	log_info(logger, "Mensaje devuelto");
 }
 
 void agregar_mensaje(int cod_op, int size, void* payload, int socket_cliente){
@@ -186,11 +149,12 @@ void iniciar_servidor(char *IP, char *PUERTO) {
 }
 
 void esperar_cliente(int socket_servidor) {
+
 	struct sockaddr_in dir_cliente;
 
 	int tam_direccion = sizeof(struct sockaddr_in);
 	int socket_cliente = accept(socket_servidor, (void*) &dir_cliente, &tam_direccion);
-
+    log_info(logger, "Se conecto con el cliente: d%", socket_cliente);
 	pthread_create(&thread, NULL, (void*)serve_client, &socket_cliente);
 	pthread_detach(thread);
 
@@ -214,57 +178,50 @@ void process_request(int cod_op, int cliente_fd) { // Cada case depende del que 
 	log_info(logger,"Codigo de operacion %d",cod_op);
 
 	switch (cod_op) {
-		case TE_GET_POKEMON_BR:
+		case GET_POKEMON:
 			msg = malloc(sizeof(t_get_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(BR_GET_POKEMON_GC, size, msg, cliente_fd);
+			agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
-		case TE_CATCH_POKEMON_BR:
+		case CATCH_POKEMON:
 			msg = malloc(sizeof(t_catch_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(BR_CATCH_POKEMON_GC, size, msg, cliente_fd);
+			 (CATCH_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
-		case GC_LOCALIZED_POKEMON_BR:
+		case LOCALIZED_POKEMON:
 			msg = malloc(sizeof(t_localized_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(BR_LOCALIZED_POKEMON_TE, size, msg, cliente_fd);
+			agregar_mensaje(LOCALIZED_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
-		case GC_CAUGHT_POKEMON_BR:
+		case CAUGHT_POKEMON:
 			msg = malloc(sizeof(t_caught_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(BR_CAUGHT_POKEMON_TE, size, msg, cliente_fd);
+			agregar_mensaje(CAUGHT_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
-		case GB_NEW_POKEMON_BR:
+		case APPEARED_POKEMON:
+			msg = malloc(sizeof(t_caught_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			agregar_mensaje(APPEARED_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case NEW_POKEMON:
 			msg = malloc(sizeof(t_new_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(BR_NEW_POKEMON_GC, size, msg, cliente_fd);
+			agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
-		case GB_CAUGHT_POKEMON_BR:
-			msg = malloc(sizeof(t_caught_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(BR_CAUGHT_POKEMON_TE, size, msg, cliente_fd);
-			free(msg);
-			break;
-		case BR_GET_POKEMON_GC:
-			msg = malloc(sizeof(t_get_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
-			devolver_mensaje(GC_LOCALIZED_POKEMON_BR, size, msg, cliente_fd);
-			free(msg);
-			break;
-		// y mas cases...
+
 		case 0:
+			log_info(logger,"No se encontro el tipo de mensaje");
 			pthread_exit(NULL);
 		case -1:
 			pthread_exit(NULL);
 	}
 }
-
-//SUGERENCIA: Hacer un unico liberar_config con un case de acuerdo al tipo de config que recibe.
 
 void liberar_conexion(int socket_cliente) {
 	close(socket_cliente);
