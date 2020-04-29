@@ -1,6 +1,6 @@
 #include "team.h"
 
-int main(void) {
+int main(void){
 
 	iniciar_programa();
 	int socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
@@ -16,11 +16,11 @@ int main(void) {
 
 void iniciar_programa(){
 	iniciar_logger("team.log", "team");
-	leer_config(); // aca agregamos los elementos a los campos q corresponde
+	leer_config();
+	inicializar_estados();
 	//objetivo_global = obtener_objetivo_global();
 	//crear_hilos_entrenadores(); // iniciar a los entrenadores
-	//iniciar_conexion(); abrir socket con el gameBoy (pthread_create)
-
+	//iniciar_conexion_gameBoy(); abrir socket con el gameBoy (pthread_create)
 }
 
 /*t_list* obtener_objetivo_global(){ // usar el iterate
@@ -56,6 +56,7 @@ void leer_config(void) {
 	char** pokemons = config_get_array_value(config_team, "POKEMON_ENTRENADORES");
 	char** objetivos = config_get_array_value(config_team, "OBJETIVOS_ENTRENADORES");
 
+
 	t_list* lista_posiciones = parsear(posiciones);
 	t_list* lista_pokemons = parsear(pokemons);
 	t_list* lista_objetivos = parsear(objetivos);
@@ -70,8 +71,15 @@ void leer_config(void) {
 	config -> estimacion_inicial = config_get_int_value(config_team, "ESTIMACION_INICIAL");
 	config -> log_file = config_get_string_value(config_team, "LOG_FILE");
 
+	// podriamos liberar las t_list* creadas aca?S
 	config_destroy(config_team);
 
+}
+
+void inicializar_entrenadores(){
+	config -> entrenadores = list_create();
+	//lista de pokmons
+	// lista de objetivos
 }
 
 void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado y asignarlo al struct en leer_config
@@ -88,7 +96,7 @@ void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado
 				palabra = append(palabra, e);
 			} else {
 				list_add(lista, palabra);
-				palabra = ""; // limpiar char *
+				palabra = ""; // limpiar char*
 			}
 			if(!e){
 				break;
@@ -110,10 +118,10 @@ char* append(const char *palabra, char c) {
     return strdup(buf);
 }
 
-void concatenar(char* palabra, char caracter) {
+/*void concatenar(char* palabra, char caracter) {
 	int largo = string_length(palabra);
 	palabra[largo] = caracter;
-}
+}*/
 
 /*void crear_hilos_entrenadores(){
 
@@ -186,13 +194,24 @@ void cargar_pokemons_a_entrenador(t_list* aux, t_link_element* cabeza, t_list* d
 	}
 }
 
+void inicializar_estados(){
+	 estado_new = list_create();
+	 estado_ready = list_create();
+	 estado_exec = list_create();
+	 estado_block = list_create();
+	 estado_exit = list_create();
+}
+
 void liberar_config() {
+	//liberar_entrenadores(config -> entrenadores);
 	free(config -> algoritmo_planificacion);
 	free(config -> log_file);
 	free(config -> ip_broker);
 	free(config -> puerto_broker);
 	free(config);
 }
+
+void librar_entrenadores(t_list* unaLista){}
 
 void terminar_programa(int conexion) {
 	liberar_config();

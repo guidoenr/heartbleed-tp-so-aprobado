@@ -43,10 +43,15 @@ void* parsear(char** datos_de_config);
 void* parsear_posiciones(char** datos_de_config);
 
 void iniciar_programa();
+void inicializar_estados();
+void inicializar_entrenadores();
 void leer_config(void);
 t_list* load_entrenadores(t_list*, t_list*, t_list*);
 void cargar_pokemons_a_entrenador(t_list*, t_link_element*, t_list*);
 t_list* obtener_objetivo_global();
+void liberar_conexion(int);
+void liberar_config();
+void librar_entrenadores(t_list*);
 void terminar_programa(int);
 void liberar_conexion(int);
 void liberar_config();
