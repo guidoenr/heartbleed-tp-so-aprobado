@@ -79,7 +79,7 @@ typedef struct {
 typedef struct{
 	char* ip;
 	char* puerto;
-} t_subscripcion
+} t_subscripcion;
 
 pthread_t thread;
 t_log* logger;
