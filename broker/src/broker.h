@@ -53,3 +53,4 @@ void crear_listas_de_suscriptores(void);
 void liberar_listas(void);
 void recibir_suscripcion(int, char*);
 void encolar_mensaje(t_paquete*, op_code);
+void* recibir_mensaje(int socket_cliente, int* size);

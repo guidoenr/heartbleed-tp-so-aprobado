@@ -157,3 +157,100 @@ void recibir_suscripcion(int socket_cliente, char* cola_de_mensajes){
 
 }
 */
+//---------------------------------------------------------------------------------------------------------------------------
+
+/*EL SERVICE DEL BROKER*/
+void process_request(int cod_op, int cliente_fd) {
+	int size;
+	void* msg;
+
+	log_info(logger,"Codigo de operacion %d",cod_op);
+
+	switch (cod_op) {
+		case GET_POKEMON:
+			msg = malloc(sizeof(t_get_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			//agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case CATCH_POKEMON:
+			msg = malloc(sizeof(t_catch_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			 (CATCH_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case LOCALIZED_POKEMON:
+			msg = malloc(sizeof(t_localized_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			//agregar_mensaje(LOCALIZED_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case CAUGHT_POKEMON:
+			msg = malloc(sizeof(t_caught_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			//agregar_mensaje(CAUGHT_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case APPEARED_POKEMON:
+			msg = malloc(sizeof(t_caught_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			//agregar_mensaje(APPEARED_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case NEW_POKEMON:
+			msg = malloc(sizeof(t_new_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			//agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case SUBSCRIPTION:
+			msg = malloc(sizeof(t_new_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			//agregar_mensaje(SUBSCRIPTION, size, msg, cliente_fd);
+			free(msg);
+			break;
+
+		case 0:
+			log_info(logger,"No se encontro el tipo de mensaje");
+			pthread_exit(NULL);
+		case -1:
+			pthread_exit(NULL);
+	}
+}
+
+/*void* recibir_mensaje(int socket_cliente, int* size) {
+	//t_paquete* paquete = malloc(sizeof(t_paquete));
+	void * buffer;
+	log_info(logger, "Recibiendo mensaje.");
+
+	recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
+	log_info(logger, "Tamano de paquete recibido: %d", *size);
+
+	buffer = malloc(*size);
+	recv(socket_cliente, buffer, *size, MSG_WAITALL);
+	log_info(logger, "Mensaje recibido: %s", buffer);
+	//El broker suma el mensaje recibido a la cola (creo que broker va a tener que tener su propio recibir mensaje).
+
+	//paquete -> id_mensaje = id_mensje_univoco++;
+	//paquete -> buffer -> size = *size;
+	//paquete -> buffer -> stream = buffer;
+	//Se puede usar el cod_op para saber a que lista se tiene que agregar.
+	//encolar_mensaje(paquete, paquete -> codigo_operacion);
+
+	return buffer;
+}*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
