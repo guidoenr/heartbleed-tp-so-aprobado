@@ -9,8 +9,6 @@ int main(void) {
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
 
-
-
 	terminar_programa(socket,config);
 }
 
@@ -147,7 +145,57 @@ int isOpen(char* path){
 	FILE* file = fopen(path,"rb");
 	fread(&fileMeta.open,sizeof(char),1,file);
 		fclose(file);
-
 		return fileMeta.open == 'Y';
+}
 
+void process_request(int cod_op, int cliente_fd) { // Cada case depende del que toque ese modulo.
+	int size;
+	void* msg;
+
+	log_info(logger,"Codigo de operacion %d",cod_op);
+
+	switch (cod_op) {
+		case GET_POKEMON:
+			msg = malloc(sizeof(t_get_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case CATCH_POKEMON:
+			msg = malloc(sizeof(t_catch_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			 (CATCH_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case LOCALIZED_POKEMON:
+			msg = malloc(sizeof(t_localized_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			agregar_mensaje(LOCALIZED_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case CAUGHT_POKEMON:
+			msg = malloc(sizeof(t_caught_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			agregar_mensaje(CAUGHT_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case APPEARED_POKEMON:
+			msg = malloc(sizeof(t_caught_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			agregar_mensaje(APPEARED_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case NEW_POKEMON:
+			msg = malloc(sizeof(t_new_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+
+		case 0:
+			log_info(logger,"No se encontro el tipo de mensaje");
+			pthread_exit(NULL);
+		case -1:
+			pthread_exit(NULL);
+	}
 }
