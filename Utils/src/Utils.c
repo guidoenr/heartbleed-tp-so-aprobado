@@ -154,7 +154,6 @@ void esperar_cliente(int socket_servidor) {
 
 	int tam_direccion = sizeof(struct sockaddr_in);
 	int socket_cliente = accept(socket_servidor, (void*) &dir_cliente, &tam_direccion);
-    log_info(logger, "Se conecto con el cliente: d%", socket_cliente);
 	pthread_create(&thread, NULL, (void*)serve_client, &socket_cliente);
 	pthread_detach(thread);
 
@@ -180,3 +179,4 @@ void liberar_logger(){
 		log_destroy(logger);
 	}
 }
+

@@ -23,6 +23,8 @@ void iniciar_programa(int cantidad_parametros);
 void iniciar_logger(char* file, char* program_name);
 void leer_config(void);
 int seleccionar_proceso(char *parametros[]);
+op_code obtener_enum_de_string (char *s);
+char* armar_mensaje(char *parametros[]);
 void terminar_programa(int, t_log*, t_config_game_boy*);
 void liberar_conexion(int);
 void mostrar_menu(void);

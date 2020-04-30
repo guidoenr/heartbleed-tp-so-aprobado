@@ -5,29 +5,17 @@ int main(void) {
 
 
 	iniciar_programa();
-	//recibir_suscripcion(socket_cliente, lista_a_suscribir);
-//	log_info(logger, "config leida");
-
-
-
-//	log_info(logger, "terminar programa");
 	terminar_programa(logger, config_broker);
-//	log_info(logger, "programa terminado");
 
 	 return 0;
 }
 
 void iniciar_programa(){
+    leer_config();
+	iniciar_logger(config_broker->log_file, "broker");
 
-	iniciar_logger("broker.log", "broker");
-	/*if(config == NULL){
-		    	log_info(logger,"No se pudo encontrar el path del config.");
-		    	return exit(-2);
-	}*/
-
-	leer_config();
 	crear_colas_de_mensajes();
-
+    crear_listas_de_suscriptores();
 	log_info(logger, "IP: %s", config_broker -> ip_broker);
 
 	iniciar_servidor(config_broker -> ip_broker, config_broker -> puerto);
@@ -37,16 +25,12 @@ void iniciar_programa(){
 void crear_colas_de_mensajes(){
 
 	colas_de_mensajes = malloc(sizeof(t_colas_mensajes));
-
 	colas_de_mensajes -> cola_new = list_create();
 	colas_de_mensajes -> cola_appeared = list_create();
 	colas_de_mensajes -> cola_get = list_create();
 	colas_de_mensajes -> cola_localized = list_create();
 	colas_de_mensajes -> cola_catch = list_create();
 	colas_de_mensajes -> cola_caught = list_create();
-
-	crear_listas_de_suscriptores();
-
 }
 
 void crear_listas_de_suscriptores(){
@@ -66,18 +50,21 @@ void leer_config() {
 
 	config_broker = malloc(sizeof(t_config_broker));
 
-	config = config_create("Debug/broker.config");
+	config = config_create("broker.config");
 
-
+	if(config == NULL){
+		    	log_info(logger,"No se pudo encontrar el path del config.");
+		    	return exit(-2);
+	}
 	config_broker -> size_memoria = config_get_int_value(config, "TAMANO_MEMORIA");
 	config_broker -> size_min_memoria = config_get_int_value(config, "TAMANO_MEMORIA");
-	config_broker -> algoritmo_memoria = config_get_string_value(config, "ALGORITMO_MEMORIA");
-	config_broker -> algoritmo_reemplazo = config_get_string_value(config, "ALGORITMO_REEMPLAZO");
-	config_broker -> algoritmo_particion_libre = config_get_string_value(config, "ALGORITMO_PARTICION_LIBRE");
-	config_broker -> ip_broker = config_get_string_value(config, "IP_BROKER");
-	config_broker -> puerto = config_get_string_value(config, "PUERTO_BROKER");
+	config_broker -> algoritmo_memoria = strdup(config_get_string_value(config, "ALGORITMO_MEMORIA"));
+	config_broker -> algoritmo_reemplazo = strdup(config_get_string_value(config, "ALGORITMO_REEMPLAZO"));
+	config_broker -> algoritmo_particion_libre = strdup(config_get_string_value(config, "ALGORITMO_PARTICION_LIBRE"));
+	config_broker -> ip_broker = strdup(config_get_string_value(config, "IP_BROKER"));
+	config_broker -> puerto = strdup(config_get_string_value(config, "PUERTO_BROKER"));
 	config_broker -> frecuencia_compactacion = config_get_int_value(config, "FRECUENCIA_COMPACTACION");
-	config_broker -> log_file = config_get_string_value(config, "LOG_FILE");
+	config_broker -> log_file = strdup(config_get_string_value(config, "LOG_FILE"));
 
 	config_destroy(config);
 }
@@ -88,6 +75,7 @@ void liberar_config(t_config_broker* config) {
 	free(config -> algoritmo_particion_libre);
 	free(config -> ip_broker);
 	free(config -> puerto);
+	free(config->log_file);
 	free(config);
 }
 
