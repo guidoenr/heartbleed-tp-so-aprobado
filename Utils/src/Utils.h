@@ -19,7 +19,7 @@ typedef enum {
 	CAUGHT_POKEMON = 4,
 	APPEARED_POKEMON = 5,
 	NEW_POKEMON = 6,
-	SUBSCRIPTION = 7 //SOLO BROKER,NO BORRAR
+	SUBSCRIPTION = 7 //Suscripcion a cola
 }op_code;
 
 typedef struct {

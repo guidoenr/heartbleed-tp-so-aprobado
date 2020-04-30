@@ -29,29 +29,43 @@ typedef struct {
 
 t_config_team* config;
 t_log* logger;
-t_list* objetivo_global; // conviene global?
-pthread_t hilo; // conviene global?
-// no se si deberian ser doblemente enlazadas
+t_list* objetivo_global;
+
+// estado
 t_list* estado_new;
 t_list* estado_ready;
 t_list* estado_exec;
 t_list* estado_block;
 t_list* estado_exit;
 
+
+// utils
 char* append(const char *s, char c);
 void* parsear(char** datos_de_config);
 void* parsear_posiciones(char** datos_de_config);
 
+// iniciar
 void iniciar_programa();
 void inicializar_estados();
-void inicializar_entrenadores();
 void leer_config(void);
 t_list* load_entrenadores(t_list*, t_list*, t_list*);
 void cargar_pokemons_a_entrenador(t_list*, t_link_element*, t_list*);
-t_list* obtener_objetivo_global();
+void obtener_objetivo_global();
+void obtener_entrenadores(void*);
+void agregar_pokemon_a_objetivos(void*);
+
+// estados
+void agregar_a_estado(t_list*, int);
+void cambiar_a_estado(t_list* estado, int id_entrenador);
+
+// operar
+void operar_entrenador();
+t_list* buscar_en_estado(t_list*, int);
+t_list* buscar_en_estados(t_list* estados_a_buscar, int id_entrenador);
+
+// terminar
 void liberar_conexion(int);
 void liberar_config();
 void librar_entrenadores(t_list*);
 void terminar_programa(int);
 void liberar_conexion(int);
-void liberar_config();

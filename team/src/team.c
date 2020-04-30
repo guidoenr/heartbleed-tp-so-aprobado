@@ -4,7 +4,7 @@ int main(void){
 
 	iniciar_programa();
 	int socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
-	enviar_mensaje(TE_GET_POKEMON_BR, "Get Pokemon", socket); // se va
+	enviar_mensaje(GET_POKEMON, "Get Pokemon", socket); // se va
 
 	//t_buffer* recibido = recibir_mensaje(socket, strlen("Hola")+ 1);
 	log_info(logger, "El ip es : %s", config -> ip_broker);
@@ -18,33 +18,12 @@ void iniciar_programa(){
 	iniciar_logger("team.log", "team");
 	leer_config();
 	inicializar_estados();
-	//objetivo_global = obtener_objetivo_global();
+	obtener_objetivo_global();
+
+	printf("asd");
 	//crear_hilos_entrenadores(); // iniciar a los entrenadores
 	//iniciar_conexion_gameBoy(); abrir socket con el gameBoy (pthread_create)
 }
-
-/*t_list* obtener_objetivo_global(){ // usar el iterate
-
-// tener en cuenta que necesitamos saber la especie y cantidad de cada uno
-
-	t_list* objetivos;
-	t_list* aux_lista_lista = config -> objetivos_entrenadores;
-	t_list* aux_lista = aux_lista_lista -> pokemons;
-
-	while(aux_lista_lista -> next != NULL){
-		while(aux_lista -> next != NULL){
-
-			objetivos -> pokemon = aux_lista -> pokemon;
-			objetivos -> next = aux_lista -> next;
-			aux_lista = aux_lista -> next;
-		}
-
-		aux_lista_lista = aux_lista_lista -> next;
-	}
-
-	return objetivos;
-
-}*/
 
 void leer_config(void) {
 
@@ -74,12 +53,6 @@ void leer_config(void) {
 	// podriamos liberar las t_list* creadas aca?S
 	config_destroy(config_team);
 
-}
-
-void inicializar_entrenadores(){
-	config -> entrenadores = list_create();
-	//lista de pokmons
-	// lista de objetivos
 }
 
 void* parsear(char** datos_de_config) { // no se si void o q retorne lo parseado y asignarlo al struct en leer_config
@@ -118,21 +91,68 @@ char* append(const char *palabra, char c) {
     return strdup(buf);
 }
 
-/*void concatenar(char* palabra, char caracter) {
-	int largo = string_length(palabra);
-	palabra[largo] = caracter;
-}*/
+void inciar_entrenadores() {
 
-/*void crear_hilos_entrenadores(){
-
-	while(posiciones_entrenadores != NULL){ // o iterate si se puede
-		int err = pthread_create(hilo, NULL, iniciar_entrenador, entrenador);
-		if(id =! 0){
-			el hilo se creo mal
-			quizas retornar err para tratar el error con lo de las commons
-		}
+	void crear_hilo_entrenador(void* entrenador) {
+		pthread_t hilo;
+		t_entrenador* un_entrenador = entrenador;
+		agregar_a_estado(estado_new, un_entrenador -> id);
+		int err = pthread_create(hilo, NULL, operar_entrenador, entrenador);
 	}
-}*/
+
+	list_iterate(config -> entrenadores, crear_hilo_entrenador);
+}
+
+void operar_entrenador(void* un_entrenador) {
+	t_entrenador* entrenador = un_entrenador;
+	cambiar_a_estado(estado_ready, entrenador -> id);
+
+
+
+	// falta una banda
+}
+
+void agregar_a_estado(t_list* estado, int id_entrenador) {
+	list_add(estado, &id_entrenador);
+}
+
+void cambiar_a_estado(t_list* estado, int id_entrenador) {
+	t_list* estado_actual;
+	t_list* estados_a_buscar = list_create();
+
+	if(estado == estado_ready) {
+		list_add(estados_a_buscar, estado_new);
+		list_add(estados_a_buscar, estado_exec);
+		list_add(estados_a_buscar, estado_block);
+		estado_actual = buscar_en_estados(estados_a_buscar, id_entrenador);
+	} else if(estado == estado_exec){
+		estado_actual = buscar_en_estado(estado_ready, id_entrenador);
+	} else if(estado == estado_block){
+		estado_actual = buscar_en_estado(estado_exec, id_entrenador);
+	} else if(estado == estado_exit){
+		list_add(estados_a_buscar, estado_exec);
+		list_add(estados_a_buscar, estado_block);
+		estado_actual = buscar_en_estados(estados_a_buscar, id_entrenador);
+	} else {
+		log_error(logger, "ESTOY TRATANDO DE CAMBIAR A UN ESTADO QUE NO DEBERIA: id: %d", &id_entrenador);
+	}
+	list_destroy(estados_a_buscar);
+}
+
+t_list* buscar_en_estado(t_list* estado, int id_entrenador) {
+
+	bool es_el_entrenador(void* id_ent) {
+
+		return *(int*)id_ent == id_entrenador;
+	}
+
+	return list_find(estado, es_el_entrenador);
+}
+
+t_list* buscar_en_estados(t_list* estados_a_buscar, int id_entrenador) {
+
+}
+
 
 t_list* load_entrenadores(t_list* lista_posiciones, t_list* lista_pokemons, t_list* lista_objetivos) {
 	t_list* entrenadores = list_create();
@@ -185,6 +205,25 @@ t_list* load_entrenadores(t_list* lista_posiciones, t_list* lista_pokemons, t_li
 	return entrenadores;
 }
 
+void obtener_objetivo_global() {
+	objetivo_global = list_create();
+
+	void obtener_entrenadores(void* entrenador) {
+
+		t_entrenador* un_entrenador = entrenador;
+		t_list* objetivo = un_entrenador -> objetivos;
+
+		void agregar_pokemon_a_objetivos(void* objetivo) {
+			list_add(objetivo_global, objetivo);
+		}
+
+		list_iterate(objetivo, agregar_pokemon_a_objetivos);
+	}
+
+	list_iterate(config -> entrenadores, obtener_entrenadores);
+}
+
+
 void cargar_pokemons_a_entrenador(t_list* aux, t_link_element* cabeza, t_list* destino){
 
 	while(cabeza != NULL){
@@ -202,6 +241,48 @@ void inicializar_estados(){
 	 estado_exit = list_create();
 }
 
+
+void process_request(int cod_op, int cliente_fd) { // Cada case depende del que toque ese modulo.
+	int size;
+	void* msg;
+
+	log_info(logger,"Codigo de operacion %d", cod_op);
+	/*
+	switch (cod_op) {
+		case GET_POKEMON:
+			msg = malloc(sizeof(t_get_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case LOCALIZED_POKEMON:
+			msg = malloc(sizeof(t_localized_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			agregar_mensaje(LOCALIZED_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case CAUGHT_POKEMON:
+			msg = malloc(sizeof(t_caught_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			agregar_mensaje(CAUGHT_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+		case APPEARED_POKEMON:
+			msg = malloc(sizeof(t_caught_pokemon));
+			msg = recibir_mensaje(cliente_fd, &size);
+			agregar_mensaje(APPEARED_POKEMON, size, msg, cliente_fd);
+			free(msg);
+			break;
+
+		/*case 0:
+			log_info(logger,"No se encontro el tipo de mensaje");
+			pthread_exit(NULL);
+		case -1:
+			pthread_exit(NULL);
+	}*/
+}
+
+
 void liberar_config() {
 	//liberar_entrenadores(config -> entrenadores);
 	free(config -> algoritmo_planificacion);
@@ -214,7 +295,8 @@ void liberar_config() {
 void librar_entrenadores(t_list* unaLista){}
 
 void terminar_programa(int conexion) {
-	liberar_config();
+	list_destroy(objetivo_global);
 	liberar_logger();
 	liberar_conexion(conexion);
+	liberar_config();
 }
