@@ -1,4 +1,10 @@
 #include "game_card.h"
+#include <dirent.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 
 int main(void) {
 	t_config_game_card* config = leer_config();
@@ -9,7 +15,7 @@ int main(void) {
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
 
-
+	verificarPokemon("pikachu");
 	terminar_programa(socket,config);
 }
 
@@ -194,9 +200,13 @@ void informarAlBroker(void* msg,int socket,op_code codigo){
 	log_info(logger,"recibi el msg %s",codigo);
 }
 
-int funcionHiloNewPokemon(){
+int funcionHiloNewPokemon(void* buffer){
 
-//	existePokemon();
+
+	t_new_pokemon msg;
+
+	verificarPokemon(msg.pokemon);
+
 //	if (!sePuedeAbrirElArchivo()){
 //		//finalizarHilo y reintentar operacion
 //	}
@@ -214,13 +224,38 @@ int funcionHiloNewPokemon(){
 char* concatenar(char* str1,char* str2){
 	char* new_str ;
 	if((new_str = malloc(strlen(str1)+strlen(str2)+1)) != NULL){
-	    new_str[0] = '\0';   // ensures the memory is an empty string
+	    new_str[0] = '\0';
 	    strcat(new_str,str1);
 	    strcat(new_str,str2);
 	} else {
 	    log_error(logger,"error al concatenar");
 	}
 	return new_str;
+}
+
+void verificarPokemon(char* pokemon){
+	char* montaje = "montaje/Pokemon/";		  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
+	char* path = concatenar(montaje,pokemon); // DE TODAS FORMAS DEJO UNA ALGORITMIA FANTASTATICA
+
+	if (existeDirectorio(path)){
+		mkdir(path, 0777); 					  // 0777 es una mask que permite rwx
+	}
+
+}
+
+int existeDirectorio(char* path){
+
+	DIR* dir = opendir(path);
+	if (dir) {
+	    return 1;
+	} else if (ENOENT == errno) {
+	    log_info(logger,"No existe el directorio ");
+	    return -1;
+	} else {
+	    log_error(logger, "Error inesperado ");
+	    return -2;
+	}
+
 }
 
 

@@ -25,7 +25,7 @@ typedef enum {
 
 typedef struct {
 	int id_mensaje;
-	int pokemon;
+	char* pokemon;
 	int posicion[2];
 	int cantidad;
 } t_new_pokemon;
