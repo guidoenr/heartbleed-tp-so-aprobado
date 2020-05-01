@@ -8,6 +8,8 @@ int main(void) {
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
+
+
 	terminar_programa(socket,config);
 }
 
@@ -172,6 +174,8 @@ void process_request(int cod_op, int cliente_fd) { // Cada case depende del que 
 			msg = malloc(sizeof(t_new_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
 			informarAlBroker(msg,cliente_fd,NEW_POKEMON);
+
+			// hilo
 			agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
@@ -189,3 +193,34 @@ void informarAlBroker(void* msg,int socket,op_code codigo){
 	enviar_mensaje("ACK", "recibi el mensaje[ACK]", socket);
 	log_info(logger,"recibi el msg %s",codigo);
 }
+
+int funcionHiloNewPokemon(){
+
+//	existePokemon();
+//	if (!sePuedeAbrirElArchivo()){
+//		//finalizarHilo y reintentar operacion
+//	}
+//	if (existePokemonEnEsaPosicion()){
+//		agregarAPoisiconExistente();
+//	} else {
+//		agregarAlFinalDelArchivo();
+//	}
+//
+//	cerrarArchivo();
+
+	return 1;
+}
+
+char* concatenar(char* str1,char* str2){
+	char* new_str ;
+	if((new_str = malloc(strlen(str1)+strlen(str2)+1)) != NULL){
+	    new_str[0] = '\0';   // ensures the memory is an empty string
+	    strcat(new_str,str1);
+	    strcat(new_str,str2);
+	} else {
+	    log_error(logger,"error al concatenar");
+	}
+	return new_str;
+}
+
+
