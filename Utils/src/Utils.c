@@ -81,7 +81,6 @@ void enviar_mensaje(int cod_op, char* mensaje, int socket_cliente) {
 }
 
 void* recibir_mensaje(int socket_cliente, int* size) {
-
 	log_info(logger, "Recibiendo mensaje.");
 	recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
 	log_info(logger, "Tamano de paquete recibido: %d", *size);

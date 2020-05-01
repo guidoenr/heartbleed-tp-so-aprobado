@@ -1,4 +1,10 @@
 #include "game_card.h"
+#include <dirent.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 
 int main(void) {
 	t_config_game_card* config = leer_config();
@@ -9,6 +15,7 @@ int main(void) {
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
 
+	verificarPokemon("pikachu");
 	terminar_programa(socket,config);
 }
 
@@ -158,36 +165,23 @@ void process_request(int cod_op, int cliente_fd) { // Cada case depende del que 
 		case GET_POKEMON:
 			msg = malloc(sizeof(t_get_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
+			informarAlBroker(msg,cliente_fd,GET_POKEMON);
 			agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case CATCH_POKEMON:
 			msg = malloc(sizeof(t_catch_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			 (CATCH_POKEMON, size, msg, cliente_fd);
-			free(msg);
-			break;
-		case LOCALIZED_POKEMON:
-			msg = malloc(sizeof(t_localized_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(LOCALIZED_POKEMON, size, msg, cliente_fd);
-			free(msg);
-			break;
-		case CAUGHT_POKEMON:
-			msg = malloc(sizeof(t_caught_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(CAUGHT_POKEMON, size, msg, cliente_fd);
-			free(msg);
-			break;
-		case APPEARED_POKEMON:
-			msg = malloc(sizeof(t_caught_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(APPEARED_POKEMON, size, msg, cliente_fd);
+			informarAlBroker(msg,cliente_fd,CATCH_POKEMON);
+			agregar_mensaje(CATCH_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case NEW_POKEMON:
 			msg = malloc(sizeof(t_new_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
+			informarAlBroker(msg,cliente_fd,NEW_POKEMON);
+
+			// hilo
 			agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
@@ -199,3 +193,69 @@ void process_request(int cod_op, int cliente_fd) { // Cada case depende del que 
 			pthread_exit(NULL);
 	}
 }
+
+void informarAlBroker(void* msg,int socket,op_code codigo){
+	//8 = ACK
+	enviar_mensaje("ACK", "recibi el mensaje[ACK]", socket);
+	log_info(logger,"recibi el msg %s",codigo);
+}
+
+int funcionHiloNewPokemon(void* buffer){
+
+
+	t_new_pokemon msg;
+
+	verificarPokemon(msg.pokemon);
+
+//	if (!sePuedeAbrirElArchivo()){
+//		//finalizarHilo y reintentar operacion
+//	}
+//	if (existePokemonEnEsaPosicion()){
+//		agregarAPoisiconExistente();
+//	} else {
+//		agregarAlFinalDelArchivo();
+//	}
+//
+//	cerrarArchivo();
+
+	return 1;
+}
+
+char* concatenar(char* str1,char* str2){
+	char* new_str ;
+	if((new_str = malloc(strlen(str1)+strlen(str2)+1)) != NULL){
+	    new_str[0] = '\0';
+	    strcat(new_str,str1);
+	    strcat(new_str,str2);
+	} else {
+	    log_error(logger,"error al concatenar");
+	}
+	return new_str;
+}
+
+void verificarPokemon(char* pokemon){
+	char* montaje = "montaje/Pokemon/";		  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
+	char* path = concatenar(montaje,pokemon); // DE TODAS FORMAS DEJO UNA ALGORITMIA FANTASTATICA
+
+	if (existeDirectorio(path)){
+		mkdir(path, 0777); 					  // 0777 es una mask que permite rwx
+	}
+
+}
+
+int existeDirectorio(char* path){
+
+	DIR* dir = opendir(path);
+	if (dir) {
+	    return 1;
+	} else if (ENOENT == errno) {
+	    log_info(logger,"No existe el directorio ");
+	    return -1;
+	} else {
+	    log_error(logger, "Error inesperado ");
+	    return -2;
+	}
+
+}
+
+

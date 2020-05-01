@@ -43,4 +43,7 @@ void liberar_config(t_config_game_card*);
 void leerMetadata();
 void escribirMetadata();
 void crearMetadata();
+char* concatenar(char* str1,char* str2);
 int tamanio_de_metadata(t_metadata metadata);
+int existeDirectorio(char* path);
+void verificarPokemon(char* pokemon);

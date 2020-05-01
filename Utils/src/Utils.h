@@ -19,12 +19,13 @@ typedef enum {
 	CAUGHT_POKEMON = 4,
 	APPEARED_POKEMON = 5,
 	NEW_POKEMON = 6,
-	SUBSCRIPTION = 7 //Suscripcion a cola
+	SUBSCRIPTION = 7,//Suscripcion a cola
+	ACK=8  	//temas gamecard, no lo entenderías..
 }op_code;
 
 typedef struct {
 	int id_mensaje;
-	int pokemon;
+	char* pokemon;
 	int posicion[2];
 	int cantidad;
 } t_new_pokemon;
