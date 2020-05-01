@@ -15,7 +15,14 @@ int main(void) {
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
 
-	verificarPokemon("pikachu");
+	t_new_pokemon pikachu;
+	pikachu.cantidad = 1;
+	pikachu.id_mensaje = 2;
+	pikachu.posicion[0] = 1;
+	pikachu.posicion[1] = 6;
+	pikachu.pokemon = "pikachu";
+
+	verificarPokemon(pikachu);
 	terminar_programa(socket,config);
 }
 
@@ -80,13 +87,28 @@ void crearMetadata(char* path){
 
 }
 
-void escribirMetadata(char* path){
+void crearMetadataFile(char* path,t_new_pokemon newPoke){
+	FILE* file = fopen(path,"wb");
 
+	t_file_metadata meta;
+	meta.directory = 'Y';
+	meta.size = 62; //TODO preguntar que es esto?
+	meta.blocks[0] = newPoke.posicion[0];
+	meta.blocks[1] = newPoke.posicion[1];// recontra TODO ni idea
+	meta.open = 'N';
+
+	fwrite(&meta,sizeof(tamanio_de_file_metadata(meta)),1,file);
+
+	fclose(file);
 
 }
 int tamanio_de_metadata(t_metadata metadata){
 	int stringLong = strlen(metadata.magic)+1 ;
 	return stringLong + (sizeof(int) *2) ;
+}
+
+int tamanio_file_metadata(t_file_metadata fileMeta){
+	return sizeof(char) + sizeof(fileMeta.blocks) + sizeof(int) + sizeof(char); // TODO BLOCKS?
 }
 
 void leerMetadata(char* path){
@@ -202,10 +224,11 @@ void informarAlBroker(void* msg,int socket,op_code codigo){
 
 int funcionHiloNewPokemon(void* buffer){
 
-
+								//TODO como castear el buffer al t_new_pokemon
 	t_new_pokemon msg;
 
-	verificarPokemon(msg.pokemon);
+	verificarPokemon(msg);
+	verificarAperturaPokemon(msg);
 
 //	if (!sePuedeAbrirElArchivo()){
 //		//finalizarHilo y reintentar operacion
@@ -233,12 +256,13 @@ char* concatenar(char* str1,char* str2){
 	return new_str;
 }
 
-void verificarPokemon(char* pokemon){
+void verificarPokemon(t_new_pokemon newpoke){
 	char* montaje = "montaje/Pokemon/";		  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
-	char* path = concatenar(montaje,pokemon); // DE TODAS FORMAS DEJO UNA ALGORITMIA FANTASTATICA
+	char* path = concatenar(montaje,newpoke.pokemon); // DE TODAS FORMAS DEJO UNA ALGORITMIA FANTASTATICA
 
 	if (!existeDirectorio(path)){
 		mkdir(path, 0777); 					  // 0777 es una mask que permite rwx
+		//crearMetadataFile(path,newpoke);
 		log_info(logger,"se creo el directorio: %s",path);
 	} else{
 		log_info(logger,"existe el dir: %s",path);
@@ -251,6 +275,10 @@ int existeDirectorio(char* path){
 
 	DIR* dir = opendir(path);
 	return dir;
+}
+
+void verificarAperturaPokemon(t_new_pokemon msg){
+
 }
 
 
