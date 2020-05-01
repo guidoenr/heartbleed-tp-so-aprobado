@@ -179,4 +179,3 @@ void liberar_logger(){
 		log_destroy(logger);
 	}
 }
-

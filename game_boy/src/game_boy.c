@@ -54,14 +54,16 @@ int seleccionar_proceso(char *parametros[]){
   if (strcmp(proceso, "GAMECARD") == 0){
 	  conexion = crear_conexion(config_game_boy -> ip_gameCard,config_game_boy-> puerto_gameCard );
   }
-  if (strcmp(proceso, "TEAM") == 0)
+  if (strcmp(proceso, "TEAM") == 0){
 	  conexion = crear_conexion(config_game_boy -> ip_team,config_game_boy-> puerto_team );
-  	  //enviar_mensaje(5, "Appeared Pokemon", conexion);
   }
+
+  	  //enviar_mensaje(5, "Appeared Pokemon", conexion);
+
       /*if (strcmp(proceso, "SUBSCRIPTOR") == 0){
     	   tiene instrucciones espcailes
       }*/
-   if(conexion < 0){
+   if (conexion < 0){
 	  log_info(logger,"No se puedo realizar la conexion");
 	  return conexion;
    }
@@ -103,19 +105,19 @@ void leer_config() {
 
     config_game_boy = malloc(sizeof(t_config_game_boy));
 
-	t_config* config = config_create("Debug/game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
+	t_config* config = config_create("game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
 
 	if(config == NULL){
     	printf("no se pudo encontrar el path del config");
     	return exit(-2);
     }
-	config_game_boy -> ip_broker = config_get_string_value(config,"IP_BROKER");
-	config_game_boy-> puerto_broker = config_get_string_value(config,"PUERTO_BROKER");
-	config_game_boy -> ip_team = config_get_string_value(config,"IP_TEAM");
-	config_game_boy-> puerto_team = config_get_string_value(config,"PUERTO_TEAM");
-	config_game_boy -> ip_gameCard = config_get_string_value(config,"IP_GAMECARD");
-	config_game_boy-> puerto_gameCard = config_get_string_value(config,"PUERTO_GAMECARD");
-	config_game_boy-> log_file = config_get_string_value(config,"LOG_FILE");
+	config_game_boy -> ip_broker = strdup(config_get_string_value(config,"IP_BROKER"));
+	config_game_boy-> puerto_broker = strdup(config_get_string_value(config,"PUERTO_BROKER"));
+	config_game_boy -> ip_team = strdup(config_get_string_value(config,"IP_TEAM"));
+	config_game_boy-> puerto_team = strdup(config_get_string_value(config,"PUERTO_TEAM"));
+	config_game_boy -> ip_gameCard = strdup(config_get_string_value(config,"IP_GAMECARD"));
+	config_game_boy-> puerto_gameCard = strdup(config_get_string_value(config,"PUERTO_GAMECARD"));
+	config_game_boy-> log_file = strdup(config_get_string_value(config,"LOG_FILE"));
 	config_destroy(config);
 }
 
