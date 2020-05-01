@@ -53,3 +53,4 @@ void crear_listas_de_suscriptores(void);
 void liberar_listas(void);
 void recibir_suscripcion(int, char*);
 void encolar_mensaje(t_paquete*, op_code);
+void registrar_suscripcion(t_paquete*, op_code);

@@ -80,7 +80,7 @@ void enviar_mensaje(int cod_op, char* mensaje, int socket_cliente) {
 	free(stream);
 }
 
-void* recibir_mensaje(int socket_cliente, int* size) {
+/*void* recibir_mensaje(int socket_cliente, int* size) {
 	log_info(logger, "Recibiendo mensaje.");
 	recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
 	log_info(logger, "Tamano de paquete recibido: %d", *size);
@@ -88,32 +88,7 @@ void* recibir_mensaje(int socket_cliente, int* size) {
 	recv(socket_cliente, buffer, *size, MSG_WAITALL);
 	log_info(logger, "Mensaje recibido: %s", buffer);
 	return buffer;
-}
-
-void agregar_mensaje(int cod_op, int size, void* payload, int socket_cliente){
-	log_info(logger, "Agregando mensaje");
-	log_info(logger, "size: %d", size);
-	log_info(logger, "socket_cliente: %d", socket_cliente);
-	log_info(logger, "payload: %s", (char*) payload);
-	t_paquete* paquete = malloc(sizeof(t_paquete));
-
-	paquete -> codigo_operacion = cod_op;
-	paquete -> buffer = malloc(sizeof(t_buffer));
-	paquete -> buffer -> size = size;
-	paquete -> buffer -> stream = malloc(paquete -> buffer -> size);
-	memcpy(paquete -> buffer -> stream, payload, paquete -> buffer -> size);
-
-	int bytes = paquete -> buffer -> size + 2 * sizeof(int);
-	void* a_agregar = serializar_paquete(paquete, &bytes);
-
-	send(socket_cliente, a_agregar, bytes, 0); // insertar_en_cola
-
-	free(a_agregar);
-	free(paquete -> buffer -> stream);
-	free(paquete -> buffer);
-	free(paquete);
-	log_info(logger, "Mensaje Agregado");
-}
+}*/
 
 void iniciar_servidor(char *IP, char *PUERTO) {
 	int socket_servidor;

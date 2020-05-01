@@ -120,31 +120,6 @@ void recibir_suscripcion(int socket_cliente, char* cola_de_mensajes){
 
 }
 
-/*void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
-
-	switch (codigo_operacion) {
-		case TE_GET_POKEMON_BR:
-			list_add(colas_de_mensajes -> cola_get, paquete);
-			break;
-		case TE_CATCH_POKEMON_BR:
-			list_add(colas_de_mensajes -> cola_catch, paquete);
-			break;
-		case GC_LOCALIZED_POKEMON_BR:
-			list_add(colas_de_mensajes -> cola_localized, paquete);
-			break;
-		case GC_CAUGHT_POKEMON_BR:
-			list_add(colas_de_mensajes -> cola_caught, paquete);
-			break;
-		case GB_NEW_POKEMON_BR:
-			list_add(colas_de_mensajes -> cola_new, paquete);
-			break;
-		case GB_CAUGHT_POKEMON_BR:
-			list_add(colas_de_mensajes -> cola_caught, paquete);
-			break;
-	}
-
-}
-*/
 //---------------------------------------------------------------------------------------------------------------------------
 
 /*EL SERVICE DEL BROKER*/
@@ -158,43 +133,43 @@ void process_request(int cod_op, int cliente_fd) {
 		case GET_POKEMON:
 			msg = malloc(sizeof(t_get_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			//agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
+			agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case CATCH_POKEMON:
 			msg = malloc(sizeof(t_catch_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			 (CATCH_POKEMON, size, msg, cliente_fd);
+			agregar_mensaje(CATCH_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case LOCALIZED_POKEMON:
 			msg = malloc(sizeof(t_localized_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			//agregar_mensaje(LOCALIZED_POKEMON, size, msg, cliente_fd);
+			agregar_mensaje(LOCALIZED_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case CAUGHT_POKEMON:
 			msg = malloc(sizeof(t_caught_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			//agregar_mensaje(CAUGHT_POKEMON, size, msg, cliente_fd);
+			agregar_mensaje(CAUGHT_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case APPEARED_POKEMON:
 			msg = malloc(sizeof(t_caught_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			//agregar_mensaje(APPEARED_POKEMON, size, msg, cliente_fd);
+			agregar_mensaje(APPEARED_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case NEW_POKEMON:
 			msg = malloc(sizeof(t_new_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			//agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
+			agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case SUBSCRIPTION:
 			msg = malloc(sizeof(t_new_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			//agregar_mensaje(SUBSCRIPTION, size, msg, cliente_fd);
+			agregar_mensaje(SUBSCRIPTION, size, msg, cliente_fd);
 			free(msg);
 			break;
 
@@ -206,31 +181,105 @@ void process_request(int cod_op, int cliente_fd) {
 	}
 }
 
-/*void* recibir_mensaje(int socket_cliente, int* size) {
-	t_paquete* paquete = malloc(sizeof(t_paquete));
+void* recibir_mensaje(int socket_cliente, int* size) {
+	//t_paquete* paquete = malloc(sizeof(t_paquete));
 	void* buffer;
-	int op_code;
 	log_info(logger, "Recibiendo mensaje.");
 
 	recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
 	log_info(logger, "Tamano de paquete recibido: %d", *size);
 
-	recv(socket_cliente, op_code, sizeof(int), MSG_WAITALL);
-	log_info(logger, "Codigo de operacion del mensaje recibido: %d", op_code);
-
 	buffer = malloc(*size);
 	recv(socket_cliente, buffer, *size, MSG_WAITALL);
 	log_info(logger, "Mensaje recibido: %s", buffer);
-	//El broker suma el mensaje recibido a la cola (creo que broker va a tener que tener su propio recibir mensaje).
-
-	//paquete -> id_mensaje = id_mensje_univoco++;
-	//paquete -> buffer -> size = *size;
-	//paquete -> buffer -> stream = buffer;
-	//Se puede usar el cod_op para saber a que lista se tiene que agregar.
-	//encolar_mensaje(paquete, paquete -> codigo_operacion);
 
 	return buffer;
-}*/
+}
+
+void agregar_mensaje(int cod_op, int size, void* payload, int socket_cliente){
+	log_info(logger, "Agregando mensaje");
+	log_info(logger, "Size: %d", size);
+	log_info(logger, "Socket_cliente: %d", socket_cliente);
+	log_info(logger, "Payload: %s", (char*) payload);
+	t_paquete* paquete = malloc(sizeof(t_paquete));
+
+	//Usar semaforos para incrementar
+	//Notificar al proceso que lo mando con el id_mensaje generado
+	paquete -> id_mensaje = id_mensaje_univoco++;
+	paquete -> codigo_operacion = cod_op;
+	paquete -> buffer = malloc(sizeof(t_buffer));
+	paquete -> buffer -> size = size;
+	paquete -> buffer -> stream = malloc(paquete -> buffer -> size);
+	memcpy(paquete -> buffer -> stream, payload, paquete -> buffer -> size);
+
+	int bytes = paquete -> buffer -> size + 2 * sizeof(int);
+	void* a_agregar = serializar_paquete(paquete, &bytes);
+
+	send(socket_cliente, a_agregar, bytes, 0); // insertar_en_cola
+	encolar_mensaje(paquete, paquete -> codigo_operacion);
+
+	free(a_agregar);
+	free(paquete -> buffer -> stream);
+	free(paquete -> buffer);
+	free(paquete);
+	log_info(logger, "Mensaje Agregado");
+}
+
+void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
+
+	switch (codigo_operacion) {
+			case GET_POKEMON:
+				list_add(colas_de_mensajes -> cola_get, paquete);
+				break;
+			case CATCH_POKEMON:
+				list_add(colas_de_mensajes -> cola_catch, paquete);
+				break;
+			case LOCALIZED_POKEMON:
+				list_add(colas_de_mensajes -> cola_localized, paquete);
+				break;
+			case CAUGHT_POKEMON:
+				list_add(colas_de_mensajes -> cola_caught, paquete);
+				break;
+			case APPEARED_POKEMON:
+				list_add(colas_de_mensajes -> cola_appeared, paquete);
+				break;
+			case NEW_POKEMON:
+				list_add(colas_de_mensajes -> cola_new, paquete);
+				break;
+			case SUBSCRIPTION:
+				registrar_suscripcion(paquete, codigo_operacion);
+				break;
+	}
+	log_info(logger, "Mensaje agregado a cola de mensajes correspondiente");
+}
+
+void registrar_suscripcion(t_paquete* paquete, op_code codigo_operacion){
+
+	switch (codigo_operacion) {
+			case GET_POKEMON:
+				list_add(listas_de_suscriptos -> lista_suscriptores_get, paquete);
+				break;
+			case CATCH_POKEMON:
+				list_add(listas_de_suscriptos -> lista_suscriptores_catch, paquete);
+				break;
+			case LOCALIZED_POKEMON:
+				list_add(listas_de_suscriptos -> lista_suscriptores_localized, paquete);
+				break;
+			case CAUGHT_POKEMON:
+				list_add(listas_de_suscriptos -> lista_suscriptores_caught, paquete);
+				break;
+			case APPEARED_POKEMON:
+				list_add(listas_de_suscriptos -> lista_suscriptores_appeared, paquete);
+				break;
+			case NEW_POKEMON:
+				list_add(listas_de_suscriptos -> lista_suscriptores_new, paquete);
+				break;
+	}
+
+	log_info(logger, "Suscripcion registrada");
+
+}
+
 
 
 
