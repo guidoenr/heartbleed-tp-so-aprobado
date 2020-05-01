@@ -207,12 +207,16 @@ void process_request(int cod_op, int cliente_fd) {
 }
 
 /*void* recibir_mensaje(int socket_cliente, int* size) {
-	//t_paquete* paquete = malloc(sizeof(t_paquete));
-	void * buffer;
+	t_paquete* paquete = malloc(sizeof(t_paquete));
+	void* buffer;
+	int op_code;
 	log_info(logger, "Recibiendo mensaje.");
 
 	recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
 	log_info(logger, "Tamano de paquete recibido: %d", *size);
+
+	recv(socket_cliente, op_code, sizeof(int), MSG_WAITALL);
+	log_info(logger, "Codigo de operacion del mensaje recibido: %d", op_code);
 
 	buffer = malloc(*size);
 	recv(socket_cliente, buffer, *size, MSG_WAITALL);
@@ -227,6 +231,7 @@ void process_request(int cod_op, int cliente_fd) {
 
 	return buffer;
 }*/
+
 
 
 
