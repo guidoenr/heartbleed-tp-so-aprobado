@@ -237,25 +237,20 @@ void verificarPokemon(char* pokemon){
 	char* montaje = "montaje/Pokemon/";		  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
 	char* path = concatenar(montaje,pokemon); // DE TODAS FORMAS DEJO UNA ALGORITMIA FANTASTATICA
 
-	if (existeDirectorio(path)){
+	if (!existeDirectorio(path)){
 		mkdir(path, 0777); 					  // 0777 es una mask que permite rwx
+		log_info(logger,"se creo el directorio: %s",path);
+	} else{
+		log_info(logger,"existe el dir: %s",path);
 	}
+	closedir(path);
 
 }
 
 int existeDirectorio(char* path){
 
 	DIR* dir = opendir(path);
-	if (dir) {
-	    return 1;
-	} else if (ENOENT == errno) {
-	    log_info(logger,"No existe el directorio ");
-	    return -1;
-	} else {
-	    log_error(logger, "Error inesperado ");
-	    return -2;
-	}
-
+	return dir;
 }
 
 
