@@ -55,13 +55,14 @@ void obtener_entrenadores(void*);
 void agregar_pokemon_a_objetivos(void*);
 
 // estados
-void agregar_a_estado(t_list*, int);
-void cambiar_a_estado(t_list* estado, int id_entrenador);
+void agregar_a_estado(t_list*, int*);
+void cambiar_a_estado(t_list*, int*);
+void eliminar_de_estado(t_list*, int*);
+t_list* buscar_en_estados(t_list*, int*);
+bool esta_en_estado(t_list*, int*);
 
 // operar
-void operar_entrenador();
-t_list* buscar_en_estado(t_list*, int);
-t_list* buscar_en_estados(t_list* estados_a_buscar, int id_entrenador);
+void* operar_entrenador(void*);
 
 // terminar
 void liberar_conexion(int);

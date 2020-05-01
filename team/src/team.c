@@ -11,6 +11,24 @@ int main(void){
 	log_info(logger, "El port es : %s ", config -> puerto_broker);
 	terminar_programa(socket);
 
+
+	/* iniciar_logger("team.log", "team");
+	inicializar_estados();
+	int num1 = 1, num2 = 2, num9 = 9;
+	agregar_a_estado(estado_new, &num1);
+	agregar_a_estado(estado_new, &num2);
+	agregar_a_estado(estado_new, &num9);
+	log_info(logger, "new: %d", estado_new -> head -> data);
+
+	if(esta_en_estado(estado_new, &num2)){
+		log_info(logger, "esta en new");
+	}
+
+	int* data = (int*)(estado_ready -> head -> data);
+	cambiar_a_estado(estado_ready, &num9);
+	log_info(logger, "ready: %d", *data); */
+
+
 	return 0;
 }
 
@@ -96,63 +114,110 @@ void inciar_entrenadores() {
 	void crear_hilo_entrenador(void* entrenador) {
 		pthread_t hilo;
 		t_entrenador* un_entrenador = entrenador;
-		agregar_a_estado(estado_new, un_entrenador -> id);
-		int err = pthread_create(hilo, NULL, operar_entrenador, entrenador);
+		agregar_a_estado(estado_new, &(un_entrenador -> id));
+		int err = pthread_create(&hilo, NULL, operar_entrenador, entrenador);
+		if(err != 0){
+			log_error(logger, "el hilo no pudo ser creado"); // preguntar si estos logs se pueden hacer
+		}
 	}
 
 	list_iterate(config -> entrenadores, crear_hilo_entrenador);
 }
 
-void operar_entrenador(void* un_entrenador) {
+void* operar_entrenador(void* un_entrenador) {
 	t_entrenador* entrenador = un_entrenador;
-	cambiar_a_estado(estado_ready, entrenador -> id);
+	cambiar_a_estado(estado_ready, &(entrenador -> id));
 
 
 
 	// falta una banda
+
+	return entrenador;
 }
 
-void agregar_a_estado(t_list* estado, int id_entrenador) {
-	list_add(estado, &id_entrenador);
+void agregar_a_estado(t_list* estado, int* id_entrenador) {
+	list_add(estado, id_entrenador);
 }
 
-void cambiar_a_estado(t_list* estado, int id_entrenador) {
+void eliminar_de_estado(t_list* estado, int* id_entrenador){
+
+	bool es_el_entrenador(void* id_ent) {
+
+		return *(int*)id_ent == *id_entrenador;
+	}
+
+	list_remove_by_condition(estado, es_el_entrenador);
+}
+
+void cambiar_a_estado(t_list* estado, int* id_entrenador) {
 	t_list* estado_actual;
 	t_list* estados_a_buscar = list_create();
 
 	if(estado == estado_ready) {
+
 		list_add(estados_a_buscar, estado_new);
 		list_add(estados_a_buscar, estado_exec);
 		list_add(estados_a_buscar, estado_block);
 		estado_actual = buscar_en_estados(estados_a_buscar, id_entrenador);
+
 	} else if(estado == estado_exec){
-		estado_actual = buscar_en_estado(estado_ready, id_entrenador);
+
+		if(esta_en_estado(estado_ready, id_entrenador)){
+			estado_actual = estado_ready;
+		}
 	} else if(estado == estado_block){
-		estado_actual = buscar_en_estado(estado_exec, id_entrenador);
+
+		if(esta_en_estado(estado_exec, id_entrenador)){
+			estado_actual = estado_exec;
+		}
 	} else if(estado == estado_exit){
+
 		list_add(estados_a_buscar, estado_exec);
 		list_add(estados_a_buscar, estado_block);
 		estado_actual = buscar_en_estados(estados_a_buscar, id_entrenador);
+
 	} else {
+
 		log_error(logger, "ESTOY TRATANDO DE CAMBIAR A UN ESTADO QUE NO DEBERIA: id: %d", &id_entrenador);
 	}
+
 	list_destroy(estados_a_buscar);
+	eliminar_de_estado(estado_actual, id_entrenador);
+	agregar_a_estado(estado, id_entrenador);
 }
 
-t_list* buscar_en_estado(t_list* estado, int id_entrenador) {
+bool esta_en_estado(t_list* estado, int* id_entrenador) {
 
 	bool es_el_entrenador(void* id_ent) {
 
-		return *(int*)id_ent == id_entrenador;
+		return *(int*)id_ent == *id_entrenador;
 	}
 
-	return list_find(estado, es_el_entrenador);
+	if(list_find(estado, es_el_entrenador)){
+
+		return 1;
+	} else{
+
+		return 0;
+	}
 }
 
-t_list* buscar_en_estados(t_list* estados_a_buscar, int id_entrenador) {
+t_list* buscar_en_estados(t_list* estados_a_buscar, int* id_entrenador) {
+
+	t_link_element* cabeza = estados_a_buscar -> head;
+
+	while(cabeza != NULL){
+
+		if(esta_en_estado(cabeza -> data, id_entrenador)){
+
+			return cabeza -> data;
+		}
+		cabeza = cabeza -> next;
+	}
+
+	return NULL;
 
 }
-
 
 t_list* load_entrenadores(t_list* lista_posiciones, t_list* lista_pokemons, t_list* lista_objetivos) {
 	t_list* entrenadores = list_create();
