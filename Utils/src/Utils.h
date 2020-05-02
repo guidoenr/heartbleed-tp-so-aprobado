@@ -38,7 +38,7 @@ typedef struct {
 
 typedef struct {
 	int id_mensaje;
-	int pokemon;
+	char* pokemon;
 } t_get_pokemon;
 
 typedef struct {
@@ -101,7 +101,7 @@ void process_request(int cod_op, int cliente_fd);
 int recibir_operacion(int);
 
 //mensaje
-void enviar_mensaje(int cod_op, char* mensaje, int socket_cliente);
+void enviar_mensaje(int cod_op, void* mensaje, int socket_cliente);
 void* recibir_mensaje(int socket_cliente, int* size);
 void devolver_mensaje(int cod_op, int size, void* payload, int socket_cliente);
 void reenviar_mensaje(int cod_op, int size, void* payload, int socket_cliente);

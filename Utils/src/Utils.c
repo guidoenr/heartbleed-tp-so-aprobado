@@ -57,12 +57,12 @@ int crear_conexion(char *ip, char* puerto) {
 	return socket_cliente;
 }
 
-void enviar_mensaje(int cod_op, char* mensaje, int socket_cliente) {
+void enviar_mensaje(int cod_op, void* mensaje, int socket_cliente) {
 	t_buffer* buffer = malloc(sizeof(t_buffer));
 
-	buffer -> size = strlen(mensaje) + 1;
+	buffer -> size = sizeof(mensaje);
 	buffer -> stream = malloc(buffer -> size);
-	memcpy(buffer -> stream,mensaje,buffer -> size);
+	buffer -> stream=mensaje;
 	log_info(logger,"Armando paquete");
 
 	t_paquete* paquete = malloc(sizeof(t_paquete));

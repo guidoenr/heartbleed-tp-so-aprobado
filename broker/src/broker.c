@@ -50,7 +50,7 @@ void leer_config() {
 
 	config_broker = malloc(sizeof(t_config_broker));
 
-	config = config_create("broker.config");
+	config = config_create("Debug/broker.config");
 
 	if(config == NULL){
 		    	log_info(logger,"No se pudo encontrar el path del config.");

@@ -18,7 +18,6 @@ void iniciar_programa(int argc){
 	}
 
 	log_info(logger, "El size del comando es: %i", argc);
-
 }
 ///char*  parametros[] = BROKER GET_POKEMON PIKACHU 2 5 // vector de puntertos de char === vector de strings
 int seleccionar_proceso(char *parametros[]){
@@ -40,27 +39,33 @@ int seleccionar_proceso(char *parametros[]){
   /*if (strcmp(proceso, "SUBSCRIPTOR") == 0){
     	   tiene instrucciones espcailes
       }*/
+void* mensaje;
 switch (cod_op) {
 	  	  case GET_POKEMON:
-	  		enviar_mensaje(1, "Get Pokemon", conexion);
+	  		mensaje = armar_mensaje_get_pokemon(parametros);
+	  		enviar_mensaje(GET_POKEMON, mensaje, conexion);
 	  		break;
 	  	  case CATCH_POKEMON:
-	  		enviar_mensaje(2, "Catch Pokemon", conexion);
+	  		mensaje = armar_mensaje_catch_pokemon(parametros);
+	  		enviar_mensaje(CATCH_POKEMON,mensaje, conexion);
 	  		break;
 	  	  case LOCALIZED_POKEMON:
-	  		enviar_mensaje(3, "Localized Pokemon", conexion);
+	  		enviar_mensaje(LOCALIZED_POKEMON, "Localized Pokemon", conexion);
 	  		break;
 	  	  case CAUGHT_POKEMON:
-	  		enviar_mensaje(4, "Caught Pokemon", conexion);
+	  		mensaje = armar_mensaje_caught_pokemon(parametros);
+	  		enviar_mensaje(CAUGHT_POKEMON, mensaje, conexion);
 	  		break;
 	  	  case APPEARED_POKEMON:
-	  		enviar_mensaje(5, "Appeared Pokemon", conexion);
+	  		mensaje=armar_mensaje_appeared_pokemon(parametros);
+	  		enviar_mensaje(APPEARED_POKEMON, mensaje , conexion);
 	  		break;
 	  	  case NEW_POKEMON:
-	  		enviar_mensaje(6, "New Pokemon", conexion);
+	  		mensaje=armar_mensaje_new_pokemon(parametros);
+	  		enviar_mensaje(NEW_POKEMON, mensaje, conexion);
 	  		break;
 	  }
-
+free (mensaje);
    if (conexion < 0){
 	  log_info(logger,"No se puedo realizar la conexion");
 	  return conexion;
@@ -92,16 +97,61 @@ op_code obtener_enum_de_string (char *s ) {
     }
 }
 
-char* armar_mensaje(char *parametros[]){
-	//// Responsabilidad de cada proceso a futuro
-	return "hola";
+void* armar_mensaje_get_pokemon(char *parametros[]){
+	t_get_pokemon* a_enviar = malloc(sizeof(t_get_pokemon));
+	a_enviar->pokemon = parametros [3];
+	a_enviar->id_mensaje = 1;
+	return a_enviar;
+}
+
+void* armar_mensaje_catch_pokemon(char *parametros[]){
+	t_catch_pokemon* a_enviar = malloc(sizeof(t_catch_pokemon));
+	a_enviar->pokemon = parametros [3];
+	a_enviar->posicion[0] = parametros [4];
+	a_enviar->posicion[1] = parametros [5];
+	a_enviar -> id_mensaje = 1;
+	return a_enviar;
+}
+
+/*Preguntar como seria, no esta en el tp
+ * void* armar_mensaje_localized_pokemon(char *parametros[]){
+	t_localized_pokemon* a_enviar = malloc(sizeof(t_localized_pokemon));
+	a_enviar->pokemon = parametros [3];
+	a_enviar->id_mensaje = 1;
+	return a_enviar;
+}*/
+
+void* armar_mensaje_caught_pokemon(char *parametros[]){
+	t_caught_pokemon* a_enviar = malloc(sizeof(t_caught_pokemon));
+	a_enviar->id_mensaje = parametros[3];
+	a_enviar->resultado = parametros[4];
+	return a_enviar;
+}
+
+void* armar_mensaje_appeared_pokemon(char *parametros[]){
+	t_appeared_pokemon* a_enviar = malloc(sizeof(t_appeared_pokemon));
+	a_enviar->pokemon = parametros [3];
+	a_enviar->posicion[0] = parametros [4];
+	a_enviar->posicion[1] = parametros[5];
+	a_enviar->id_mensaje = parametros[6];
+	return a_enviar;
+}
+
+void* armar_mensaje_new_pokemon(char *parametros[]){
+	t_new_pokemon* a_enviar = malloc(sizeof(t_new_pokemon));
+	a_enviar->pokemon = parametros [3];
+	a_enviar->posicion[0] = parametros[4];
+	a_enviar-> posicion[1] = parametros[5];
+	a_enviar -> cantidad =  parametros[6];
+	a_enviar->id_mensaje = 1;
+	return a_enviar;
 }
 
 void leer_config() {
 
     config_game_boy = malloc(sizeof(t_config_game_boy));
 
-	t_config* config = config_create("game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
+	t_config* config = config_create("Debug/game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
 
 	if(config == NULL){
     	printf("no se pudo encontrar el path del config");
