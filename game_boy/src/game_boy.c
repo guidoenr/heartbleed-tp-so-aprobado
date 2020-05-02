@@ -13,7 +13,7 @@ void iniciar_programa(int argc){
 	iniciar_logger(config_game_boy->log_file, "gameboy");
 
 	if(argc == 1){
-			printf("No se han ingresado los parametros.");
+			printf("\n No se han ingresado parametros. \n");
 			exit(-1);
 	}
 
@@ -30,7 +30,17 @@ int seleccionar_proceso(char *parametros[]){
   log_info(logger, "el mensaje es recibido es:%d", cod_op);
   if (strcmp(proceso, "BROKER") == 0){
 	  conexion = crear_conexion(config_game_boy -> ip_broker,config_game_boy-> puerto_broker );
-	  switch (cod_op) {
+  }
+  if (strcmp(proceso, "GAMECARD") == 0){
+	  conexion = crear_conexion(config_game_boy -> ip_gameCard,config_game_boy-> puerto_gameCard );
+  }
+  if (strcmp(proceso, "TEAM") == 0){
+	  conexion = crear_conexion(config_game_boy -> ip_team,config_game_boy-> puerto_team );
+  }
+  /*if (strcmp(proceso, "SUBSCRIPTOR") == 0){
+    	   tiene instrucciones espcailes
+      }*/
+switch (cod_op) {
 	  	  case GET_POKEMON:
 	  		enviar_mensaje(1, "Get Pokemon", conexion);
 	  		break;
@@ -50,27 +60,13 @@ int seleccionar_proceso(char *parametros[]){
 	  		enviar_mensaje(6, "New Pokemon", conexion);
 	  		break;
 	  }
-  }
-  if (strcmp(proceso, "GAMECARD") == 0){
-	  conexion = crear_conexion(config_game_boy -> ip_gameCard,config_game_boy-> puerto_gameCard );
-  }
-  if (strcmp(proceso, "TEAM") == 0){
-	  conexion = crear_conexion(config_game_boy -> ip_team,config_game_boy-> puerto_team );
-  }
 
-  	  //enviar_mensaje(5, "Appeared Pokemon", conexion);
-
-      /*if (strcmp(proceso, "SUBSCRIPTOR") == 0){
-    	   tiene instrucciones espcailes
-      }*/
    if (conexion < 0){
 	  log_info(logger,"No se puedo realizar la conexion");
 	  return conexion;
    }
 
      log_info(logger,"Se puedo realizar la conexion");
-     //char* mensaje = armar_mensaje(parametros);
-     //enviar_mensaje(NEW_POKEMON, "Get Pokemon", conexion);
      return conexion;
 }
 
