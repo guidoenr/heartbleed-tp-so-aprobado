@@ -12,7 +12,7 @@ void iniciar_programa(int argc){
     leer_config();
 	iniciar_logger(config_game_boy->log_file, "gameboy");
 
-	if(argc == 0){
+	if(argc == 1){
 			printf("No se han ingresado los parametros.");
 			exit(-1);
 	}

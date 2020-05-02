@@ -10,7 +10,6 @@
 // agregar un id 0 al mensaje a mandar al broker
 
 typedef struct {
-    int id;
 	int posicion[2];
 	t_list* pokemons;
 	t_list* objetivos;
@@ -65,8 +64,9 @@ bool esta_en_estado(t_list*, int*);
 void* operar_entrenador(void*);
 
 // terminar
+void liberar_lista_de_lista_de_strings(t_list*);
 void liberar_conexion(int);
 void liberar_config();
-void librar_entrenadores(t_list*);
+void liberar_entrenadores();
 void terminar_programa(int);
 void liberar_conexion(int);
