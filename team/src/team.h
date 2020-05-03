@@ -1,15 +1,17 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<commons/log.h>
-#include<commons/string.h>
-#include<commons/config.h>
-#include<readline/readline.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <commons/log.h>
+#include <commons/string.h>
+#include <commons/config.h>
+#include <readline/readline.h>
+#include <semaphore.h>
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.h"
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 
 // agregar un id 0 al mensaje a mandar al broker
 
 typedef struct {
+	sem_t mutex;
 	int posicion[2];
 	t_list* pokemons;
 	t_list* objetivos;
@@ -36,6 +38,7 @@ t_list* estado_exec;
 t_list* estado_block;
 t_list* estado_exit;
 
+t_list* estados;
 
 // utils
 char* append(const char*, char);
@@ -65,6 +68,9 @@ void eliminar_de_estado(t_list*, t_entrenador*);
 void cambiar_a_estado(t_list*, t_entrenador*);
 t_list* buscar_en_estados(t_list*, t_entrenador*);
 bool esta_en_estado(t_list*, t_entrenador*);
+
+//semaforos
+void inicializar_semaforos();
 
 
 // terminar

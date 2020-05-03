@@ -32,10 +32,11 @@ void iniciar_programa(){
 	iniciar_logger("team.log", "team");
 	leer_config();
 	inicializar_estados();
+	inicializar_semaforos();
 	determinar_objetivo_global();
-	suscribirme_a_colas();
 
-	//crear_hilos_entrenadores(); // iniciar a los entrenadores
+	//iniciar_entrenadores(); // iniciar a los entrenadores
+	suscribirme_a_colas();
 	//iniciar_conexion_game_boy(); abrir socket con el game_boy (pthread_create)
 }
 
@@ -45,6 +46,10 @@ void inicializar_estados(){
 	 estado_exec = list_create();
 	 estado_block = list_create();
 	 estado_exit = list_create();
+}
+
+void inicializar_semaforos(){
+
 }
 
 void leer_config(void) {
@@ -180,6 +185,7 @@ void inciar_entrenadores() {
 		pthread_t hilo;
 		t_entrenador* entrenador = un_entrenador;
 		agregar_a_estado(estado_new, un_entrenador);
+		sem_init(&(entrenador -> mutex), 0, 1);
 		int err = pthread_create(&hilo, NULL, operar_entrenador, entrenador);
 		if(err != 0){
 			log_error(logger, "el hilo no pudo ser creado"); // preguntar si estos logs se pueden hacer
@@ -193,11 +199,17 @@ void inciar_entrenadores() {
 void* operar_entrenador(void* un_entrenador) {
 	t_entrenador* entrenador = un_entrenador;
 	cambiar_a_estado(estado_ready, entrenador);
+	t_list* estado_actual;
+
+	while(estado_actual != estado_exit){
+
+		sem_wait(&(entrenador -> mutex));
 
 
+
+	}
 
 	// falta una banda
-
 	return entrenador;
 }
 
