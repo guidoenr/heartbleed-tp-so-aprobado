@@ -71,5 +71,6 @@ bool esta_en_estado(t_list*, t_entrenador*);
 void liberar_config();
 void liberar_lista_de_lista_de_strings(t_list*);
 void liberar_entrenadores();
-void terminar_programa(int);
+void terminar_programa(/*int*/);
 void liberar_conexion(int);
+void liberar_estados();

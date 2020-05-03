@@ -2,37 +2,27 @@
 
 int main(void){
 	printf("HOLA");
-	estado_new = list_create();
-	t_entrenador* entrenador1;
-	agregar_a_estado(estado_new, entrenador1);
-	list_add(estado_new, "HOLA");
+
 	iniciar_programa();
-	enviar_mensaje(GET_POKEMON, "Pikachu", socket); // se va
+	//enviar_mensaje(GET_POKEMON, "Pikachu", socket); // se va
 
 	//t_buffer* recibido = recibir_mensaje(socket, strlen("Hola")+ 1);
-	log_info(logger, "El ip es : %s", config -> ip_broker);
+	log_info(logger, "La ip es : %s", config -> ip_broker);
 	log_info(logger, "El port es : %s ", config -> puerto_broker);
-	terminar_programa(socket);
 
+	agregar_a_estado(estado_new, config -> entrenadores -> head -> data);
+	log_info(logger, "agregado a new");
 
-	/* iniciar_logger("team.log", "team");
-	inicializar_estados();
-	t_entrenador* entrenador1;
-	t_entrenador* entrenador2;
-	t_entrenador* entrenador3;
-	agregar_a_estado(estado_new, entrenador1);
-	agregar_a_estado(estado_new, entrenador2);
-	agregar_a_estado(estado_new, entrenador3);
-	log_info(logger, "new: %d", estado_new -> head -> data);
-
-	if(esta_en_estado(estado_new, &num2)){
+	if(esta_en_estado(estado_new, config -> entrenadores -> head -> data)){
 		log_info(logger, "esta en new");
 	}
+	cambiar_a_estado(estado_ready, config -> entrenadores -> head -> data);
+	log_info(logger, "cambiado a ready");
+	if(esta_en_estado(estado_ready, config -> entrenadores -> head -> data)){
+		log_info(logger, "esta en ready");
+	}
 
-	t_entrenadores* data = estado_ready -> head -> data;
-	cambiar_a_estado(estado_ready, entrenador1);
-	log_info(logger, "ready: %d", *data); */
-
+	terminar_programa(/*socket*/);
 	return 0;
 }
 
@@ -45,7 +35,6 @@ void iniciar_programa(){
 	determinar_objetivo_global();
 	suscribirme_a_colas();
 
-	printf("asd");
 	//crear_hilos_entrenadores(); // iniciar a los entrenadores
 	//iniciar_conexion_game_boy(); abrir socket con el game_boy (pthread_create)
 }
@@ -73,11 +62,11 @@ void leer_config(void) {
 
 	config -> tiempo_reconexion = config_get_int_value(config_team, "TIEMPO_RECONEXION");
 	config -> retardo_cpu = config_get_int_value(config_team, "RETARDO_CICLO_CPU");
-	config -> algoritmo_planificacion = config_get_string_value(config_team, "ALGORITMO_PLANIFICACION");
-	config -> ip_broker = config_get_string_value(config_team, "IP_BROKER");
-	config -> puerto_broker = config_get_string_value(config_team, "PUERTO_BROKER");
+	config -> algoritmo_planificacion = strdup(config_get_string_value(config_team, "ALGORITMO_PLANIFICACION"));
+	config -> ip_broker = strdup(config_get_string_value(config_team, "IP_BROKER"));
+	config -> puerto_broker = strdup(config_get_string_value(config_team, "PUERTO_BROKER"));
 	config -> estimacion_inicial = config_get_int_value(config_team, "ESTIMACION_INICIAL");
-	config -> log_file = config_get_string_value(config_team, "LOG_FILE");
+	config -> log_file = strdup(config_get_string_value(config_team, "LOG_FILE"));
 
 	config_destroy(config_team);
 }
@@ -91,9 +80,6 @@ t_list* load_entrenadores(t_list* lista_posiciones, t_list* lista_pokemons, t_li
 	while(head_posiciones != NULL && head_pokemons != NULL && head_objetivos != NULL){
 		t_entrenador* entrenador = malloc(sizeof(t_entrenador));
 
-		entrenador -> pokemons = list_create();
-		entrenador -> objetivos = list_create();
-
 		// posicion
 		int pos[2];
 		t_list* aux_posiciones = head_posiciones -> data;
@@ -105,31 +91,23 @@ t_list* load_entrenadores(t_list* lista_posiciones, t_list* lista_pokemons, t_li
 		entrenador -> posicion[1] = pos[1];
 
 		// pokemons
-		t_list* aux_pokemons = head_pokemons -> data;
-		t_link_element* cabeza_pokemons = aux_pokemons -> head;
-
-		cargar_pokemons_a_entrenador(aux_pokemons, cabeza_pokemons, entrenador -> pokemons);
+		entrenador -> pokemons = head_pokemons -> data;
 
 		// objetivos
-		t_list* aux_objetivos = head_objetivos -> data;
-		t_link_element* cabeza_objetivos = aux_objetivos -> head;
-
-		cargar_pokemons_a_entrenador(aux_objetivos, cabeza_objetivos, entrenador -> objetivos);
+		entrenador -> objetivos = head_objetivos -> data;
 
 		// entrenador a entrenadores
 		list_add(entrenadores, entrenador);
 
 		// actualizo punteros
-
 		head_posiciones = head_posiciones -> next;
 		head_pokemons = head_pokemons -> next;
 		head_objetivos = head_objetivos -> next;
 	}
 
-	//REVER ESTOS DESTROYS:
-	list_destroy(lista_posiciones);
-	liberar_lista_de_lista_de_strings(lista_pokemons);
-	liberar_lista_de_lista_de_strings(lista_objetivos);
+	liberar_lista_de_lista_de_strings(lista_posiciones);
+	free(lista_pokemons);
+	free(lista_objetivos);
 
 	return entrenadores;
 }
@@ -138,47 +116,21 @@ void* parsear(char** datos_de_config) {
 	t_list* lista = list_create();
 	t_list* lista_lista = list_create();
 
-	/*char e;
-	char* palabra = "";
-	for (char* c = *datos_de_config; c; c=*++datos_de_config) {*/
 	while(*datos_de_config != NULL) {
-		char** cadena = string_split(*datos_de_config, "|");
+		char** cadena = string_split(*datos_de_config, "|"); // de esto se queja el valgrind pero funca. // VER SI ANDA ASI
 
-		for (char* d = *cadena; d; d=*++cadena) {
+		for(char* d = *cadena; d; d=*++cadena) {
 			list_add(lista, d);
 		}
-		/*
-		for (char* d = c; d; d++) {
-			e = *d;
 
-			if(e != '|' && e) {
-				palabra = append(palabra, e);
-			} else {
-				list_add(lista, palabra);
-				palabra = ""; // limpiar char*
-			}
-			if(!e){
-				break;
-			}
-		}*/
-		t_list* lista_aux = list_duplicate(lista);
-		list_add(lista_lista, lista_aux);
+		//t_list* lista_aux = ; // de esto se queja el valgrind pq se pierde lista_aux pero funca. // VER SI ANDA ASI
+		list_add(lista_lista, list_duplicate(lista));
 		list_clean(lista);
 		datos_de_config++;
 	}
 	list_destroy(lista); // not sure
 	return lista_lista;
 }
-
-// borrar segun si lo nuevo anda o no
-/*char* append(const char *palabra, char c) {
-    int largo = strlen(palabra);
-    char buf[largo + 2];
-    strcpy(buf, palabra);
-    buf[largo] = c;
-    buf[largo + 1] = 0;
-    return strdup(buf);
-}*/
 
 void cargar_pokemons_a_entrenador(t_list* aux, t_link_element* cabeza, t_list* destino){
 
@@ -207,7 +159,7 @@ void determinar_objetivo_global() {
 	list_iterate(config -> entrenadores, obtener_entrenadores);
 }
 
-void suscribirme_a_colas(){
+void suscribirme_a_colas() {
 	suscribirse_a(APPEARED_POKEMON);
 	suscribirse_a(CAUGHT_POKEMON);
 	suscribirse_a(LOCALIZED_POKEMON);
@@ -217,7 +169,7 @@ void suscribirme_a_colas(){
 //TODO
 void suscribirse_a(op_code una_cola){
 	//int socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
-	// mandar por stream el socket
+	//mandar por stream el socket
 }
 
 // ------------------------------- ENTRENADORES -------------------------------//
@@ -294,8 +246,7 @@ void cambiar_a_estado(t_list* estado, t_entrenador* entrenador) {
 
 	} else {
 
-		// ver que loggear
-		// log_error(logger, "ESTOY TRATANDO DE CAMBIAR A UN ESTADO QUE NO DEBERIA: id: %d", &(id_entrenador);
+		log_error(logger, "ESTOY TRATANDO DE CAMBIAR A UN ESTADO QUE NO DEBERIA.");
 	}
 
 	list_destroy(estados_a_buscar);
@@ -393,13 +344,10 @@ void liberar_lista_de_lista_de_strings(t_list* lista_de_lista) {
 
 	void destruir_lista_de_strings(void* lista_de_strings) {
 
-		list_destroy_and_destroy_elements(lista_de_strings, free);
 		list_destroy(lista_de_strings);
-
 	}
 
 	list_destroy_and_destroy_elements(lista_de_lista, destruir_lista_de_strings);
-	list_destroy(lista_de_lista);
 }
 
 void liberar_entrenadores() {
@@ -411,16 +359,24 @@ void liberar_entrenadores() {
 		list_destroy(entrenador -> pokemons);
 		list_destroy(entrenador -> objetivos);
 
-		free(un_entrenador);
+		free(entrenador);
 	}
 
 	list_destroy_and_destroy_elements(config -> entrenadores, destruir_entrenador);
-	list_destroy(config -> entrenadores);
 }
 
-void terminar_programa(int conexion) {
+void liberar_estados() {
+	list_destroy(estado_new);
+	list_destroy(estado_ready);
+	list_destroy(estado_exec);
+	list_destroy(estado_block);
+	list_destroy(estado_exit);
+}
+
+void terminar_programa(/*int conexion*/) {
 	list_destroy(objetivo_global);
 	liberar_logger();
-	liberar_conexion(conexion);
+	//liberar_conexion(conexion);
 	liberar_config();
+	liberar_estados();
 }
