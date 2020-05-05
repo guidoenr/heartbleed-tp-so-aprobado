@@ -32,7 +32,7 @@ typedef struct {
 
 typedef struct {
 	int id_mensaje;
-	int pokemon;
+	char* pokemon;
 	int posicion[2];
 } t_catch_pokemon;
 
@@ -43,7 +43,7 @@ typedef struct {
 
 typedef struct {
 	int id_mensaje;
-	int pokemon;
+	char* pokemon;
 	int posicion[2];
 } t_appeared_pokemon;
 
@@ -53,7 +53,7 @@ typedef struct {
 } t_caught_pokemon;
 
 typedef struct {
-	int pokemon;
+	char* pokemon;
 	int posicion[2];
 	int cantidad;
 	int* next;
@@ -62,7 +62,7 @@ typedef struct {
 
 typedef struct {
 	int id_mensaje;
-	int pokemon;
+	char* pokemon;
 	t_lista_pokemones* lista_pokemons; //CUIDADO ACA, TEAM TIENE UN t_lista_pokemons
 } t_localized_pokemon;
 
