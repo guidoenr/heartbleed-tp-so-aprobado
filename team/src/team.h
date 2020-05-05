@@ -18,6 +18,18 @@ typedef struct {
 } t_entrenador;
 
 typedef struct {
+	char* nombre;
+	int posicion[2];
+	int cantidad;
+} t_pokemon_mapa;
+
+typedef struct {
+	t_entrenador* entrenador;
+	t_pokemon_mapa* pokemon;
+} t_pedido_captura;
+
+
+typedef struct {
 	t_list* entrenadores;
     int tiempo_reconexion;
 	int retardo_cpu;
@@ -39,20 +51,18 @@ t_list* estado_block;
 t_list* estado_exit;
 
 t_list* estados;
+t_list* mapa_pokemons;
+t_list* pedidos_captura;
 
 // utils
 char* append(const char*, char);
 void* parsear(char**);
-
+int distancia(int[2], int[2]);
 
 // iniciar
 void iniciar_programa();
 void inicializar_estados();
 void leer_config(void);
-t_list* load_entrenadores(t_list*, t_list*, t_list*);
-void cargar_pokemons_a_entrenador(t_list*, t_link_element*, t_list*);
-void determinar_objetivo_global();
-void obtener_entrenadores(void*);
 void suscribirme_a_colas();
 void suscribirse_a(op_code);
 
@@ -60,6 +70,9 @@ void suscribirse_a(op_code);
 // entrenadores
 void inciar_entrenadores();
 void* operar_entrenador(void*);
+void obtener_entrenadores(void*);
+t_list* load_entrenadores(t_list*, t_list*, t_list*);
+void cargar_pokemons_a_entrenador(t_list*, t_link_element*, t_list*);
 
 
 // estados
@@ -71,6 +84,15 @@ bool esta_en_estado(t_list*, t_entrenador*);
 
 //semaforos
 void inicializar_semaforos();
+
+// mapa
+void limpiar_mapa(void*);
+void destruir_pokemon_mapa(void*);
+void matchear_pokemon_con_entrenador(t_pedido_captura*);
+
+// objetivo
+void determinar_objetivo_global();
+bool no_esta_en_objetivo(void*);
 
 
 // terminar
