@@ -101,28 +101,32 @@ void liberar_listas(){
 	list_destroy(listas_de_suscriptos -> lista_suscriptores_caught);
 }
 
-void recibir_suscripcion(int socket_cliente, op_code codigo_operacion){
+void recibir_suscripcion(void* mensaje, op_code codigo_operacion){
 
+	int socket_cliente = (int)mensaje;
 	log_info(logger, "Se recibe una suscripción.");
 	switch (codigo_operacion) {
 			case GET_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_get, socket_cliente);
+				list_add(listas_de_suscriptos -> lista_suscriptores_get, &socket_cliente);
 				break;
 			case CATCH_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_catch, socket_cliente);
+				list_add(listas_de_suscriptos -> lista_suscriptores_catch, &socket_cliente);
 				break;
 			case LOCALIZED_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_localized, socket_cliente);
+				list_add(listas_de_suscriptos -> lista_suscriptores_localized, &socket_cliente);
 				break;
 			case CAUGHT_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_caught, socket_cliente);
+				list_add(listas_de_suscriptos -> lista_suscriptores_caught, &socket_cliente);
 				break;
 			case APPEARED_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_appeared, socket_cliente);
+				list_add(listas_de_suscriptos -> lista_suscriptores_appeared, &socket_cliente);
 				break;
 			case NEW_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_new, socket_cliente);
+				list_add(listas_de_suscriptos -> lista_suscriptores_new, &socket_cliente);
 				break;
+			 default:
+				 log_info(logger, "Ingrese un codigo de operacion valido");
+			     break;
 		}
 		log_info(logger, "Suscripcion registrada");
 }
@@ -219,7 +223,7 @@ void agregar_mensaje(int cod_op, int size, void* payload, int socket_cliente){
 	paquete -> buffer -> stream = malloc(paquete -> buffer -> size);
 	memcpy(paquete -> buffer -> stream, payload, paquete -> buffer -> size);
 
-	send(socket_cliente, paquete -> id_mensaje , sizeof(int), 0);
+	send(socket_cliente, &(paquete -> id_mensaje) , sizeof(int), 0);
 	//revisar si le llega al cliente el id.
 
 	int bytes = paquete -> buffer -> size + 2 * sizeof(int);
@@ -260,6 +264,9 @@ void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
 				recibir_suscripcion(paquete -> buffer -> stream, codigo_operacion);
 				break;
 				//El stream de una suscripción debería tener el socket del cliente.
+			default:
+				log_info(logger, "El codigo de operacion es invalido");
+				exit (-6);
 	}
 	log_info(logger, "Mensaje agregado a cola de mensajes correspondiente");
 }

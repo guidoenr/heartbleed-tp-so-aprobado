@@ -52,5 +52,6 @@ void crear_colas_de_mensajes(void);
 void crear_listas_de_suscriptores(void);
 void liberar_listas(void);
 void encolar_mensaje(t_paquete*, op_code);
-void recibir_suscripcion(int, op_code);
+void recibir_suscripcion(void*, op_code);
 void enviar_mensajes_get(void);
+void agregar_mensaje(int,int,void*,int);
