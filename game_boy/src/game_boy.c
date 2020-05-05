@@ -24,22 +24,47 @@ int seleccionar_proceso(char *parametros[]){
 
   int conexion;
   char* proceso =  strdup(parametros[1]);
+  if(strcmp(proceso, "") == 0){
+	  log_info(logger, "No ha ingresado un proceso correcto");
+	  return exit -4;
+  }
+  void* mensaje;
   op_code cod_op = obtener_enum_de_string(strdup(parametros[2]));
-  log_info(logger, "el proceso recibido es:%s", proceso);
-  log_info(logger, "el mensaje es recibido es:%d", cod_op);
+
+  if(strcmp(parametros[2], "") == 0){
+	  log_info(logger, "No ha ingresado un codigo de operacion");
+	  return exit -4;
+  }
+
   if (strcmp(proceso, "BROKER") == 0){
 	  conexion = crear_conexion(config_game_boy -> ip_broker,config_game_boy-> puerto_broker );
   }
   if (strcmp(proceso, "GAMECARD") == 0){
 	  conexion = crear_conexion(config_game_boy -> ip_gameCard,config_game_boy-> puerto_gameCard );
+	  switch (cod_op) {
+	  	  	  case GET_POKEMON:
+	  	  		mensaje = armar_mensaje_get_pokemon(parametros);
+	  	  		enviar_mensaje(GET_POKEMON, mensaje, conexion);
+	  	  		break;
+	  	  	  case CATCH_POKEMON:
+	  	  		mensaje = armar_mensaje_catch_pokemon(parametros);
+	  	  		enviar_mensaje(CATCH_POKEMON,mensaje, conexion);
+	  	  		break;
+	  	  	 case NEW_POKEMON:
+	  	  		mensaje=armar_mensaje_new_pokemon(parametros);
+	  	  		enviar_mensaje(NEW_POKEMON, mensaje, conexion);
+	  	  		break;
+	  }
   }
   if (strcmp(proceso, "TEAM") == 0){
 	  conexion = crear_conexion(config_game_boy -> ip_team,config_game_boy-> puerto_team );
+	  mensaje=armar_mensaje_appeared_pokemon(parametros);
+	  enviar_mensaje(APPEARED_POKEMON, mensaje , conexion);
   }
   /*if (strcmp(proceso, "SUBSCRIPTOR") == 0){
     	   tiene instrucciones espcailes
       }*/
-void* mensaje;
+
 switch (cod_op) {
 	  	  case GET_POKEMON:
 	  		mensaje = armar_mensaje_get_pokemon(parametros);
@@ -49,10 +74,7 @@ switch (cod_op) {
 	  		mensaje = armar_mensaje_catch_pokemon(parametros);
 	  		enviar_mensaje(CATCH_POKEMON,mensaje, conexion);
 	  		break;
-	  	  case LOCALIZED_POKEMON:
-	  		enviar_mensaje(LOCALIZED_POKEMON, "Localized Pokemon", conexion);
-	  		break;
-	  	  case CAUGHT_POKEMON:
+	 	  case CAUGHT_POKEMON:
 	  		mensaje = armar_mensaje_caught_pokemon(parametros);
 	  		enviar_mensaje(CAUGHT_POKEMON, mensaje, conexion);
 	  		break;
@@ -65,6 +87,12 @@ switch (cod_op) {
 	  		enviar_mensaje(NEW_POKEMON, mensaje, conexion);
 	  		break;
 	  }
+if(strcmp(mensaje, "") == 0){
+	log_info(logger, "Codigo de operacion invalido");
+	return exit -3;
+}
+
+
 free (mensaje);
    if (conexion < 0){
 	  log_info(logger,"No se puedo realizar la conexion");
@@ -112,14 +140,6 @@ void* armar_mensaje_catch_pokemon(char *parametros[]){
 	a_enviar -> id_mensaje = 1;
 	return a_enviar;
 }
-
-/*Preguntar como seria, no esta en el tp
- * void* armar_mensaje_localized_pokemon(char *parametros[]){
-	t_localized_pokemon* a_enviar = malloc(sizeof(t_localized_pokemon));
-	a_enviar->pokemon = parametros [3];
-	a_enviar->id_mensaje = 1;
-	return a_enviar;
-}*/
 
 void* armar_mensaje_caught_pokemon(char *parametros[]){
 	t_caught_pokemon* a_enviar = malloc(sizeof(t_caught_pokemon));
