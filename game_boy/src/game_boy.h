@@ -36,3 +36,4 @@ void liberar_conexion(int);
 void mostrar_menu(void);
 void liberar_logger(t_log* logger);
 void liberar_config(t_config_game_boy*);
+void recibir_id_de_mensaje_enviado(int, int);

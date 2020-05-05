@@ -2,9 +2,10 @@
 
 int main(int argc,char* argv[]){
 
-
+	int id_mensaje = 0;
 	iniciar_programa(argc);
     int socket = seleccionar_proceso(argv);
+    recibir_id_de_mensaje_enviado(socket, id_mensaje);
 	terminar_programa(socket, logger, config_game_boy);
 }
 
@@ -38,6 +39,28 @@ int seleccionar_proceso(char *parametros[]){
 
   if (strcmp(proceso, "BROKER") == 0){
 	  conexion = crear_conexion(config_game_boy -> ip_broker,config_game_boy-> puerto_broker );
+	  switch (cod_op) {
+	  	  	  case GET_POKEMON:
+	  	  		mensaje = armar_mensaje_get_pokemon(parametros);
+	  	  		enviar_mensaje(GET_POKEMON, mensaje, conexion);
+	  	  		break;
+	  	  	  case CATCH_POKEMON:
+	  	  		mensaje = armar_mensaje_catch_pokemon(parametros);
+	  	  		enviar_mensaje(CATCH_POKEMON,mensaje, conexion);
+	  	  		break;
+	  	 	  case CAUGHT_POKEMON:
+	  	  		mensaje = armar_mensaje_caught_pokemon(parametros);
+	  	  		enviar_mensaje(CAUGHT_POKEMON, mensaje, conexion);
+	  	  		break;
+	  	  	  case APPEARED_POKEMON:
+	  	  		mensaje=armar_mensaje_appeared_pokemon(parametros);
+	  	  		enviar_mensaje(APPEARED_POKEMON, mensaje , conexion);
+	  	  		break;
+	  	  	  case NEW_POKEMON:
+	  	  		mensaje=armar_mensaje_new_pokemon(parametros);
+	  	  		enviar_mensaje(NEW_POKEMON, mensaje, conexion);
+	  	  		break;
+	  	  }
   }
   if (strcmp(proceso, "GAMECARD") == 0){
 	  conexion = crear_conexion(config_game_boy -> ip_gameCard,config_game_boy-> puerto_gameCard );
@@ -65,31 +88,10 @@ int seleccionar_proceso(char *parametros[]){
     	   tiene instrucciones espcailes
       }*/
 
-switch (cod_op) {
-	  	  case GET_POKEMON:
-	  		mensaje = armar_mensaje_get_pokemon(parametros);
-	  		enviar_mensaje(GET_POKEMON, mensaje, conexion);
-	  		break;
-	  	  case CATCH_POKEMON:
-	  		mensaje = armar_mensaje_catch_pokemon(parametros);
-	  		enviar_mensaje(CATCH_POKEMON,mensaje, conexion);
-	  		break;
-	 	  case CAUGHT_POKEMON:
-	  		mensaje = armar_mensaje_caught_pokemon(parametros);
-	  		enviar_mensaje(CAUGHT_POKEMON, mensaje, conexion);
-	  		break;
-	  	  case APPEARED_POKEMON:
-	  		mensaje=armar_mensaje_appeared_pokemon(parametros);
-	  		enviar_mensaje(APPEARED_POKEMON, mensaje , conexion);
-	  		break;
-	  	  case NEW_POKEMON:
-	  		mensaje=armar_mensaje_new_pokemon(parametros);
-	  		enviar_mensaje(NEW_POKEMON, mensaje, conexion);
-	  		break;
-	  }
+
 if(strcmp(mensaje, "") == 0){
 	log_info(logger, "Codigo de operacion invalido");
-	return exit -3;
+	return exit(-3);
 }
 
 
@@ -99,7 +101,7 @@ free (mensaje);
 	  return conexion;
    }
 
-     log_info(logger,"Se puedo realizar la conexion");
+     log_info(logger,"Se pudo realizar la conexion");
      return conexion;
 }
 
@@ -127,8 +129,8 @@ op_code obtener_enum_de_string (char *s ) {
 
 void* armar_mensaje_get_pokemon(char *parametros[]){
 	t_get_pokemon* a_enviar = malloc(sizeof(t_get_pokemon));
-	a_enviar->pokemon = parametros [3];
-	a_enviar->id_mensaje = 1;
+	a_enviar -> pokemon = parametros [3];
+	a_enviar -> id_mensaje = 1;
 	return a_enviar;
 }
 
@@ -171,7 +173,7 @@ void leer_config() {
 
     config_game_boy = malloc(sizeof(t_config_game_boy));
 
-	t_config* config = config_create("Debug/game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
+	t_config* config = config_create("game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
 
 	if(config == NULL){
     	printf("no se pudo encontrar el path del config");
@@ -205,3 +207,11 @@ void terminar_programa(int conexion,t_log* logger, t_config_game_boy* config) {
 }
 
 void process_request(int cod_op, int cliente_fd ){}
+
+void recibir_id_de_mensaje_enviado(int socket_cliente, int id_mensaje_enviado){
+	int id;
+	log_info(logger, "Recibiendo ID de mensaje enviado.");
+	recv(socket_cliente, id, sizeof(int), MSG_WAITALL);
+	id_mensaje_enviado = id;
+	log_info(logger, "El ID de mensaje enviado es: %d", id_mensaje_enviado);
+}

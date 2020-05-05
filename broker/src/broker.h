@@ -51,6 +51,6 @@ void liberar_config(t_config_broker*);
 void crear_colas_de_mensajes(void);
 void crear_listas_de_suscriptores(void);
 void liberar_listas(void);
-void recibir_suscripcion(int, char*);
 void encolar_mensaje(t_paquete*, op_code);
-void registrar_suscripcion(t_paquete*, op_code);
+void recibir_suscripcion(int, op_code);
+void enviar_mensajes_get(void);
