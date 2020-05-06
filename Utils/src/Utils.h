@@ -19,7 +19,7 @@ typedef enum {
 	CAUGHT_POKEMON = 4,
 	APPEARED_POKEMON = 5,
 	NEW_POKEMON = 6,
-	SUBSCRIPTION = 7,//Suscripcion a cola
+	SUSCRIPTION = 7,//Suscripcion a cola
 	ACK = 8			// gamecard
 }op_code;
 
@@ -77,10 +77,10 @@ typedef struct {
 	t_buffer* buffer;
 } t_paquete;
 
-typedef struct{
-	char* ip;
-	char* puerto;
-} t_subscripcion;
+/*typedef struct {
+	int socket;
+	char* cola_a_suscribir;
+} t_suscripcion;*/
 
 pthread_t thread;
 t_log* logger;

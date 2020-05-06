@@ -17,24 +17,30 @@ typedef struct {
 	char* log_file;
 } t_config_game_boy;
 
+typedef struct {
+	int socket;
+	char* cola_a_suscribir;
+} t_suscripcion;
+
 t_log* logger;
 t_config_game_boy* config_game_boy;
 void* mensaje;
 
-void iniciar_programa(int cantidad_parametros);
-void iniciar_logger(char* file, char* program_name);
+void iniciar_programa(int);
+void iniciar_logger(char*, char*);
 void leer_config(void);
 int seleccionar_proceso(char *parametros[]);
-op_code obtener_enum_de_string (char *s);
-void* armar_mensaje_get_pokemon(char *parametros[]);
-void* armar_mensaje_catch_pokemon(char *parametros[]);
-void* armar_mensaje_localized_pokemon(char *parametros[]);
-void* armar_mensaje_caught_pokemon(char *parametros[]);
-void* armar_mensaje_appeared_pokemon(char *parametros[]);
-void* armar_mensaje_new_pokemon(char *parametros[]);
+op_code obtener_enum_de_string (char *);
+void armar_mensaje_get_pokemon(char *parametros[], t_get_pokemon*);
+void armar_mensaje_catch_pokemon(char *parametros[], t_catch_pokemon*);
+void armar_mensaje_localized_pokemon(char *parametros[], t_localized_pokemon*);
+void armar_mensaje_caught_pokemon(char *parametros[], t_caught_pokemon*);
+void armar_mensaje_appeared_pokemon(char *parametros[], t_appeared_pokemon*);
+void armar_mensaje_new_pokemon(char *parametros[], t_new_pokemon*);
+void armar_mensaje_suscripcion(char *parametros[], t_suscripcion*, int);
 void terminar_programa(int, t_log*, t_config_game_boy*);
 void liberar_conexion(int);
 void mostrar_menu(void);
-void liberar_logger(t_log* logger);
+void liberar_logger(t_log*);
 void liberar_config(t_config_game_boy*);
 void recibir_id_de_mensaje_enviado(int, int);

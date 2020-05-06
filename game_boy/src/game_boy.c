@@ -24,12 +24,12 @@ void iniciar_programa(int argc){
 int seleccionar_proceso(char *parametros[]){
 
   int conexion;
-  char* proceso =  strdup(parametros[1]);
+  char* proceso = parametros[1];
   if(strcmp(proceso, "") == 0){
 	  log_info(logger, "No ha ingresado un proceso correcto");
 	  exit (-4);
   }
- op_code cod_op = obtener_enum_de_string(strdup(parametros[2]));
+ op_code cod_op = obtener_enum_de_string(parametros[2]);
 
   if(strcmp(parametros[2], "") == 0){
 	  log_info(logger, "No ha ingresado un codigo de operacion");
@@ -40,30 +40,30 @@ int seleccionar_proceso(char *parametros[]){
 	  conexion = crear_conexion(config_game_boy -> ip_broker,config_game_boy-> puerto_broker );
 	  switch (cod_op) {
 	  	  	  case GET_POKEMON:
-	  	  		mensaje = armar_mensaje_get_pokemon(parametros);
-	  	  		enviar_mensaje(GET_POKEMON, mensaje, conexion);
-	  	        free(mensaje);
-	  	  		break;
+	  	  		mensaje = malloc(sizeof(t_get_pokemon));
+	  	  		armar_mensaje_get_pokemon(parametros, mensaje);
+	  	  		enviar_mensaje(1, mensaje, conexion);
+	  	        break;
 	  	  	  case CATCH_POKEMON:
-	  	  		mensaje = armar_mensaje_catch_pokemon(parametros);
-	  	  		enviar_mensaje(CATCH_POKEMON,mensaje, conexion);
-                free(mensaje);
+	  	  		mensaje = malloc(sizeof(t_catch_pokemon));
+	  	  		armar_mensaje_catch_pokemon(parametros, mensaje);
+	  	  		enviar_mensaje(2,mensaje, conexion);
 	  	  		break;
 	  	 	  case CAUGHT_POKEMON:
-	  	  		mensaje = armar_mensaje_caught_pokemon(parametros);
-	  	  		enviar_mensaje(CAUGHT_POKEMON, mensaje, conexion);
-	  	  	    free(mensaje);
+	  	  		mensaje = malloc(sizeof(t_caught_pokemon));
+	  	  		armar_mensaje_caught_pokemon(parametros, mensaje);
+	  	  		enviar_mensaje(4, mensaje, conexion);
 	  	  		break;
 	  	  	  case APPEARED_POKEMON:
-	  	  		mensaje=armar_mensaje_appeared_pokemon(parametros);
-	  	  		enviar_mensaje(APPEARED_POKEMON, mensaje , conexion);
-	  	  	    free(mensaje);
+	  	  		mensaje = malloc(sizeof(t_appeared_pokemon));
+	  	  		armar_mensaje_appeared_pokemon(parametros, mensaje);
+	  	  		enviar_mensaje(5, mensaje , conexion);
 	  	  		break;
 	  	  	  case NEW_POKEMON:
-	  	  		mensaje=armar_mensaje_new_pokemon(parametros);
-	  	  		enviar_mensaje(NEW_POKEMON, mensaje, conexion);
-	  	  	    free(mensaje);
-	  	  		break;
+	  	  		mensaje = malloc(sizeof(t_new_pokemon));
+	  	  		armar_mensaje_new_pokemon(parametros, mensaje);
+	  	  		enviar_mensaje(6, mensaje, conexion);
+	  	  	    break;
 	  	 	  default:
 	  		  	log_info(logger, "Ingrese un codigo de operacion valido");
 	  		  	exit (-6);
@@ -74,34 +74,40 @@ int seleccionar_proceso(char *parametros[]){
 	  conexion = crear_conexion(config_game_boy -> ip_gameCard,config_game_boy-> puerto_gameCard );
 	  switch (cod_op) {
 	  	  	  case GET_POKEMON:
-	  	  		mensaje = armar_mensaje_get_pokemon(parametros);
-	  	  		enviar_mensaje(GET_POKEMON, mensaje, conexion);
-	  	  	    free(mensaje);
-	  	  		break;
+	  	  		mensaje = malloc(sizeof(t_get_pokemon));
+				armar_mensaje_get_pokemon(parametros, mensaje);
+				enviar_mensaje(1, mensaje, conexion);
+				break;
 	  	  	  case CATCH_POKEMON:
-	  	  		mensaje = armar_mensaje_catch_pokemon(parametros);
-	  	  		enviar_mensaje(CATCH_POKEMON,mensaje, conexion);
-	  	  	    free(mensaje);
+				mensaje = malloc(sizeof(t_catch_pokemon));
+				armar_mensaje_catch_pokemon(parametros, mensaje);
+				enviar_mensaje(2, mensaje, conexion);
+				break;
+	  	  	  case NEW_POKEMON:
+	  	  		mensaje = malloc(sizeof(t_new_pokemon));
+	  	  		armar_mensaje_new_pokemon(parametros, mensaje);
+	  	  		enviar_mensaje(5, mensaje, conexion);
 	  	  		break;
-	  	  	 case NEW_POKEMON:
-	  	  		mensaje=armar_mensaje_new_pokemon(parametros);
-	  	  		enviar_mensaje(NEW_POKEMON, mensaje, conexion);
-	  	  		free(mensaje);
+	  	  	  default:
+	  	  		log_info(logger, "Ingrese un codigo de operacion valido");
+	  	  		exit (-6);
 	  	  		break;
-	  	  	 default:
-	  	  		 log_info(logger, "Ingrese un codigo de operacion valido");
-	  	  		 exit (-6);
-	  	  		 break;
 	  }
   }
+
   if (strcmp(proceso, "TEAM") == 0){
 	  conexion = crear_conexion(config_game_boy -> ip_team,config_game_boy-> puerto_team );
-	  mensaje=armar_mensaje_appeared_pokemon(parametros);
-	  enviar_mensaje(APPEARED_POKEMON, mensaje , conexion);
+	  mensaje = malloc(sizeof(t_appeared_pokemon));
+	  armar_mensaje_appeared_pokemon(parametros, mensaje);
+	  enviar_mensaje(4, mensaje , conexion);
   }
-  /*if (strcmp(proceso, "SUBSCRIPTOR") == 0){
-    	   tiene instrucciones espcailes
-      }*/
+
+  if (strcmp(proceso, "SUSCRIPTOR") == 0){
+	   conexion = crear_conexion(config_game_boy -> ip_team,config_game_boy-> puerto_team );
+	   mensaje = malloc(sizeof(t_suscripcion));
+	   armar_mensaje_suscripcion(parametros, mensaje, conexion);
+	   enviar_mensaje(7, mensaje, conexion);
+   }
 
 
    if (conexion < 0){
@@ -113,10 +119,10 @@ int seleccionar_proceso(char *parametros[]){
      return conexion;
 }
 
-op_code obtener_enum_de_string (char *s ) {
+op_code obtener_enum_de_string (char* string ) {
     static struct {
-        char *s;
-        int e;
+        char* string;
+        int numero_enum;
     } map[] = {
         {"GET_POKEMON", GET_POKEMON },//1
         {"CATCH_POKEMON", CATCH_POKEMON },//2
@@ -124,58 +130,54 @@ op_code obtener_enum_de_string (char *s ) {
 		{"CAUGHT_POKEMON", CAUGHT_POKEMON},//4
 		{"APPEARED_POKEMON", APPEARED_POKEMON},//5
 		{"NEW_POKEMON",NEW_POKEMON},//6
-		{"SUBSCRIPTION",SUBSCRIPTION}//7
+		//{"SUSCRIPTION",SUSCRIPTION}//7
 
     };
     int i;
     for ( i = 0 ; i < sizeof(map)/sizeof(map[0]); i++ ) {
-        if ( strcmp(s,map[i].s) == 0 ) {
-            return map[i].e;
+        if ( strcmp(string,map[i].string) == 0 ) {
+            return map[i].numero_enum;
         }
     }
     return 0;
 }
 
-void* armar_mensaje_get_pokemon(char *parametros[]){
-	t_get_pokemon* a_enviar = malloc(sizeof(t_get_pokemon));
-	a_enviar -> pokemon = parametros [3];
-	a_enviar -> id_mensaje = 1;
-	return a_enviar;
+void armar_mensaje_suscripcion(char* parametros[], t_suscripcion* a_enviar, int conexion_cliente){
+	a_enviar -> socket = conexion_cliente;
+	a_enviar -> cola_a_suscribir = parametros[2];
+	//hay que pensar como agregar el tiempo de suscripcion para el caso de game_boy
 }
 
-void* armar_mensaje_catch_pokemon(char *parametros[]){
-	t_catch_pokemon* a_enviar = malloc(sizeof(t_catch_pokemon));
+void armar_mensaje_get_pokemon(char *parametros[], t_get_pokemon* a_enviar){
+	a_enviar -> pokemon = parametros [3];
+	a_enviar -> id_mensaje = 1;
+}
+
+void armar_mensaje_catch_pokemon(char *parametros[], t_catch_pokemon* a_enviar){
 	a_enviar->pokemon = parametros[3];
 	a_enviar->posicion[0] = (int)parametros[4];
 	a_enviar->posicion[1] = (int)parametros[5];
 	a_enviar -> id_mensaje = 1; ///A LABURAR A FUTURO
-	return a_enviar;
 }
 
-void* armar_mensaje_caught_pokemon(char *parametros[]){
-	t_caught_pokemon* a_enviar = malloc(sizeof(t_caught_pokemon));
-	a_enviar->id_mensaje = atoi(parametros[3]);
-	a_enviar->resultado = atoi(parametros[4]);
-	return a_enviar;
+void armar_mensaje_caught_pokemon(char *parametros[], t_caught_pokemon* a_enviar){
+	a_enviar->id_mensaje = (int)parametros[3];
+	a_enviar->resultado = (int)parametros[4];
 }
 
-void* armar_mensaje_appeared_pokemon(char *parametros[]){
-	t_appeared_pokemon* a_enviar = malloc(sizeof(t_appeared_pokemon));
+void armar_mensaje_appeared_pokemon(char *parametros[], t_appeared_pokemon* a_enviar){
 	a_enviar->pokemon = parametros[3];
-	a_enviar->posicion[0] = atoi(parametros[4]);
-	a_enviar->posicion[1] = atoi(parametros[5]);
-	a_enviar->id_mensaje = atoi(parametros[6]);
-	return a_enviar;
+	a_enviar->posicion[0] = (int)parametros[4];
+	a_enviar->posicion[1] = (int)parametros[5];
+	a_enviar->id_mensaje = (int)parametros[6];
 }
 
-void* armar_mensaje_new_pokemon(char *parametros[]){
-	t_new_pokemon* a_enviar = malloc(sizeof(t_new_pokemon));
+void armar_mensaje_new_pokemon(char *parametros[], t_new_pokemon* a_enviar){
 	a_enviar->pokemon = parametros [3];
 	a_enviar->posicion[0] = atoi(parametros[4]);
 	a_enviar-> posicion[1] = atoi(parametros[5]);
 	a_enviar -> cantidad = atoi(parametros[6]);
 	a_enviar->id_mensaje = 1;/// A futuro
-	return a_enviar;
 }
 
 void leer_config() {
@@ -220,7 +222,7 @@ void process_request(int cod_op, int cliente_fd ){}
 void recibir_id_de_mensaje_enviado(int socket_cliente, int id_mensaje_enviado){
 	int id = 0;
 	log_info(logger, "Recibiendo ID de mensaje enviado.");
-	recv(socket_cliente,&id, sizeof(int), MSG_WAITALL);
+	recv(socket_cliente, &id, sizeof(int), MSG_WAITALL);
 	id_mensaje_enviado = id;
 	log_info(logger, "El ID de mensaje enviado es: %d", id_mensaje_enviado);
 }

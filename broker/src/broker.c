@@ -102,7 +102,8 @@ void liberar_listas(){
 }
 
 void recibir_suscripcion(void* mensaje, op_code codigo_operacion){
-
+//En lugar de utilizar el op_code, plantearlo recibiendo un char*.
+//Tomar ejemplo de lo que manda el game_boy.
 	int socket_cliente = (int)mensaje;
 	log_info(logger, "Se recibe una suscripción.");
 	switch (codigo_operacion) {
@@ -177,12 +178,12 @@ void process_request(int cod_op, int cliente_fd) {
 			agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
-		case SUBSCRIPTION:
-			msg = malloc(sizeof(t_new_pokemon));
+		/*case SUSCRIPTION:
+			msg = malloc(sizeof(t_suscripcion));
 			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(SUBSCRIPTION, size, msg, cliente_fd);
+			agregar_mensaje(SUSCRIPTION, size, msg, cliente_fd);
 			free(msg);
-			break;
+			break;*/
 
 		case 0:
 			log_info(logger,"No se encontro el tipo de mensaje");
@@ -244,31 +245,36 @@ void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
 	switch (codigo_operacion) {
 			case GET_POKEMON:
 				list_add(colas_de_mensajes -> cola_get, paquete);
+				log_info(logger, "Mensaje agregado a cola de mensajes get.");
 				break;
 			case CATCH_POKEMON:
 				list_add(colas_de_mensajes -> cola_catch, paquete);
+				log_info(logger, "Mensaje agregado a cola de mensajes catch.");
 				break;
 			case LOCALIZED_POKEMON:
 				list_add(colas_de_mensajes -> cola_localized, paquete);
+				log_info(logger, "Mensaje agregado a cola de mensajes localized.");
 				break;
 			case CAUGHT_POKEMON:
 				list_add(colas_de_mensajes -> cola_caught, paquete);
+				log_info(logger, "Mensaje agregado a cola de mensajes caught.");
 				break;
 			case APPEARED_POKEMON:
 				list_add(colas_de_mensajes -> cola_appeared, paquete);
+				log_info(logger, "Mensaje agregado a cola de mensajes appeared.");
 				break;
 			case NEW_POKEMON:
 				list_add(colas_de_mensajes -> cola_new, paquete);
+				log_info(logger, "Mensaje agregado a cola de mensajes new.");
 				break;
-			case SUBSCRIPTION:
+			/*case SUSCRIPTION:
 				recibir_suscripcion(paquete -> buffer -> stream, codigo_operacion);
-				break;
+				break;*/
 				//El stream de una suscripción debería tener el socket del cliente.
 			default:
 				log_info(logger, "El codigo de operacion es invalido");
 				exit (-6);
 	}
-	log_info(logger, "Mensaje agregado a cola de mensajes correspondiente");
 }
 
 void enviar_mensajes_get(){

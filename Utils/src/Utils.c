@@ -61,8 +61,8 @@ void enviar_mensaje(int cod_op, void* mensaje, int socket_cliente) {
 	t_buffer* buffer = malloc(sizeof(t_buffer));
 
 	buffer -> size = sizeof(mensaje);
-	buffer -> stream = malloc(buffer -> size);
-	buffer -> stream=mensaje;
+	//buffer -> stream = malloc();
+	buffer -> stream = mensaje;
 	log_info(logger,"Armando paquete");
 
 	t_paquete* paquete = malloc(sizeof(t_paquete));
@@ -74,7 +74,7 @@ void enviar_mensaje(int cod_op, void* mensaje, int socket_cliente) {
 	log_info(logger,"Paquete serializado con tamaño :%d",size_serializado);
 	send(socket_cliente, stream, size_serializado, 0);
 	log_info(logger,"Paquete enviado");
-	free(buffer -> stream);
+	//free(buffer -> stream);
 	free(buffer);
 	free(paquete);
 	free(stream);

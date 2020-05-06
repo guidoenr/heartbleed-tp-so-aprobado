@@ -37,6 +37,11 @@ typedef struct {
 	t_list* lista_suscriptores_appeared;
 } t_listas_suscriptores;
 
+typedef struct {
+	int socket;
+	char* cola_a_suscribir;
+} t_suscripcion;
+
 t_config_broker* config;
 t_config_broker* config_broker;
 t_log* logger;
