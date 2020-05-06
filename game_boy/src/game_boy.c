@@ -38,6 +38,12 @@ int seleccionar_proceso(char *parametros[]){
 
   if (strcmp(proceso, "BROKER") == 0){
 	  conexion = crear_conexion(config_game_boy -> ip_broker,config_game_boy-> puerto_broker );
+
+	  if(config_game_boy == NULL){
+	      	printf("No se pudo leer el archivo config.");
+	      	exit(-9);
+	  }
+
 	  switch (cod_op) {
 	  	  	  case GET_POKEMON:
 	  	  		mensaje = malloc(sizeof(t_get_pokemon));
@@ -103,9 +109,9 @@ int seleccionar_proceso(char *parametros[]){
   }
 
   if (strcmp(proceso, "SUSCRIPTOR") == 0){
-	   conexion = crear_conexion(config_game_boy -> ip_team,config_game_boy-> puerto_team );
+	   conexion = crear_conexion(config_game_boy -> ip_broker, config_game_boy -> puerto_broker);
 	   mensaje = malloc(sizeof(t_suscripcion));
-	   armar_mensaje_suscripcion(parametros, mensaje, conexion);
+	   armar_mensaje_suscripcion(parametros, mensaje);
 	   enviar_mensaje(7, mensaje, conexion);
    }
 
@@ -130,7 +136,7 @@ op_code obtener_enum_de_string (char* string ) {
 		{"CAUGHT_POKEMON", CAUGHT_POKEMON},//4
 		{"APPEARED_POKEMON", APPEARED_POKEMON},//5
 		{"NEW_POKEMON",NEW_POKEMON},//6
-		//{"SUSCRIPTION",SUSCRIPTION}//7
+		{"SUSCRIPTION",SUSCRIPTION}//7
 
     };
     int i;
@@ -142,8 +148,8 @@ op_code obtener_enum_de_string (char* string ) {
     return 0;
 }
 
-void armar_mensaje_suscripcion(char* parametros[], t_suscripcion* a_enviar, int conexion_cliente){
-	a_enviar -> socket = conexion_cliente;
+void armar_mensaje_suscripcion(char* parametros[], t_suscripcion* a_enviar){
+	a_enviar -> socket = 10000;//Esto esta setteado, hay que adaptarlo.
 	a_enviar -> cola_a_suscribir = parametros[2];
 	//hay que pensar como agregar el tiempo de suscripcion para el caso de game_boy
 }
@@ -188,7 +194,7 @@ void leer_config() {
 
 	if(config == NULL){
     	printf("no se pudo encontrar el path del config");
-    	return exit(-2);
+    	exit(-2);
     }
 	config_game_boy -> ip_broker = strdup(config_get_string_value(config,"IP_BROKER"));
 	config_game_boy-> puerto_broker = strdup(config_get_string_value(config,"PUERTO_BROKER"));
@@ -221,7 +227,6 @@ void process_request(int cod_op, int cliente_fd ){}
 
 void recibir_id_de_mensaje_enviado(int socket_cliente, int id_mensaje_enviado){
 	int id = 0;
-	log_info(logger, "Recibiendo ID de mensaje enviado.");
 	recv(socket_cliente, &id, sizeof(int), MSG_WAITALL);
 	id_mensaje_enviado = id;
 	log_info(logger, "El ID de mensaje enviado es: %d", id_mensaje_enviado);

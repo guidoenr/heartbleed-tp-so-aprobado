@@ -37,7 +37,7 @@ void armar_mensaje_localized_pokemon(char *parametros[], t_localized_pokemon*);
 void armar_mensaje_caught_pokemon(char *parametros[], t_caught_pokemon*);
 void armar_mensaje_appeared_pokemon(char *parametros[], t_appeared_pokemon*);
 void armar_mensaje_new_pokemon(char *parametros[], t_new_pokemon*);
-void armar_mensaje_suscripcion(char *parametros[], t_suscripcion*, int);
+void armar_mensaje_suscripcion(char *parametros[], t_suscripcion*);
 void terminar_programa(int, t_log*, t_config_game_boy*);
 void liberar_conexion(int);
 void mostrar_menu(void);

@@ -1,6 +1,5 @@
 #include "broker.h"
 
-
 int main(void) {
 
 
@@ -101,36 +100,6 @@ void liberar_listas(){
 	list_destroy(listas_de_suscriptos -> lista_suscriptores_caught);
 }
 
-void recibir_suscripcion(void* mensaje, op_code codigo_operacion){
-//En lugar de utilizar el op_code, plantearlo recibiendo un char*.
-//Tomar ejemplo de lo que manda el game_boy.
-	int socket_cliente = (int)mensaje;
-	log_info(logger, "Se recibe una suscripción.");
-	switch (codigo_operacion) {
-			case GET_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_get, &socket_cliente);
-				break;
-			case CATCH_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_catch, &socket_cliente);
-				break;
-			case LOCALIZED_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_localized, &socket_cliente);
-				break;
-			case CAUGHT_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_caught, &socket_cliente);
-				break;
-			case APPEARED_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_appeared, &socket_cliente);
-				break;
-			case NEW_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_new, &socket_cliente);
-				break;
-			 default:
-				 log_info(logger, "Ingrese un codigo de operacion valido");
-			     break;
-		}
-		log_info(logger, "Suscripcion registrada");
-}
 
 //---------------------------------------------------------------------------------------------------------------------------
 
@@ -178,12 +147,12 @@ void process_request(int cod_op, int cliente_fd) {
 			agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
-		/*case SUSCRIPTION:
+		case SUSCRIPTION:
 			msg = malloc(sizeof(t_suscripcion));
 			msg = recibir_mensaje(cliente_fd, &size);
 			agregar_mensaje(SUSCRIPTION, size, msg, cliente_fd);
 			free(msg);
-			break;*/
+			break;
 
 		case 0:
 			log_info(logger,"No se encontro el tipo de mensaje");
@@ -237,7 +206,7 @@ void agregar_mensaje(int cod_op, int size, void* payload, int socket_cliente){
 	free(paquete -> buffer -> stream);
 	free(paquete -> buffer);
 	free(paquete);
-	log_info(logger, "Mensaje Agregado");
+
 }
 
 void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
@@ -267,15 +236,64 @@ void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
 				list_add(colas_de_mensajes -> cola_new, paquete);
 				log_info(logger, "Mensaje agregado a cola de mensajes new.");
 				break;
-			/*case SUSCRIPTION:
-				recibir_suscripcion(paquete -> buffer -> stream, codigo_operacion);
-				break;*/
+			case SUSCRIPTION:
+				recibir_suscripcion(paquete);
+				break;
 				//El stream de una suscripción debería tener el socket del cliente.
 			default:
 				log_info(logger, "El codigo de operacion es invalido");
 				exit (-6);
 	}
 }
+
+void recibir_suscripcion(t_paquete* paquete){
+
+	//RECIBE BIEN LA SUSCRIPCION PERO NO SABE A QUE COLA.
+
+	t_suscripcion* mensaje_suscripcion = malloc(sizeof(t_suscripcion));
+	mensaje_suscripcion = (paquete -> buffer -> stream);
+	char* cola_de_mensajes = mensaje_suscripcion -> cola_a_suscribir;
+	int socket_cliente = mensaje_suscripcion -> socket;
+
+	log_info(logger, "Se recibe una suscripción.");
+
+	 if(strcmp(cola_de_mensajes, "COLA_GET") == 0){
+		 list_add(listas_de_suscriptos -> lista_suscriptores_get, &socket_cliente);
+		 log_info(logger, "EL cliente fue suscripto a la cola de mensajes get.");
+	 }
+
+	 if(strcmp(cola_de_mensajes, "COLA_CATCH") == 0){
+	 		 list_add(listas_de_suscriptos -> lista_suscriptores_catch, &socket_cliente);
+	 		 log_info(logger, "EL cliente fue suscripto a la cola de mensajes catch.");
+	 }
+
+	 if(strcmp(cola_de_mensajes, "COLA_LOCALIZED") == 0){
+	 		 list_add(listas_de_suscriptos -> lista_suscriptores_localized, &socket_cliente);
+	 		 log_info(logger, "EL cliente fue suscripto a la cola de mensajes localized.");
+	 }
+
+	 if(strcmp(cola_de_mensajes, "COLA_CAUGHT") == 0){
+	 		 list_add(listas_de_suscriptos -> lista_suscriptores_caught, &socket_cliente);
+	 		 log_info(logger, "EL cliente fue suscripto a la cola de mensajes caught.");
+	 }
+
+	 if(strcmp(cola_de_mensajes, "COLA_APPEARED") == 0){
+	 		 list_add(listas_de_suscriptos -> lista_suscriptores_appeared, &socket_cliente);
+	 		 log_info(logger, "EL cliente fue suscripto a la cola de mensajes appeared.");
+	 }
+
+	 if(strcmp(cola_de_mensajes, "COLA_NEW") == 0){
+	 		 list_add(listas_de_suscriptos -> lista_suscriptores_new, &socket_cliente);
+	 		 log_info(logger, "EL cliente fue suscripto a la cola de mensajes nmew.");
+	 }
+
+	 else {
+		 log_info(logger, "Ingrese un codigo de operacion valido");
+	 }
+
+	 free(mensaje_suscripcion);
+}
+
 
 void enviar_mensajes_get(){
 	//t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));

@@ -61,7 +61,7 @@ void enviar_mensaje(int cod_op, void* mensaje, int socket_cliente) {
 	t_buffer* buffer = malloc(sizeof(t_buffer));
 
 	buffer -> size = sizeof(mensaje);
-	//buffer -> stream = malloc();
+	//buffer -> stream = malloc(buffer -> size);
 	buffer -> stream = mensaje;
 	log_info(logger,"Armando paquete");
 

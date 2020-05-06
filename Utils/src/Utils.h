@@ -82,6 +82,7 @@ typedef struct {
 	char* cola_a_suscribir;
 } t_suscripcion;*/
 
+//t_suscripcion* mensaje_suscripcion;
 pthread_t thread;
 t_log* logger;
 int id_mensaje_univoco;
