@@ -149,8 +149,35 @@ op_code obtener_enum_de_string (char* string ) {
 }
 
 void armar_mensaje_suscripcion(char* parametros[], t_suscripcion* a_enviar){
+
+	char* cola_a_suscribir = parametros[2];
+
+	if(strcmp(cola_a_suscribir,"COLA_GET") == 0){
+		a_enviar -> cola_a_suscribir = GET_POKEMON;
+	}
+
+	if(strcmp(cola_a_suscribir,"COLA_CATCH") == 0){
+		a_enviar -> cola_a_suscribir = CATCH_POKEMON;
+	}
+
+	if(strcmp(cola_a_suscribir,"COLA_LOCALIZED") == 0){
+		a_enviar -> cola_a_suscribir = LOCALIZED_POKEMON;
+	}
+
+	if(strcmp(cola_a_suscribir,"COLA_CAUGHT") == 0){
+		a_enviar -> cola_a_suscribir = CAUGHT_POKEMON;
+	}
+
+	if(strcmp(cola_a_suscribir,"COLA_APPEARED") == 0){
+		a_enviar -> cola_a_suscribir = APPEARED_POKEMON;
+	}
+
+	if(strcmp(cola_a_suscribir,"COLA_NEW") == 0){
+		a_enviar -> cola_a_suscribir = NEW_POKEMON;
+	}
+
 	a_enviar -> socket = 10000;//Esto esta setteado, hay que adaptarlo.
-	a_enviar -> cola_a_suscribir = parametros[2];
+
 	//hay que pensar como agregar el tiempo de suscripcion para el caso de game_boy
 }
 

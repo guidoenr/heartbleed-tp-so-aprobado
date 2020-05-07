@@ -19,7 +19,7 @@ typedef struct {
 
 typedef struct {
 	int socket;
-	char* cola_a_suscribir;
+	op_code cola_a_suscribir;
 } t_suscripcion;
 
 t_log* logger;
