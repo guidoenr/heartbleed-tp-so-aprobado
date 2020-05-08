@@ -23,6 +23,7 @@ int main(void) {
 	pikachu.pokemon = "pikachu";
 
 	verificarPokemon(pikachu);
+	verificarAperturaPokemon(pikachu);
 
 	terminar_programa(socket,config);
 }
@@ -230,9 +231,6 @@ int funcionHiloNewPokemon(void* buffer){
 	verificarPokemon(msg);
 	verificarAperturaPokemon(msg);
 
-//	if (!sePuedeAbrirElArchivo()){
-//		//finalizarHilo y reintentar operacion
-//	}
 //	if (existePokemonEnEsaPosicion()){
 //		agregarAPoisiconExistente();
 //	} else {
@@ -278,7 +276,14 @@ int existeDirectorio(char* path){
 }
 
 void verificarAperturaPokemon(t_new_pokemon msg){
+	char* path = concatenar ("montaje/Pokemon/",msg.pokemon);
+	char* path2 = concatenar (path,"/Metadata.bin"); //terrible negrada esto, pero anda o no anda?
+	log_info(logger,path2);
+	if (isOpen(path2)){
+		//finalizar hilo y reintentar operacion TODO
+	} else {
 
+	}
 }
 
 
