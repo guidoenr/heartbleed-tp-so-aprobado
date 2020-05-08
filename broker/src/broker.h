@@ -5,6 +5,7 @@
 #include<commons/config.h>
 #include<readline/readline.h>
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
+#include <semaphore.h>
 
 typedef struct {
     uint32_t size_memoria;
@@ -46,6 +47,7 @@ t_config_broker* config_broker;
 t_log* logger;
 t_listas_suscriptores* listas_de_suscriptos;
 t_colas_mensajes* colas_de_mensajes;
+sem_t* semaforo;
 
 void iniciar_programa(void);
 void iniciar_logger(char*, char*);
