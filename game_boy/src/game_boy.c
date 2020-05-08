@@ -2,15 +2,16 @@
 
 int main(int argc,char* argv[]){
 
-	int id_mensaje = 0;
+	uint32_t id_mensaje = 0;
 	iniciar_programa(argc);
-    int socket = seleccionar_proceso(argv);
+    uint32_t socket = seleccionar_proceso(argv);
     recibir_id_de_mensaje_enviado(socket, id_mensaje);
 	terminar_programa(socket, logger, config_game_boy);
 }
 
-void iniciar_programa(int argc){
-    leer_config();
+void iniciar_programa(uint32_t argc){
+
+	leer_config();
 	iniciar_logger(config_game_boy->log_file, "gameboy");
 
 	if(argc == 1){
@@ -21,22 +22,23 @@ void iniciar_programa(int argc){
 	log_info(logger, "El size del comando es: %i", argc);
 }
 ///char*  parametros[] = BROKER GET_POKEMON PIKACHU 2 5 // vector de puntertos de char === vector de strings
-int seleccionar_proceso(char *parametros[]){
+uint32_t seleccionar_proceso(char *parametros[]){
 
-  int conexion;
+  uint32_t conexion;
   char* proceso = parametros[1];
-  if(strcmp(proceso, "") == 0){
+
+  if(string_equals_ignore_case(proceso, "")){
 	  log_info(logger, "No ha ingresado un proceso correcto");
 	  exit (-4);
   }
  op_code cod_op = obtener_enum_de_string(parametros[2]);
 
-  if(strcmp(parametros[2], "") == 0){
+  if(string_equals_ignore_case(parametros[2], "")){
 	  log_info(logger, "No ha ingresado un codigo de operacion");
 	  exit (-4);
   }
 
-  if (strcmp(proceso, "BROKER") == 0){
+  if (string_equals_ignore_case(proceso, "BROKER")){
 	  conexion = crear_conexion(config_game_boy -> ip_broker,config_game_boy-> puerto_broker );
 
 	  if(config_game_boy == NULL){
@@ -76,7 +78,7 @@ int seleccionar_proceso(char *parametros[]){
 	  		  	break;
 	  	  }
   }
-  if (strcmp(proceso, "GAMECARD") == 0){
+  if (string_equals_ignore_case(proceso, "GAMECARD")){
 	  conexion = crear_conexion(config_game_boy -> ip_gameCard,config_game_boy-> puerto_gameCard );
 	  switch (cod_op) {
 	  	  	  case GET_POKEMON:
@@ -101,14 +103,14 @@ int seleccionar_proceso(char *parametros[]){
 	  }
   }
 
-  if (strcmp(proceso, "TEAM") == 0){
+  if (string_equals_ignore_case(proceso, "TEAM")){
 	  conexion = crear_conexion(config_game_boy -> ip_team,config_game_boy-> puerto_team );
 	  mensaje = malloc(sizeof(t_appeared_pokemon));
 	  armar_mensaje_appeared_pokemon(parametros, mensaje);
 	  enviar_mensaje(4, mensaje , conexion);
   }
 
-  if (strcmp(proceso, "SUSCRIPTOR") == 0){
+  if (string_equals_ignore_case(proceso, "SUSCRIPTOR")){
 	   conexion = crear_conexion(config_game_boy -> ip_broker, config_game_boy -> puerto_broker);
 	   mensaje = malloc(sizeof(t_suscripcion));
 	   armar_mensaje_suscripcion(parametros, mensaje);
@@ -128,7 +130,7 @@ int seleccionar_proceso(char *parametros[]){
 op_code obtener_enum_de_string (char* string ) {
     static struct {
         char* string;
-        int numero_enum;
+        uint32_t numero_enum;
     } map[] = {
         {"GET_POKEMON", GET_POKEMON },//1
         {"CATCH_POKEMON", CATCH_POKEMON },//2
@@ -136,12 +138,12 @@ op_code obtener_enum_de_string (char* string ) {
 		{"CAUGHT_POKEMON", CAUGHT_POKEMON},//4
 		{"APPEARED_POKEMON", APPEARED_POKEMON},//5
 		{"NEW_POKEMON",NEW_POKEMON},//6
-		{"SUSCRIPTION",SUSCRIPTION}//7
+		{"SUBSCRIPTION",SUBSCRIPTION}//7
 
     };
-    int i;
+    uint32_t i;
     for ( i = 0 ; i < sizeof(map)/sizeof(map[0]); i++ ) {
-        if ( strcmp(string,map[i].string) == 0 ) {
+        if ( string_equals_ignore_case(string,map[i].string) ) {
             return map[i].numero_enum;
         }
     }
@@ -152,27 +154,27 @@ void armar_mensaje_suscripcion(char* parametros[], t_suscripcion* a_enviar){
 
 	char* cola_a_suscribir = parametros[2];
 
-	if(strcmp(cola_a_suscribir,"COLA_GET") == 0){
+	if(string_equals_ignore_case(cola_a_suscribir,"COLA_GET")){
 		a_enviar -> cola_a_suscribir = GET_POKEMON;
 	}
 
-	if(strcmp(cola_a_suscribir,"COLA_CATCH") == 0){
+	if(string_equals_ignore_case(cola_a_suscribir,"COLA_CATCH")){
 		a_enviar -> cola_a_suscribir = CATCH_POKEMON;
 	}
 
-	if(strcmp(cola_a_suscribir,"COLA_LOCALIZED") == 0){
+	if(string_equals_ignore_case(cola_a_suscribir,"COLA_LOCALIZED")){
 		a_enviar -> cola_a_suscribir = LOCALIZED_POKEMON;
 	}
 
-	if(strcmp(cola_a_suscribir,"COLA_CAUGHT") == 0){
+	if(string_equals_ignore_case(cola_a_suscribir,"COLA_CAUGHT")){
 		a_enviar -> cola_a_suscribir = CAUGHT_POKEMON;
 	}
 
-	if(strcmp(cola_a_suscribir,"COLA_APPEARED") == 0){
+	if(string_equals_ignore_case(cola_a_suscribir,"COLA_APPEARED")){
 		a_enviar -> cola_a_suscribir = APPEARED_POKEMON;
 	}
 
-	if(strcmp(cola_a_suscribir,"COLA_NEW") == 0){
+	if(string_equals_ignore_case(cola_a_suscribir,"COLA_NEW")){
 		a_enviar -> cola_a_suscribir = NEW_POKEMON;
 	}
 
@@ -188,21 +190,21 @@ void armar_mensaje_get_pokemon(char *parametros[], t_get_pokemon* a_enviar){
 
 void armar_mensaje_catch_pokemon(char *parametros[], t_catch_pokemon* a_enviar){
 	a_enviar->pokemon = parametros[3];
-	a_enviar->posicion[0] = (int)parametros[4];
-	a_enviar->posicion[1] = (int)parametros[5];
+	a_enviar->posicion[0] = (uint32_t)parametros[4];
+	a_enviar->posicion[1] = (uint32_t)parametros[5];
 	a_enviar -> id_mensaje = 1; ///A LABURAR A FUTURO
 }
 
 void armar_mensaje_caught_pokemon(char *parametros[], t_caught_pokemon* a_enviar){
-	a_enviar->id_mensaje = (int)parametros[3];
-	a_enviar->resultado = (int)parametros[4];
+	a_enviar->id_mensaje = (uint32_t)parametros[3];
+	a_enviar->resultado = (uint32_t)parametros[4];
 }
 
 void armar_mensaje_appeared_pokemon(char *parametros[], t_appeared_pokemon* a_enviar){
 	a_enviar->pokemon = parametros[3];
-	a_enviar->posicion[0] = (int)parametros[4];
-	a_enviar->posicion[1] = (int)parametros[5];
-	a_enviar->id_mensaje = (int)parametros[6];
+	a_enviar->posicion[0] = (uint32_t)parametros[4];
+	a_enviar->posicion[1] = (uint32_t)parametros[5];
+	a_enviar->id_mensaje = (uint32_t)parametros[6];
 }
 
 void armar_mensaje_new_pokemon(char *parametros[], t_new_pokemon* a_enviar){
@@ -217,7 +219,7 @@ void leer_config() {
 
     config_game_boy = malloc(sizeof(t_config_game_boy));
 
-	t_config* config = config_create("game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
+	t_config* config = config_create("Debug/game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
 
 	if(config == NULL){
     	printf("no se pudo encontrar el path del config");
@@ -244,17 +246,17 @@ void liberar_config(t_config_game_boy* config) {
 	free(config);
 }
 
-void terminar_programa(int conexion,t_log* logger, t_config_game_boy* config) {
+void terminar_programa(uint32_t conexion,t_log* logger, t_config_game_boy* config) {
 	liberar_config(config);
 	liberar_logger(logger);
 	liberar_conexion(conexion);
 }
 
-void process_request(int cod_op, int cliente_fd ){}
+void process_request(uint32_t cod_op, uint32_t cliente_fd ){}
 
-void recibir_id_de_mensaje_enviado(int socket_cliente, int id_mensaje_enviado){
-	int id = 0;
-	recv(socket_cliente, &id, sizeof(int), MSG_WAITALL);
+void recibir_id_de_mensaje_enviado(uint32_t socket_cliente, uint32_t id_mensaje_enviado){
+	uint32_t id = 0;
+	recv(socket_cliente, &id, sizeof(uint32_t), MSG_WAITALL);
 	id_mensaje_enviado = id;
 	log_info(logger, "El ID de mensaje enviado es: %d", id_mensaje_enviado);
 }

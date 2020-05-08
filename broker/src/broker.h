@@ -4,18 +4,17 @@
 #include<commons/string.h>
 #include<commons/config.h>
 #include<readline/readline.h>
-#include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.h"
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 
 typedef struct {
-    int size_memoria;
-	int size_min_memoria;
+    uint32_t size_memoria;
+	uint32_t size_min_memoria;
 	char* algoritmo_memoria;
 	char* algoritmo_reemplazo;
 	char* algoritmo_particion_libre;
 	char* ip_broker;
 	char* puerto;
-	int frecuencia_compactacion;
+	uint32_t frecuencia_compactacion;
 	char* log_file;
 } t_config_broker;
 
@@ -37,10 +36,10 @@ typedef struct {
 	t_list* lista_suscriptores_appeared;
 } t_listas_suscriptores;
 
-typedef struct {
-	int socket;
+/*typedef struct {
+	uint32_t socket;
 	op_code cola_a_suscribir;
-} t_suscripcion;
+} t_suscripcion;*/
 
 t_config_broker* config;
 t_config_broker* config_broker;
@@ -59,4 +58,4 @@ void liberar_listas(void);
 void encolar_mensaje(t_paquete*, op_code);
 void recibir_suscripcion(t_paquete*, t_suscripcion*);
 void enviar_mensajes_get(void);
-void agregar_mensaje(int,int,void*,int);
+void agregar_mensaje(uint32_t,uint32_t,void*,uint32_t);

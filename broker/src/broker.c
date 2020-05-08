@@ -56,7 +56,7 @@ void leer_config() {
 		    	printf("No se pudo encontrar el path del config.");
 		    	return exit(-2);
 	}
-	config_broker -> size_memoria = config_get_int_value(config, "TAMANO_MEMORIA");
+	config_broker->size_memoria = config_get_int_value(config, "TAMANO_MEMORIA");
 	config_broker -> size_min_memoria = config_get_int_value(config, "TAMANO_MEMORIA");
 	config_broker -> algoritmo_memoria = strdup(config_get_string_value(config, "ALGORITMO_MEMORIA"));
 	config_broker -> algoritmo_reemplazo = strdup(config_get_string_value(config, "ALGORITMO_REEMPLAZO"));
@@ -104,8 +104,8 @@ void liberar_listas(){
 //---------------------------------------------------------------------------------------------------------------------------
 
 /*EL SERVICE DEL BROKER*/
-void process_request(int cod_op, int cliente_fd) {
-	int size;
+void process_request(uint32_t cod_op, uint32_t cliente_fd) {
+	uint32_t size;
 	void* msg;
 
 	log_info(logger,"Codigo de operacion %d",cod_op);
@@ -147,13 +147,12 @@ void process_request(int cod_op, int cliente_fd) {
 			agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
-		case SUSCRIPTION:
+		case SUBSCRIPTION:
 			msg = malloc(sizeof(t_suscripcion));
 			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(SUSCRIPTION, size, msg, cliente_fd);
+			agregar_mensaje(SUBSCRIPTION, size, msg, cliente_fd);
 			free(msg);
 			break;
-
 		case 0:
 			log_info(logger,"No se encontro el tipo de mensaje");
 			pthread_exit(NULL);
@@ -162,12 +161,12 @@ void process_request(int cod_op, int cliente_fd) {
 	}
 }
 
-void* recibir_mensaje(int socket_cliente, int* size) {
+void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size) {
 	//t_paquete* paquete = malloc(sizeof(t_paquete));
 	void* buffer;
 	log_info(logger, "Recibiendo mensaje.");
 
-	recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
+	recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
 	log_info(logger, "Tamano de paquete recibido: %d", *size);
 
 	buffer = malloc(*size);
@@ -177,7 +176,7 @@ void* recibir_mensaje(int socket_cliente, int* size) {
 	return buffer;
 }
 
-void agregar_mensaje(int cod_op, int size, void* payload, int socket_cliente){
+void agregar_mensaje(uint32_t cod_op, uint32_t size, void* payload, uint32_t socket_cliente){
 	log_info(logger, "Agregando mensaje");
 	log_info(logger, "Size: %d", size);
 	log_info(logger, "Socket_cliente: %d", socket_cliente);
@@ -193,14 +192,14 @@ void agregar_mensaje(int cod_op, int size, void* payload, int socket_cliente){
 	paquete -> buffer -> stream = malloc(paquete -> buffer -> size);
 	memcpy(paquete -> buffer -> stream, payload, paquete -> buffer -> size);
 
-	send(socket_cliente, &(paquete -> id_mensaje) , sizeof(int), 0);
+	send(socket_cliente, &(paquete -> id_mensaje) , sizeof(uint32_t), 0);
 
-	int bytes = paquete -> buffer -> size + 2 * sizeof(int);
+	uint32_t bytes = paquete -> buffer -> size + 2 * sizeof(uint32_t);
 	void* a_agregar = serializar_paquete(paquete, &bytes);
 
 	send(socket_cliente, a_agregar, bytes, 0); // a donde se envía este paquete?
 
-	if(cod_op == SUSCRIPTION) {
+	if(cod_op == SUBSCRIPTION) {
 		recibir_suscripcion(paquete, paquete -> buffer -> stream);
 	} else {
 		encolar_mensaje(paquete, paquete -> codigo_operacion);
@@ -256,7 +255,7 @@ void recibir_suscripcion(t_paquete* paquete, t_suscripcion* mensaje_suscripcion)
 
 	mensaje_suscripcion = malloc(sizeof(t_suscripcion));
 	op_code cola_de_mensajes = mensaje_suscripcion -> cola_a_suscribir;
-	int socket_cliente = mensaje_suscripcion -> socket;
+	uint32_t socket_cliente = mensaje_suscripcion -> socket;
 
 	log_info(logger, "Se recibe una suscripción.");
 
@@ -281,10 +280,10 @@ void recibir_suscripcion(t_paquete* paquete, t_suscripcion* mensaje_suscripcion)
 			list_add(listas_de_suscriptos -> lista_suscriptores_appeared, &socket_cliente);
 			log_info(logger, "EL cliente fue suscripto a la cola de mensajes appeared.");
 			break;
-	 	 case NEW_POKEMON:
+	 	 /*case NEW_POKEMON:
 			list_add(listas_de_suscriptos -> lista_suscriptores_new, &socket_cliente);
 			log_info(logger, "EL cliente fue suscripto a la cola de mensajes new.");
-			break;
+			break;*/
 	 	 default:
 	 		log_info(logger, "Ingrese un codigo de operacion valido");
 	 		break;

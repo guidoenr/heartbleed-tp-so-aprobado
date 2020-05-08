@@ -15,10 +15,10 @@ void iniciar_logger(char* file, char* program_name) {
 	}
 }
 
-void* serializar_paquete(t_paquete* paquete, int* bytes) {
-	int malloc_size = paquete -> buffer -> size + sizeof(op_code) + sizeof(int);
+void* serializar_paquete(t_paquete* paquete, uint32_t* bytes) {
+	uint32_t malloc_size = paquete -> buffer -> size + sizeof(op_code) + sizeof(uint32_t);
 	void* stream = malloc(malloc_size);
-	int offset = 0;
+	uint32_t offset = 0;
 
 	memcpy(stream+offset, &(paquete -> codigo_operacion), sizeof(paquete -> codigo_operacion));
 	offset += sizeof(paquete -> codigo_operacion);
@@ -36,18 +36,18 @@ void* serializar_paquete(t_paquete* paquete, int* bytes) {
 	return stream;
 }
 
-int crear_conexion(char *ip, char* puerto) {
-	struct addrinfo hints;
+uint32_t crear_conexion(char *ip, char* puerto) {
+	struct addrinfo huint32_ts;
 	struct addrinfo *server_info;
 
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE;
+	memset(&huint32_ts, 0, sizeof(huint32_ts));
+	huint32_ts.ai_family = AF_UNSPEC;
+	huint32_ts.ai_socktype = SOCK_STREAM;
+	huint32_ts.ai_flags = AI_PASSIVE;
 
-	getaddrinfo(ip, puerto, &hints, &server_info);
+	getaddrinfo(ip, puerto, &huint32_ts, &server_info);
 
-	int socket_cliente = socket(server_info -> ai_family, server_info -> ai_socktype, server_info -> ai_protocol);
+	uint32_t socket_cliente = socket(server_info -> ai_family, server_info -> ai_socktype, server_info -> ai_protocol);
 
 	if(connect(socket_cliente, server_info -> ai_addr, server_info -> ai_addrlen) == -1)
 		printf("error");
@@ -57,7 +57,7 @@ int crear_conexion(char *ip, char* puerto) {
 	return socket_cliente;
 }
 
-void enviar_mensaje(int cod_op, void* mensaje, int socket_cliente) {
+void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente) {
 	t_buffer* buffer = malloc(sizeof(t_buffer));
 
 	buffer -> size = sizeof(mensaje);
@@ -69,7 +69,7 @@ void enviar_mensaje(int cod_op, void* mensaje, int socket_cliente) {
 	paquete -> codigo_operacion = cod_op;
 	paquete -> buffer = buffer;
 
-	int size_serializado;
+	uint32_t size_serializado;
 	void* stream = serializar_paquete(paquete, &size_serializado);
 	log_info(logger,"Paquete serializado con tamaño :%d",size_serializado);
 	send(socket_cliente, stream, size_serializado, 0);
@@ -80,9 +80,9 @@ void enviar_mensaje(int cod_op, void* mensaje, int socket_cliente) {
 	free(stream);
 }
 
-/*void* recibir_mensaje(int socket_cliente, int* size) {
+/*void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size) {
 	log_info(logger, "Recibiendo mensaje.");
-	recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
+	recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
 	log_info(logger, "Tamano de paquete recibido: %d", *size);
 	void* buffer = malloc(*size);
 	recv(socket_cliente, buffer, *size, MSG_WAITALL);
@@ -91,16 +91,16 @@ void enviar_mensaje(int cod_op, void* mensaje, int socket_cliente) {
 }*/
 
 void iniciar_servidor(char *IP, char *PUERTO) {
-	int socket_servidor;
+	uint32_t socket_servidor;
 
-    struct addrinfo hints, *servinfo, *p;
+    struct addrinfo huint32_ts, *servinfo, *p;
 
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
+    memset(&huint32_ts, 0, sizeof(huint32_ts));
+    huint32_ts.ai_family = AF_UNSPEC;
+    huint32_ts.ai_socktype = SOCK_STREAM;
+    huint32_ts.ai_flags = AI_PASSIVE;
 
-    getaddrinfo(IP, PUERTO, &hints, &servinfo);
+    getaddrinfo(IP, PUERTO, &huint32_ts, &servinfo);
 
     for (p = servinfo; p != NULL; p = p -> ai_next) {
         if ((socket_servidor = socket(p -> ai_family, p -> ai_socktype, p -> ai_protocol)) == -1)
@@ -122,21 +122,21 @@ void iniciar_servidor(char *IP, char *PUERTO) {
     	esperar_cliente(socket_servidor);
 }
 
-void esperar_cliente(int socket_servidor) {
+void esperar_cliente(uint32_t socket_servidor) {
 
 	struct sockaddr_in dir_cliente;
 
-	int tam_direccion = sizeof(struct sockaddr_in);
-	int socket_cliente = accept(socket_servidor, (void*) &dir_cliente, &tam_direccion);
+	uint32_t tam_direccion = sizeof(struct sockaddr_in);
+	uint32_t socket_cliente = accept(socket_servidor, (void*) &dir_cliente, &tam_direccion);
 	pthread_create(&thread, NULL, (void*)serve_client, &socket_cliente);
 	pthread_detach(thread);
 
 }
 
-void serve_client(int* socket) {
-	int cod_op;
+void serve_client(uint32_t* socket) {
+	uint32_t cod_op;
 
-	if(recv(*socket, &cod_op, sizeof(int), MSG_WAITALL) == -1)
+	if(recv(*socket, &cod_op, sizeof(uint32_t), MSG_WAITALL) == -1)
 		cod_op = -1;
 
 	log_info(logger,"Se conecto un cliente con socket: %d",*socket);
@@ -144,7 +144,7 @@ void serve_client(int* socket) {
 	close(*socket);
 }
 
-void liberar_conexion(int socket_cliente) {
+void liberar_conexion(uint32_t socket_cliente) {
 	close(socket_cliente);
 }
 
