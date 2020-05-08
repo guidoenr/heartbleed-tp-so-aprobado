@@ -23,6 +23,7 @@ int main(void) {
 	pikachu.pokemon = "pikachu";
 
 	verificarPokemon(pikachu);
+
 	terminar_programa(socket,config);
 }
 
@@ -226,7 +227,6 @@ int funcionHiloNewPokemon(void* buffer){
 
 								//TODO como castear el buffer al t_new_pokemon
 	t_new_pokemon msg;
-
 	verificarPokemon(msg);
 	verificarAperturaPokemon(msg);
 
@@ -259,22 +259,22 @@ char* concatenar(char* str1,char* str2){
 void verificarPokemon(t_new_pokemon newpoke){
 	char* montaje = "montaje/Pokemon/";		  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
 	char* path = concatenar(montaje,newpoke.pokemon); // DE TODAS FORMAS DEJO UNA ALGORITMIA FANTASTATICA
+	if (existeDirectorio(path)){
 
-	if (!existeDirectorio(path)){
-		mkdir(path, 0777); 					  // 0777 es una mask que permite rwx
-		//crearMetadataFile(path,newpoke);
-		log_info(logger,"se creo el directorio: %s",path);
-	} else{
 		log_info(logger,"existe el dir: %s",path);
+	} else{
+		mkdir(path, 0777);
+		log_info(logger,"se creo el directorio: %s",path);
 	}
-	closedir(path);
 
 }
 
 int existeDirectorio(char* path){
 
 	DIR* dir = opendir(path);
-	return dir;
+	int x = dir;
+	closedir(dir);
+	return x;
 }
 
 void verificarAperturaPokemon(t_new_pokemon msg){
