@@ -31,7 +31,7 @@ t_config_game_card* leer_config() {
 
 	t_config_game_card* config_game_card = malloc(sizeof(t_config_game_card));
 
-	t_config* config = config_create("Debug/game_card.config");
+	t_config_game_card* config = config_create("Debug/game_card.config");
 
 	config_game_card -> tiempo_reintento_conexion = config_get_int_value(config, "TIEMPO_DE_REINTENTO_CONEXION");
 	config_game_card -> tiempo_reintento_operacion = config_get_int_value(config, "TIEMPO_DE_REINTENTO_OPERACION");
@@ -177,34 +177,34 @@ int isOpen(char* path){
 		return fileMeta.open == 'Y';
 }
 
-void process_request(int cod_op, int cliente_fd) { // Cada case depende del que toque ese modulo.
-	int size;
+void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende del que toque ese modulo.
+	uint32_t size;
 	void* msg;
 
 	log_info(logger,"Codigo de operacion %d",cod_op);
 
 	switch (cod_op) {
 		case GET_POKEMON:
-			msg = malloc(sizeof(t_get_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
-			informarAlBroker(msg,cliente_fd,GET_POKEMON);
-			agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
-			free(msg);
+//			msg = malloc(sizeof(t_get_pokemon));
+//			msg = recibir_mensaje(cliente_fd, &size);
+//			informarAlBroker(msg,cliente_fd,GET_POKEMON);
+//			agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
+//			free(msg);
 			break;
 		case CATCH_POKEMON:
-			msg = malloc(sizeof(t_catch_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
-			informarAlBroker(msg,cliente_fd,CATCH_POKEMON);
-			agregar_mensaje(CATCH_POKEMON, size, msg, cliente_fd);
-			free(msg);
+//			msg = malloc(sizeof(t_catch_pokemon));
+//			msg = recibir_mensaje(cliente_fd, &size);
+//			informarAlBroker(msg,cliente_fd,CATCH_POKEMON);
+//			agregar_mensaje(CATCH_POKEMON, size, msg, cliente_fd);
+//			free(msg);
 			break;
 		case NEW_POKEMON:
 			msg = malloc(sizeof(t_new_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
+			//msg = recibir_mensaje(cliente_fd,size);
 			informarAlBroker(msg,cliente_fd,NEW_POKEMON);
 
 			// hilo
-			agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
+			//agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd); ??
 			free(msg);
 			break;
 

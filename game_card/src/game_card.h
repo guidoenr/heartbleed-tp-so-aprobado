@@ -37,8 +37,8 @@ typedef struct{
 t_log* logger;
 t_config_game_card* leer_config(void);
 void terminar_programa(int, t_config_game_card*);
-void liberar_conexion(int);
-void liberar_logger(t_log* logger);
+void liberar_conexion(uint32_t);
+void liberar_logger();
 void liberar_config(t_config_game_card*);
 void leerMetadata();
 void escribirMetadata();
@@ -47,3 +47,4 @@ char* concatenar(char* str1,char* str2);
 int tamanio_de_metadata(t_metadata metadata);
 int existeDirectorio(char* path);
 void verificarPokemon(t_new_pokemon pokemon);
+void process_request(uint32_t cod_op, uint32_t cliente_fd);
