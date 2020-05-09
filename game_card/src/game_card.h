@@ -7,6 +7,11 @@
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.h"
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 
+
+//global
+t_log* logger;
+
+
 typedef struct {
     int tiempo_reintento_conexion;
 	int tiempo_reintento_operacion;
@@ -19,6 +24,8 @@ typedef struct {
 	char* puerto_gameCard;
 
 } t_config_game_card;
+
+t_config_game_card* leer_config(void);
 
 
 typedef struct {
@@ -34,17 +41,23 @@ typedef struct{
 	char open;
 }t_file_metadata;
 
-t_log* logger;
-t_config_game_card* leer_config(void);
+//metadata
+void leerMetadata();
+void escribirMetadata();
+void crearMetadata();
+int tamanio_de_metadata(t_metadata metadata);
+int existeDirectorio(char* path);
+void verificarPokemon(t_new_pokemon pokemon);
+
+//commons
 void terminar_programa(int, t_config_game_card*);
 void liberar_conexion(uint32_t);
 void liberar_logger();
 void liberar_config(t_config_game_card*);
-void leerMetadata();
-void escribirMetadata();
-void crearMetadata();
-char* concatenar(char* str1,char* str2);
-int tamanio_de_metadata(t_metadata metadata);
-int existeDirectorio(char* path);
-void verificarPokemon(t_new_pokemon pokemon);
+void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size);
+
+//procces
 void process_request(uint32_t cod_op, uint32_t cliente_fd);
+
+//parsers + tools
+char* concatenar(char* str1,char* str2);

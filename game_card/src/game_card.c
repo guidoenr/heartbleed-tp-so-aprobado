@@ -180,7 +180,7 @@ int isOpen(char* path){
 }
 
 void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende del que toque ese modulo.
-	uint32_t size;
+	uint32_t* size;
 	void* msg;
 
 	log_info(logger,"Codigo de operacion %d",cod_op);
@@ -201,8 +201,9 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende
 //			free(msg);
 			break;
 		case NEW_POKEMON:
+			//void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size);
 			msg = malloc(sizeof(t_new_pokemon));
-			//msg = recibir_mensaje(cliente_fd,size);
+			msg = recibir_mensaje(cliente_fd,size);
 			informarAlBroker(msg,cliente_fd,NEW_POKEMON);
 
 			// hilo
@@ -219,8 +220,9 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende
 }
 
 void informarAlBroker(void* msg,int socket,op_code codigo){
-	//8 = ACK
-	enviar_mensaje("ACK", "recibi el mensaje[ACK]", socket);
+
+	// como castear el void* a un msg?
+	//enviar_mensaje(ACK, "Recibi el mensaje: %s", "ASDASDASD", socket);
 	log_info(logger,"recibi el msg %s",codigo);
 }
 
@@ -268,7 +270,6 @@ void verificarPokemon(t_new_pokemon newpoke){
 }
 
 int existeDirectorio(char* path){
-
 	DIR* dir = opendir(path);
 	int x = dir;
 	closedir(dir);
