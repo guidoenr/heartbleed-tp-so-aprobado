@@ -12,15 +12,15 @@
 
 typedef struct {
 	sem_t mutex;
-	int posicion[2];
+	uint32_t posicion[2];
 	t_list* pokemons;
 	t_list* objetivos;
 } t_entrenador;
 
 typedef struct {
 	char* nombre;
-	int posicion[2];
-	int cantidad;
+	uint32_t posicion[2];
+	uint32_t cantidad;
 } t_pokemon_mapa;
 
 typedef struct {
@@ -57,7 +57,7 @@ t_list* pedidos_captura;
 // utils
 char* append(const char*, char);
 void* parsear(char**);
-int distancia(int[2], int[2]);
+uint32_t distancia(uint32_t[2], uint32_t[2]);
 
 // iniciar
 void iniciar_programa();
@@ -99,6 +99,6 @@ bool no_esta_en_objetivo(void*);
 void liberar_config();
 void liberar_lista_de_lista_de_strings(t_list*);
 void liberar_entrenadores();
-void terminar_programa(/*int*/);
-void liberar_conexion(int);
+void terminar_programa(/*uint32_t*/);
+void liberar_conexion(uint32_t);
 void liberar_estados();

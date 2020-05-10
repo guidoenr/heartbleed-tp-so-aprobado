@@ -1,6 +1,6 @@
 #include "team.h"
 
-int main(void){
+uint32_t main(void){
 	printf("HOLA");
 
 	iniciar_programa();
@@ -88,7 +88,7 @@ t_list* load_entrenadores(t_list* lista_posiciones, t_list* lista_pokemons, t_li
 		t_entrenador* entrenador = malloc(sizeof(t_entrenador));
 
 		// posicion
-		int pos[2];
+		uint32_t pos[2];
 		t_list* aux_posiciones = head_posiciones -> data;
 
 		pos[0] = atoi(aux_posiciones -> head -> data);
@@ -175,7 +175,7 @@ void suscribirme_a_colas() {
 
 //TODO
 void suscribirse_a(op_code una_cola){
-	//int socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	//uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
 	//mandar por stream el socket
 }
 
@@ -188,7 +188,7 @@ void inciar_entrenadores() {
 		t_entrenador* entrenador = un_entrenador;
 		agregar_a_estado(estado_new, un_entrenador);
 		sem_init(&(entrenador -> mutex), 0, 1);
-		int err = pthread_create(&hilo, NULL, operar_entrenador, entrenador);
+		uint32_t err = pthread_create(&hilo, NULL, operar_entrenador, entrenador);
 		if(err != 0){
 			log_error(logger, "el hilo no pudo ser creado"); // preguntar si estos logs se pueden hacer
 		}
@@ -255,7 +255,7 @@ void destruir_pokemon_mapa(void* un_pokemon){
 	free(pokemon); // acordarse de hacer los malloc cuando se cargan al mapa
 }
 
-int distancia(int pos1[2], int pos2[2]){
+uint32_t distancia(uint32_t pos1[2], uint32_t pos2[2]){
 
 	return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1]);
 }
@@ -389,8 +389,8 @@ bool esta_en_estado(t_list* estado, t_entrenador* entrenador) {
 }
 
 //TODO
-void process_request(int cod_op, int cliente_fd) {
-	int size;
+void process_request(uint32_t cod_op, uint32_t cliente_fd) {
+	uint32_t size;
 	void* msg;
 
 	log_info(logger,"Codigo de operacion %d", cod_op);
@@ -473,7 +473,7 @@ void liberar_estados() {
 	list_destroy(estado_exit);
 }
 
-void terminar_programa(/*int conexion*/) {
+void terminar_programa(/*uint32_t conexion*/) {
 	list_destroy(objetivo_global); // puede ser solo free
 	free(mapa_pokemons); // ver, se va destruyendo como objetivo global?
 	liberar_logger();
