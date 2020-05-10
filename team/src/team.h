@@ -31,12 +31,12 @@ typedef struct {
 
 typedef struct {
 	t_list* entrenadores;
-    int tiempo_reconexion;
-	int retardo_cpu;
+	uint32_t tiempo_reconexion;
+	uint32_t retardo_cpu;
 	char* algoritmo_planificacion;
 	char* ip_broker;
 	char* puerto_broker;
-	int estimacion_inicial;
+	uint32_t estimacion_inicial;
 	char* log_file;
 } t_config_team;
 
