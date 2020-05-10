@@ -11,7 +11,7 @@
 // agregar un id 0 al mensaje a mandar al broker
 
 typedef struct {
-	sem_t mutex;
+	sem_t sem_contador;
 	uint32_t posicion[2];
 	t_list* pokemons;
 	t_list* objetivos;

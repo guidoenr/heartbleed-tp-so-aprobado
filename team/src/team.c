@@ -1,6 +1,6 @@
 #include "team.h"
 
-uint32_t main(void){
+int main(void){
 	printf("HOLA");
 
 	iniciar_programa();
@@ -187,7 +187,7 @@ void inciar_entrenadores() {
 		pthread_t hilo;
 		t_entrenador* entrenador = un_entrenador;
 		agregar_a_estado(estado_new, un_entrenador);
-		sem_init(&(entrenador -> mutex), 0, 1);
+		sem_init(&(entrenador -> sem_contador), 0, 1);
 		uint32_t err = pthread_create(&hilo, NULL, operar_entrenador, entrenador);
 		if(err != 0){
 			log_error(logger, "el hilo no pudo ser creado"); // preguntar si estos logs se pueden hacer
@@ -200,12 +200,11 @@ void inciar_entrenadores() {
 //TODO
 void* operar_entrenador(void* un_entrenador) {
 	t_entrenador* entrenador = un_entrenador;
-	cambiar_a_estado(estado_ready, entrenador);
-	t_list* estado_actual;
+	t_list* estado_actual = estado_new;
 
 	while(estado_actual != estado_exit){
 
-		sem_wait(&(entrenador -> mutex));
+		sem_wait(&(entrenador -> sem_contador));
 
 
 
