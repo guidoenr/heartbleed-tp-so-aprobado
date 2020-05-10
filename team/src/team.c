@@ -43,11 +43,11 @@ void iniciar_programa(){
 }
 
 void inicializar_estados(){
-	 estado_new = list_create();
-	 estado_ready = list_create();
-	 estado_exec = list_create();
-	 estado_block = list_create();
-	 estado_exit = list_create();
+	estado_new = list_create();
+	estado_ready = list_create();
+	estado_exec = list_create();
+	estado_block = list_create();
+	estado_exit = list_create();
 }
 
 void inicializar_semaforos(){
