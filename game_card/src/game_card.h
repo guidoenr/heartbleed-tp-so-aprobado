@@ -41,23 +41,30 @@ typedef struct{
 	char open;
 }t_file_metadata;
 
-//metadata
+//package sending
+t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size);
+void informarAlBroker(void* msg,int socket,op_code codigo);
+
+//metadata + fileSystem
 void leerMetadata();
 void escribirMetadata();
 void crearMetadata();
 int tamanio_de_metadata(t_metadata metadata);
 int existeDirectorio(char* path);
 void verificarPokemon(t_new_pokemon pokemon);
+void verificarAperturaPokemon(t_new_pokemon msg);
+int tamanio_file_metadata(t_file_metadata fileMeta);
+
 
 //commons
 void terminar_programa(int, t_config_game_card*);
 void liberar_conexion(uint32_t);
 void liberar_logger();
 void liberar_config(t_config_game_card*);
-void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size);
 
 //procces
 void process_request(uint32_t cod_op, uint32_t cliente_fd);
 
 //parsers + tools
 char* concatenar(char* str1,char* str2);
+bool isFile(char* path);

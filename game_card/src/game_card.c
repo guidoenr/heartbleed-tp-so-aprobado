@@ -139,7 +139,7 @@ int fileSize(char* path){
 	return i;
 }
 
-int isFile(char* path){
+bool isFile(char* path){
 	FILE* f = fopen(path,"rb");
 	fclose(f);
 	return f != NULL;
@@ -203,7 +203,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende
 		case NEW_POKEMON:
 			//void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size);
 			msg = malloc(sizeof(t_new_pokemon));
-			msg = recibir_mensaje(cliente_fd,size);
+
 			informarAlBroker(msg,cliente_fd,NEW_POKEMON);
 
 			// hilo
