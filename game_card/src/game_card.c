@@ -11,20 +11,22 @@ int main(void) {
 	t_config_game_card* config = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
 
-	//int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
 
 	t_new_pokemon pikachu;
-	pikachu.cantidad = 1;
-	pikachu.id_mensaje = 2;
-	pikachu.posicion[0] = 1;
-	pikachu.posicion[1] = 6;
-	pikachu.pokemon = "Goku";
+	pikachu.cantidad = 10;
+	pikachu.id_mensaje = 92141;
+	pikachu.posicion[0] = 2;
+	pikachu.posicion[1] = 65;
+	pikachu.pokemon = "GokuPokemon";
 
-	verificarPokemon(pikachu);
-	verificarAperturaPokemon(pikachu);
+	enviar_new_pokemon(pikachu,socket_br);
+
+//	verificarPokemon(pikachu);
+//	verificarAperturaPokemon(pikachu);
 
 	terminar_programa(socket,config);
 }
@@ -287,11 +289,46 @@ void verificarAperturaPokemon(t_new_pokemon msg){
 	if (isOpen(path2)){
 		//finalizar hilo y reintentar operacion TODO
 	} else {
-		log_info(logger,"el dir esta cerrado (N)");
+		log_info(logger,"se puede acceder /n");
 	}
 }
 
+void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
+	t_buffer* buffer = malloc(sizeof(t_buffer));
 
+	buffer -> size = tamanioNewPokemon(pokemon);
+	buffer -> stream = malloc(buffer -> size);
+	buffer -> stream = pokemon;
+	log_info(logger,"Armando paquete New_Pokemon");
 
+	t_paquete* paquete = malloc(sizeof(t_paquete));
+	paquete -> codigo_operacion = NEW_POKEMON;
+	paquete -> buffer = buffer;
+
+	uint32_t size_serializado;
+	void* stream = serializar_paquete(paquete, &size_serializado);
+	log_info(logger,"Paquete serializado con tamaño :%d",size_serializado);
+	send(socket_cliente, stream, size_serializado, 0);
+	log_info(logger,"Paquete enviado");
+	//free(buffer -> stream);
+	free(buffer);
+	free(paquete);
+	free(stream);
+}
+
+//void* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
+//		log_info(logger, "Recibiendo mensaje.");
+//		recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
+//		log_info(logger, "Tamano de paquete recibido: %d", *size);
+//		void* buffer = malloc(*size);
+//		recv(socket_cliente, buffer, *size, MSG_WAITALL);
+//		log_info(logger, "Mensaje recibido: %s", buffer);
+//		return buffer;
+//	}
+
+int tamanioNewPokemon(t_new_pokemon pokemon){
+	return sizeof(uint32_t) * 4 + strlen(pokemon.pokemon) + 1;
+	// aca hay tremendo hardcodeo porque el int poisicon[2] es un recontra TODO
+}
 
 
