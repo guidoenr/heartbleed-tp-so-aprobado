@@ -1,6 +1,6 @@
 #include "team.h"
 
-int main(void){
+int main(void) {
 	printf("HOLA");
 
 	iniciar_programa();
@@ -13,12 +13,13 @@ int main(void){
 	agregar_a_estado(estado_new, config -> entrenadores -> head -> data);
 	log_info(logger, "agregado a new");
 
-	if(esta_en_estado(estado_new, config -> entrenadores -> head -> data)){
+	if(esta_en_estado(estado_new, config -> entrenadores -> head -> data)) {
 		log_info(logger, "esta en new");
 	}
 	cambiar_a_estado(estado_ready, config -> entrenadores -> head -> data);
 	log_info(logger, "cambiado a ready");
-	if(esta_en_estado(estado_ready, config -> entrenadores -> head -> data)){
+
+	if(esta_en_estado(estado_ready, config -> entrenadores -> head -> data)) {
 		log_info(logger, "esta en ready");
 	}
 
@@ -28,7 +29,7 @@ int main(void){
 
 //------------------------------- INICIAR -------------------------------//
 
-void iniciar_programa(){
+void iniciar_programa() {
 	iniciar_logger("team.log", "team");
 	leer_config();
 	inicializar_estados();
@@ -42,16 +43,15 @@ void iniciar_programa(){
 	//iniciar_conexion_game_boy(); abrir socket con el game_boy (pthread_create)
 }
 
-void inicializar_estados(){
+void inicializar_estados() {
 	estado_new = list_create();
 	estado_ready = list_create();
-	estado_exec = malloc(sizeof(t_estado_exec));
+	estado_exec = list_create();
 	estado_block = list_create();
 	estado_exit = list_create();
 }
 
-void inicializar_semaforos(){
-	sem_init(&(estado_exec -> mutex)),0,1);
+void inicializar_semaforos() {
 }
 
 void leer_config(void) {
@@ -86,7 +86,7 @@ t_list* load_entrenadores(t_list* lista_posiciones, t_list* lista_pokemons, t_li
 	t_link_element* head_pokemons = lista_pokemons -> head;
 	t_link_element* head_objetivos = lista_objetivos -> head;
 
-	while(head_posiciones != NULL && head_pokemons != NULL && head_objetivos != NULL){
+	while(head_posiciones != NULL && head_pokemons != NULL && head_objetivos != NULL) {
 		t_entrenador* entrenador = malloc(sizeof(t_entrenador));
 
 		// posicion
@@ -141,9 +141,9 @@ void* parsear(char** datos_de_config) {
 	return lista_lista;
 }
 
-void cargar_pokemons_a_entrenador(t_list* aux, t_link_element* cabeza, t_list* destino){
+void cargar_pokemons_a_entrenador(t_list* aux, t_link_element* cabeza, t_list* destino) {
 
-	while(cabeza != NULL){
+	while(cabeza != NULL) {
 
 		list_add(destino, cabeza -> data);
 		cabeza = cabeza -> next;
@@ -170,7 +170,7 @@ void determinar_objetivo_global() {
 	eliminar_los_que_ya_tengo();
 }
 
-void eliminar_los_que_ya_tengo(){
+void eliminar_los_que_ya_tengo() {
 
 
 	void eliminar_si_lo_tengo(void* entrenador) {
@@ -181,7 +181,7 @@ void eliminar_los_que_ya_tengo(){
 
 		void remover_pokemon_objetivo_global(void* pokemon) {
 
-			bool es_el_pokemon(void* un_pokemon){
+			bool es_el_pokemon(void* un_pokemon) {
 				char* otro_pokemon = un_pokemon;
 				char* otro_pokemon2 = pokemon;
 
@@ -206,7 +206,7 @@ void suscribirme_a_colas() {
 
 
 //TODO
-void suscribirse_a(op_code una_cola){
+void suscribirse_a(op_code una_cola) {
 	//uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
 	//mandar por stream el socket
 }
@@ -221,7 +221,7 @@ void inciar_entrenadores() {
 		agregar_a_estado(estado_new, un_entrenador);
 		sem_init(&(entrenador -> sem_contador), 0, 0);
 		uint32_t err = pthread_create(&hilo, NULL, operar_entrenador, entrenador);
-		if(err != 0){
+		if(err != 0) {
 			log_error(logger, "el hilo no pudo ser creado"); // preguntar si estos logs se pueden hacer
 		}
 	}
@@ -234,14 +234,18 @@ void* operar_entrenador(void* un_entrenador) {
 	t_entrenador* entrenador = un_entrenador;
 	t_list* estado_actual = estado_new;
 
-	while(estado_actual != estado_exit){
+	while(estado_actual != estado_exit) {
 
-		// ver --  importante
-		sem_wait(&(entrenador -> sem_contador));
+		//sem_wait(&(entrenador -> sem_contador));
 
-		sem_wait(&(estado_exec -> mutex));
+		t_pedido_captura* pedido = buscar_pedido(entrenador);
 
-		agarrar_pokemon(entrenador);
+
+		while(esta_en_estado(estado_exec, entrenador)) {
+
+			agarrar_pokemon(pedido);
+			sem_wait(&(pedido -> entrenador -> sem_contador));
+		}
 
 	}
 
@@ -249,36 +253,29 @@ void* operar_entrenador(void* un_entrenador) {
 	return entrenador;
 }
 
-void agarrar_pokemon(t_entrenador* entrenador){
+void agarrar_pokemon(t_pedido_captura* pedido) {
 
-	t_pedido_captura* pedido = buscar_pedido(entrenador);
-
-
-	while(1){ // ver como hacer para los otros algortimos
-
-		if(pedido -> entrenador -> posicion[0] < pedido -> pokemon -> posicion[0]){
-			pedido -> entrenador -> posicion[0] ++;
-		} else if(pedido -> entrenador -> posicion[0] > pedido -> pokemon -> posicion[0]){
-			pedido -> entrenador -> posicion[0] --;
-		} else if(pedido -> entrenador -> posicion[1] < pedido -> pokemon -> posicion[1]){
-			pedido -> entrenador -> posicion[1] ++;
-		} else if(pedido -> entrenador -> posicion[1] > pedido -> pokemon -> posicion[1]){
-			pedido -> entrenador -> posicion[1] --;
-		} else{ //misma posicion
-			// tirar el catch (agarrar)
-			break;
-		}
-
-		signal(&(entrenador -> sem_contador));
+	if(pedido -> entrenador -> posicion[0] < pedido -> pokemon -> posicion[0]) {
+		pedido -> entrenador -> posicion[0] ++;
+		pedido -> distancia --;
+	} else if(pedido -> entrenador -> posicion[0] > pedido -> pokemon -> posicion[0]) {
+		pedido -> entrenador -> posicion[0] --;
+		pedido -> distancia --;
+	} else if(pedido -> entrenador -> posicion[1] < pedido -> pokemon -> posicion[1]) {
+		pedido -> entrenador -> posicion[1] ++;
+		pedido -> distancia --;
+	} else if(pedido -> entrenador -> posicion[1] > pedido -> pokemon -> posicion[1]) {
+		pedido -> entrenador -> posicion[1] --;
+		pedido -> distancia --;
+	} else { // misma posicion
+		// tirar el catch (agarrar)
+		// mutex_en_rojo();
 	}
-
-	// sleep(config -> tiempo_espera)
-
 }
 
-t_pedido_captura* buscar_pedido(t_entrenador* entrenador){
+t_pedido_captura* buscar_pedido(t_entrenador* entrenador) {
 
-	bool es_pedido_del_entrenador(void* un_pedido){
+	bool es_pedido_del_entrenador(void* un_pedido) {
 		t_pedido_captura* pedido = un_pedido;
 
 		return pedido -> entrenador == entrenador;
@@ -288,68 +285,78 @@ t_pedido_captura* buscar_pedido(t_entrenador* entrenador){
 }
 
 
-void planificar_entrenadores(){
+void planificar_entrenadores() {
 
-	if(mapa_pokemons -> elements_count){
+	if(mapa_pokemons -> elements_count) {
 
-		list_iterate(mapa_pokemons, limpiar_mapa); // borra pokemons cargados en mapa que ya no estan en objetivo global
+		// NO SE SI VA O NO: list_iterate(mapa_pokemons, limpiar_mapa); // borra pokemons cargados en mapa que ya no estan en objetivo global
 
 		t_pedido_captura* pedido = malloc(sizeof(t_pedido_captura));
 		pedido -> entrenador = NULL;
+		pedido -> pokemon = mapa_pokemons -> head -> data;
+		pedido -> distancia = -1;
 		matchear_pokemon_con_entrenador(pedido);
+		list_add(pedidos_captura, pedido);
 
-		// aca se planifica al primer (unico en fifo) entrenador de pedidos_captura
+		eliminar_pokemon_de_mapa(pedido -> pokemon);
 
 		cambiar_a_estado(estado_ready, pedido -> entrenador);
 
-		planificar_segun_algoritmo();
+		for(int i = 0; i < pedido -> distancia; i++) { // capaz distancia +1
+			sem_post(&(pedido -> entrenador -> sem_contador));
+		}
 
-		list_add(pedidos_captura, pedido);
 		free(pedido);
+
+		planificar_segun_algoritmo();
 
 	} else{
 		// contempla el caso de deadlock
 	}
-
 }
 
-void planificar_segun_algoritmo(){
+void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
 
-	if(string_equals_ignore_case(config -> algoritmo_planificacion, "FIFO")){
+	bool pokemon_a_eliminar(void* un_pokemon) {
+		t_pokemon_mapa* otro_pokemon = un_pokemon;
+		return pokemon -> posicion == otro_pokemon -> posicion &&
+				string_equals_ignore_case(pokemon -> nombre, otro_pokemon -> nombre);
+	}
+	t_pokemon_mapa* pokemon_a_remover = list_find(mapa_pokemons, pokemon_a_eliminar);
+
+
+	if(pokemon_a_remover -> cantidad > 1) {
+		pokemon_a_remover -> cantidad --;
+	} else {
+		list_remove_by_condition(mapa_pokemons, pokemon_a_eliminar);
+	}
+}
+
+void planificar_segun_algoritmo() {
+
+	if(string_equals_ignore_case(config -> algoritmo_planificacion, "FIFO")) {
 
 		planificar_fifo();
 
-	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "RR")){
+	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "RR")) {
 
 
-	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-CD")){
+	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-CD")) {
 
 
-	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-SD")){ // va a funcionar igual que fifo?
+	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-SD")) { // va a funcionar igual que fifo?
 
 	}
 
 
 }
 
-void planificar_fifo(){
+void planificar_fifo() {
 
-	t_pedido_captura* pedido = malloc(sizeof(t_pedido_captura));
-	pedido -> entrenador = NULL;
-	matchear_pokemon_con_entrenador(pedido);
-
-	cambiar_a_estado(estado_ready, pedido -> entrenador);
-
-	// ver
-	cambiar_a_exec(pedido -> entrenador);
-
-	for(int i = 0; i < pedido -> distancia; i++){
-		sem_post(&(pedido -> entrenador -> sem_contador));
+	if(!estado_exec -> head) {
+		t_entrenador* entrenador = estado_ready -> head -> data;
+		cambiar_a_estado(estado_exec, entrenador);
 	}
-
-
-	list_add(pedidos_captura, pedido);
-	free(pedido);
 
 }
 
@@ -358,9 +365,9 @@ void limpiar_mapa(void* pokemon) {
 	list_remove_and_destroy_by_condition(mapa_pokemons, no_esta_en_objetivo, destruir_pokemon_mapa);
 }
 
-bool no_esta_en_objetivo(void* pokemon){
+bool no_esta_en_objetivo(void* pokemon) {
 
-	bool es_el_pokemon(void* otro_pokemon){
+	bool es_el_pokemon(void* otro_pokemon) {
 		t_pokemon_mapa* un_pokemon = otro_pokemon;
 
 		 return pokemon == un_pokemon -> nombre;
@@ -369,57 +376,30 @@ bool no_esta_en_objetivo(void* pokemon){
 	return list_find(objetivo_global, es_el_pokemon);
 }
 
-void destruir_pokemon_mapa(void* un_pokemon){
+void destruir_pokemon_mapa(void* un_pokemon) {
 	t_pokemon_mapa* pokemon = un_pokemon;
 	free(pokemon -> nombre);
 	free(pokemon); // acordarse de hacer los malloc cuando se cargan al mapa
 }
 
-uint32_t distancia(uint32_t pos1[2], uint32_t pos2[2]){
+uint32_t distancia(uint32_t pos1[2], uint32_t pos2[2]) {
 
 	return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1]);
 }
 
-void matchear_pokemon_con_entrenador(t_pedido_captura* pedido){
 
-	void hallar_match(void* un_entreador){
-		t_entrenador* entrenador = un_entreador;
-		t_pedido_captura* pedido_aux = malloc(sizeof(t_pedido_captura));
-		pedido_aux -> entrenador = NULL;
+void matchear_pokemon_con_entrenador(t_pedido_captura* pedido) {
 
-		void matchear_con_entrenador(void* un_pokemon){
-			t_pokemon_mapa* pokemon = un_pokemon;
+	void hallar_match(void* un_entrenador) {
 
-			if(pedido_aux -> entrenador == NULL){
-				pedido_aux -> entrenador = entrenador;
-				pedido_aux -> pokemon = pokemon;
-				pedido_aux -> distancia = distancia(pedido_aux -> entrenador, pedido_aux -> pokemon);
+		t_entrenador* entrenador = un_entrenador;
 
-			} else if(distancia(entrenador -> posicion, pokemon -> posicion) <
-						distancia(pedido_aux -> entrenador -> posicion, pedido_aux -> pokemon -> posicion)){
+		uint32_t distancia_parcial = distancia(entrenador -> posicion, pedido -> pokemon -> posicion);
 
-				pedido_aux -> entrenador = entrenador;
-				pedido_aux -> pokemon = pokemon;
-				pedido_aux -> distancia = distancia(pedido_aux -> entrenador, pedido_aux -> pokemon);
-			}
+		if (pedido -> distancia == -1 || distancia_parcial < pedido -> distancia) {
+			pedido -> entrenador = entrenador;
+			pedido -> distancia = distancia_parcial;
 		}
-
-		list_iterate(mapa_pokemons, matchear_con_entrenador);
-
-		if(pedido -> entrenador == NULL){
-			pedido -> entrenador = pedido_aux -> entrenador;
-			pedido -> pokemon = pedido_aux -> pokemon;
-			pedido -> distancia = distancia(pedido -> entrenador, pedido -> pokemon);
-
-		} else if(distancia(pedido -> entrenador -> posicion, pedido -> pokemon -> posicion) >
-					distancia(pedido_aux -> entrenador -> posicion, pedido_aux -> pokemon -> posicion)){
-
-			pedido -> entrenador = pedido_aux -> entrenador;
-			pedido -> pokemon = pedido_aux -> pokemon;
-			pedido -> distancia = distancia(pedido -> entrenador, pedido -> pokemon);
-		}
-
-		free(pedido_aux);
 	}
 
 	list_iterate(config -> entrenadores, hallar_match);
@@ -452,17 +432,17 @@ void cambiar_a_estado(t_list* estado, t_entrenador* entrenador) {
 		list_add(estados_a_buscar, estado_block);
 		estado_actual = buscar_en_estados(estados_a_buscar, entrenador);
 
-	} else if(estado == estado_exec){
+	} else if(estado == estado_exec) {
 
-		if(esta_en_estado(estado_ready, entrenador)){
+		if(esta_en_estado(estado_ready, entrenador)) {
 			estado_actual = estado_ready;
 		}
-	} else if(estado == estado_block){
+	} else if(estado == estado_block) {
 
-		if(esta_en_estado(estado_exec, entrenador)){
+		if(esta_en_estado(estado_exec, entrenador)) {
 			estado_actual = estado_exec;
 		}
-	} else if(estado == estado_exit){
+	} else if(estado == estado_exit) {
 
 		list_add(estados_a_buscar, estado_exec);
 		list_add(estados_a_buscar, estado_block);
@@ -592,8 +572,7 @@ void liberar_entrenadores() {
 void liberar_estados() {
 	list_destroy(estado_new);
 	list_destroy(estado_ready);
-	sem_destroy(estado_exec -> mutex)
-	free(estado_exec);
+	list_destroy(estado_exec);
 	list_destroy(estado_block);
 	list_destroy(estado_exit);
 }

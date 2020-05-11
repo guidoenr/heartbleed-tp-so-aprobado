@@ -26,7 +26,7 @@ typedef struct {
 typedef struct {
 	t_entrenador* entrenador;
 	t_pokemon_mapa* pokemon;
-	int distancia;
+	uint32_t distancia;
 } t_pedido_captura;
 
 
@@ -43,18 +43,13 @@ typedef struct {
 	char* log_file;
 } t_config_team;
 
-typedef struct {
-	sem_t mutex;
-	t_entrenador* entrenador;
-} t_estado_exec;
-
 t_config_team* config;
 t_log* logger;
 t_list* objetivo_global;
 
 t_list* estado_new;
 t_list* estado_ready;
-t_estado_exec* estado_exec;
+t_list* estado_exec;
 t_list* estado_block;
 t_list* estado_exit;
 
@@ -82,6 +77,13 @@ void obtener_entrenadores(void*);
 t_list* load_entrenadores(t_list*, t_list*, t_list*);
 void cargar_pokemons_a_entrenador(t_list*, t_link_element*, t_list*);
 
+// planificacion
+void planificar_segun_algoritmo();
+t_pedido_captura* buscar_pedido(t_entrenador*);
+void planificar_fifo();
+
+// ejecucion
+void agarrar_pokemon(t_pedido_captura*);
 
 // estados
 void agregar_a_estado(t_list*, t_entrenador*);
@@ -97,11 +99,12 @@ void inicializar_semaforos();
 void limpiar_mapa(void*);
 void destruir_pokemon_mapa(void*);
 void matchear_pokemon_con_entrenador(t_pedido_captura*);
+void eliminar_pokemon_de_mapa(t_pokemon_mapa*);
 
 // objetivo
 void determinar_objetivo_global();
 bool no_esta_en_objetivo(void*);
-
+void eliminar_los_que_ya_tengo();
 
 // terminar
 void liberar_config();
