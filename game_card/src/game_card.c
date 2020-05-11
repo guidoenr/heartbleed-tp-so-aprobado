@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 
+
 int main(void) {
 	t_config_game_card* config = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
@@ -20,7 +21,7 @@ int main(void) {
 	pikachu.id_mensaje = 2;
 	pikachu.posicion[0] = 1;
 	pikachu.posicion[1] = 6;
-	pikachu.pokemon = "pikachu";
+	pikachu.pokemon = "Goku";
 
 	verificarPokemon(pikachu);
 	verificarAperturaPokemon(pikachu);
@@ -260,11 +261,14 @@ void verificarPokemon(t_new_pokemon newpoke){
 	char* montaje = "montaje/Pokemon/";		  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
 	char* path = concatenar(montaje,newpoke.pokemon); // DE TODAS FORMAS DEJO UNA ALGORITMIA FANTASTATICA
 	if (existeDirectorio(path)){
-
 		log_info(logger,"existe el dir: %s",path);
 	} else{
 		mkdir(path, 0777);
 		log_info(logger,"se creo el directorio: %s",path);
+		char* metaPath = concatenar(path,"/Metadata.bin");
+
+		crearMetadataFile(metaPath,newpoke);
+		log_info(logger,"se creo el file_metadata: %s",metaPath);
 	}
 
 }
@@ -279,12 +283,15 @@ int existeDirectorio(char* path){
 void verificarAperturaPokemon(t_new_pokemon msg){
 	char* path = concatenar ("montaje/Pokemon/",msg.pokemon);
 	char* path2 = concatenar (path,"/Metadata.bin"); //terrible negrada esto, pero anda o no anda?
-	log_info(logger,path2);
+
 	if (isOpen(path2)){
 		//finalizar hilo y reintentar operacion TODO
 	} else {
-
+		log_info(logger,"el dir esta cerrado (N)");
 	}
 }
+
+
+
 
 
