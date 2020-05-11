@@ -26,6 +26,7 @@ typedef struct {
 typedef struct {
 	t_entrenador* entrenador;
 	t_pokemon_mapa* pokemon;
+	int distancia;
 } t_pedido_captura;
 
 
@@ -34,11 +35,18 @@ typedef struct {
 	uint32_t tiempo_reconexion;
 	uint32_t retardo_cpu;
 	char* algoritmo_planificacion;
+	uint32_t quantum;
+	uint32_t alpha;
 	char* ip_broker;
 	char* puerto_broker;
 	uint32_t estimacion_inicial;
 	char* log_file;
 } t_config_team;
+
+typedef struct {
+	sem_t mutex;
+	t_entrenador* entrenador;
+} t_estado_exec;
 
 t_config_team* config;
 t_log* logger;
@@ -46,7 +54,7 @@ t_list* objetivo_global;
 
 t_list* estado_new;
 t_list* estado_ready;
-t_list* estado_exec;
+t_estado_exec* estado_exec;
 t_list* estado_block;
 t_list* estado_exit;
 
