@@ -12,6 +12,7 @@
 
 typedef struct {
 	sem_t sem_contador;
+	sem_t sem_binario;
 	uint32_t posicion[2];
 	t_list* pokemons;
 	t_list* objetivos;
@@ -45,17 +46,7 @@ typedef struct {
 
 t_config_team* config;
 t_log* logger;
-t_list* objetivo_global;
-
-t_list* estado_new;
-t_list* estado_ready;
-t_list* estado_exec;
-t_list* estado_block;
-t_list* estado_exit;
-
-t_list* estados;
-t_list* mapa_pokemons;
-t_list* pedidos_captura;
+sem_t sem_planificador;
 
 // utils
 char* append(const char*, char);
@@ -76,6 +67,15 @@ void* operar_entrenador(void*);
 void obtener_entrenadores(void*);
 t_list* load_entrenadores(t_list*, t_list*, t_list*);
 void cargar_pokemons_a_entrenador(t_list*, t_link_element*, t_list*);
+void remover_entrenadores_en_deadlock(t_list*);
+
+
+// mensajes
+uint32_t esperando_caught;
+uint32_t resultado_caught;
+
+void procesar_caught(t_pedido_captura*);
+
 
 // planificacion
 void planificar_segun_algoritmo();
@@ -86,6 +86,14 @@ void planificar_fifo();
 void agarrar_pokemon(t_pedido_captura*);
 
 // estados
+
+t_list* estado_new;
+t_list* estado_ready;
+t_list* estado_exec;
+t_list* estado_block;
+t_list* estado_exit;
+t_list* estados;
+
 void agregar_a_estado(t_list*, t_entrenador*);
 void eliminar_de_estado(t_list*, t_entrenador*);
 void cambiar_a_estado(t_list*, t_entrenador*);
@@ -96,12 +104,17 @@ bool esta_en_estado(t_list*, t_entrenador*);
 void inicializar_semaforos();
 
 // mapa
+t_list* mapa_pokemons;
+t_list* pedidos_captura;
+
 void limpiar_mapa(void*);
 void destruir_pokemon_mapa(void*);
 void matchear_pokemon_con_entrenador(t_pedido_captura*);
 void eliminar_pokemon_de_mapa(t_pokemon_mapa*);
 
 // objetivo
+t_list* objetivo_global;
+
 void determinar_objetivo_global();
 bool no_esta_en_objetivo(void*);
 void eliminar_los_que_ya_tengo();

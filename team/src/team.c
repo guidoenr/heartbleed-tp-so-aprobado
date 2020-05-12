@@ -23,6 +23,13 @@ int main(void) {
 		log_info(logger, "esta en ready");
 	}
 
+	/* while(algo) {
+	 planificar_entrenadores();
+	 */
+
+
+
+
 	terminar_programa(/*socket*/);
 	return 0;
 }
@@ -220,6 +227,7 @@ void inciar_entrenadores() {
 		t_entrenador* entrenador = un_entrenador;
 		agregar_a_estado(estado_new, un_entrenador);
 		sem_init(&(entrenador -> sem_contador), 0, 0);
+		sem_init(&(entrenador -> sem_binario), 0, 1);
 		uint32_t err = pthread_create(&hilo, NULL, operar_entrenador, entrenador);
 		if(err != 0) {
 			log_error(logger, "el hilo no pudo ser creado"); // preguntar si estos logs se pueden hacer
@@ -236,21 +244,35 @@ void* operar_entrenador(void* un_entrenador) {
 
 	while(estado_actual != estado_exit) {
 
-		//sem_wait(&(entrenador -> sem_contador));
-
 		t_pedido_captura* pedido = buscar_pedido(entrenador);
+		uint32_t espere_caught = 0;
 
+		sem_wait(&(entrenador -> sem_binario));
 
-		while(esta_en_estado(estado_exec, entrenador)) {
+		while(!esperando_caught) {
 
 			agarrar_pokemon(pedido);
-			sem_wait(&(pedido -> entrenador -> sem_contador));
 		}
 
+		while(esperando_caught); // settear a 0 en el process request
+
+		if(espere_caught){
+			procesar_caught(pedido);
+			sem_post(&(sem_planificador));
+		}
+
+		sem_post(&(entrenador -> sem_binario));
 	}
 
-	// falta una banda
 	return entrenador;
+}
+
+void procesar_caught(t_pedido_captura* pedido){
+
+	if(resultado_caught){
+		list_add(pedido -> entrenador -> pokemons, pedido -> pokemon -> nombre);
+	}
+		// que pasa si el el caught es 0
 }
 
 void agarrar_pokemon(t_pedido_captura* pedido) {
@@ -258,19 +280,30 @@ void agarrar_pokemon(t_pedido_captura* pedido) {
 	if(pedido -> entrenador -> posicion[0] < pedido -> pokemon -> posicion[0]) {
 		pedido -> entrenador -> posicion[0] ++;
 		pedido -> distancia --;
+		log_info(logger, "me movi a [%d,%d]", pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 	} else if(pedido -> entrenador -> posicion[0] > pedido -> pokemon -> posicion[0]) {
 		pedido -> entrenador -> posicion[0] --;
 		pedido -> distancia --;
+		log_info(logger, "me movi a [%d,%d]", pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 	} else if(pedido -> entrenador -> posicion[1] < pedido -> pokemon -> posicion[1]) {
 		pedido -> entrenador -> posicion[1] ++;
 		pedido -> distancia --;
+		log_info(logger, "me movi a [%d,%d]", pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 	} else if(pedido -> entrenador -> posicion[1] > pedido -> pokemon -> posicion[1]) {
 		pedido -> entrenador -> posicion[1] --;
 		pedido -> distancia --;
+		log_info(logger, "me movi a [%d,%d]", pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 	} else { // misma posicion
 		// tirar el catch (agarrar)
-		// mutex_en_rojo();
+		log_info(logger, "mande el catch para un %s en la posicion [%d,%d]",
+				pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
+
+		// no_mande_catch = 0;
+		esperando_caught = 1;
+		sem_wait(&(pedido -> entrenador -> sem_binario));
 	}
+
+	sem_wait(&(pedido -> entrenador -> sem_contador));
 }
 
 t_pedido_captura* buscar_pedido(t_entrenador* entrenador) {
@@ -301,6 +334,7 @@ void planificar_entrenadores() {
 		eliminar_pokemon_de_mapa(pedido -> pokemon);
 
 		cambiar_a_estado(estado_ready, pedido -> entrenador);
+		log_info(logger, "entrenador cambiado a estado ready con su pedido de captura");
 
 		for(int i = 0; i < pedido -> distancia; i++) { // capaz distancia +1
 			sem_post(&(pedido -> entrenador -> sem_contador));
@@ -312,6 +346,40 @@ void planificar_entrenadores() {
 
 	} else{
 		// contempla el caso de deadlock
+	}
+}
+
+void planificar_segun_algoritmo() {
+
+	if(string_equals_ignore_case(config -> algoritmo_planificacion, "FIFO")) {
+
+		planificar_fifo();
+
+	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "RR")) {
+
+
+	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-CD")) {
+
+
+	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-SD")) {
+
+	}
+
+
+}
+
+void planificar_fifo() {
+
+	if(!estado_exec -> head) {
+		t_entrenador* entrenador = estado_ready -> head -> data;
+
+		cambiar_a_estado(estado_exec, entrenador);
+		log_info(logger, "fifo: primer entrenador cambiado a estado exec");
+		sem_post(&(entrenador -> sem_binario));
+
+		sem_wait(&(sem_planificador));
+		cambiar_a_estado(estado_block, entrenador);
+		log_info(logger, "el entrenador termino de ejecutarse y se mueve a block");
 	}
 }
 
@@ -330,34 +398,6 @@ void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
 	} else {
 		list_remove_by_condition(mapa_pokemons, pokemon_a_eliminar);
 	}
-}
-
-void planificar_segun_algoritmo() {
-
-	if(string_equals_ignore_case(config -> algoritmo_planificacion, "FIFO")) {
-
-		planificar_fifo();
-
-	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "RR")) {
-
-
-	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-CD")) {
-
-
-	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-SD")) { // va a funcionar igual que fifo?
-
-	}
-
-
-}
-
-void planificar_fifo() {
-
-	if(!estado_exec -> head) {
-		t_entrenador* entrenador = estado_ready -> head -> data;
-		cambiar_a_estado(estado_exec, entrenador);
-	}
-
 }
 
 void limpiar_mapa(void* pokemon) {
@@ -402,7 +442,35 @@ void matchear_pokemon_con_entrenador(t_pedido_captura* pedido) {
 		}
 	}
 
-	list_iterate(config -> entrenadores, hallar_match);
+	t_list* entrenadores_para_ready = list_create();
+	list_add_all(entrenadores_para_ready, estado_new);
+	list_add_all(entrenadores_para_ready, estado_block);
+
+	remover_entrenadores_en_deadlock(entrenadores_para_ready);
+
+	list_iterate(entrenadores_para_ready, hallar_match);
+}
+
+void remover_entrenadores_en_deadlock(t_list* entrenadores_para_ready){
+
+	void eliminar_entrenador(void* un_entrenador){
+		t_entrenador* entrenador = un_entrenador;
+
+		bool es_el_entrenador(void* another_entrenador){
+
+			t_entrenador* otro_entrenador = another_entrenador;
+
+			return otro_entrenador == entrenador;
+		}
+
+		if(entrenador -> pokemons -> elements_count == entrenador -> objetivos -> elements_count ){
+
+			list_remove_by_condition(entrenadores_para_ready, es_el_entrenador);
+		}
+	}
+
+
+	list_iterate(entrenadores_para_ready, eliminar_entrenador);
 }
 
 // ------------------------------- ESTADOS ------------------------------- //
