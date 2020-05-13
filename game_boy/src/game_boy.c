@@ -2,8 +2,9 @@
 
 int main(int argc,char* argv[]){
 
+	uint32_t cantidad_argumentos = argc;
 	uint32_t id_mensaje = 0;
-	iniciar_programa(argc);
+	iniciar_programa(cantidad_argumentos);
     uint32_t socket = seleccionar_proceso(argv);
     recibir_id_de_mensaje_enviado(socket, id_mensaje);
 	terminar_programa(socket, logger, config_game_boy);
@@ -152,34 +153,32 @@ op_code obtener_enum_de_string (char* string ) {
 
 void armar_mensaje_suscripcion(char* parametros[], t_suscripcion* a_enviar){
 
-	char* cola_a_suscribir = parametros[2];
-
-	if(string_equals_ignore_case(cola_a_suscribir,"COLA_GET")){
+	if(string_equals_ignore_case(parametros[2],"COLA_GET")){
 		a_enviar -> cola_a_suscribir = GET_POKEMON;
 	}
 
-	if(string_equals_ignore_case(cola_a_suscribir,"COLA_CATCH")){
+	if(string_equals_ignore_case(parametros[2],"COLA_CATCH")){
 		a_enviar -> cola_a_suscribir = CATCH_POKEMON;
 	}
 
-	if(string_equals_ignore_case(cola_a_suscribir,"COLA_LOCALIZED")){
+	if(string_equals_ignore_case(parametros[2],"COLA_LOCALIZED")){
 		a_enviar -> cola_a_suscribir = LOCALIZED_POKEMON;
 	}
 
-	if(string_equals_ignore_case(cola_a_suscribir,"COLA_CAUGHT")){
+	if(string_equals_ignore_case(parametros[2],"COLA_CAUGHT")){
 		a_enviar -> cola_a_suscribir = CAUGHT_POKEMON;
 	}
 
-	if(string_equals_ignore_case(cola_a_suscribir,"COLA_APPEARED")){
+	if(string_equals_ignore_case(parametros[2],"COLA_APPEARED")){
 		a_enviar -> cola_a_suscribir = APPEARED_POKEMON;
 	}
 
-	if(string_equals_ignore_case(cola_a_suscribir,"COLA_NEW")){
+	if(string_equals_ignore_case(parametros[2],"COLA_NEW")){
 		a_enviar -> cola_a_suscribir = NEW_POKEMON;
 	}
 
 	a_enviar -> socket = 10000;//Esto esta setteado, hay que adaptarlo.
-
+	a_enviar -> tiempo_suscripcion = 0;
 	//hay que pensar como agregar el tiempo de suscripcion para el caso de game_boy
 }
 
@@ -219,7 +218,7 @@ void leer_config() {
 
     config_game_boy = malloc(sizeof(t_config_game_boy));
 
-	t_config* config = config_create("Debug/game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
+	t_config* config = config_create("game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
 
 	if(config == NULL){
     	printf("no se pudo encontrar el path del config");
