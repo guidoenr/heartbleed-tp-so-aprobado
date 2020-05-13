@@ -29,7 +29,7 @@ void* parsear(char ** datos_de_consola) {
   uint32_t posicion = 0;
   int tienePosiciones = 1;
   op_code cod_op = obtener_enum_de_string(datos_de_consola[2]);
-  if(CAUGHT_POKEMON == cod_op && GET_POKEMON ==cod_op){
+  if(CAUGHT_POKEMON == cod_op && GET_POKEMON == cod_op){
 	  tienePosiciones = 0;
   }
   while ( * datos_de_consola != NULL) {
@@ -41,13 +41,13 @@ void* parsear(char ** datos_de_consola) {
      list_add(lista_parametros, posiciones);
 	}
 	if(posicion > 2 && posicion != 4 && posicion != 5){
-	 list_add(lista_parametros, datos_de_consola );
+	 list_add(lista_parametros, datos_de_consola);
 	 }
 	datos_de_consola++;
     posicion++;
 	}
   return lista_parametros;
-  }
+}
 
 uint32_t seleccionar_proceso(char* parametros[]) {
   uint32_t conexion;
@@ -225,18 +225,32 @@ void armar_mensaje_suscripcion(t_suscripcion* a_enviar){
 }
 
 void armar_mensaje_get_pokemon(t_get_pokemon * a_enviar) {
+	/*a_enviar -> pokemon = lista_parametros[1];
+	a_enviar -> id_mensaje = 0;*/
 }
 
 void armar_mensaje_catch_pokemon(t_catch_pokemon * a_enviar) {
+	/*a_enviar -> pokemon = lista_parametros[1];
+	a_enviar -> posicion = lista_parametros[?];
+	a_enviar -> id_mensaje = 0;*/
 }
 
 void armar_mensaje_caught_pokemon(t_caught_pokemon * a_enviar) {
+	/*a_enviar -> resultado = lista_parametros[?];
+	a_enviar -> id_mensaje = 0;*/
 }
 
 void armar_mensaje_appeared_pokemon(t_appeared_pokemon * a_enviar) {
+	/*a_enviar -> pokemon = lista_parametros[1];
+	a_enviar -> posicion = lista_parametros[?];
+	a_enviar -> id_mensaje = 0;*/
 }
 
 void armar_mensaje_new_pokemon(t_new_pokemon * a_enviar) {
+	/*a_enviar -> pokemon = lista_parametros[1];
+	a_enviar -> posicion = lista_parametros[?];
+	a_enviar -> id_mensaje = 0;
+	a_enviar -> cantidad = lista_parametros[?];*/
 }
 
 void leer_config() {
@@ -276,6 +290,7 @@ void terminar_programa(uint32_t conexion, t_log * logger, t_config_game_boy * co
   liberar_config(config);
   liberar_logger(logger);
   liberar_conexion(conexion);
+  list_destroy(lista_parametros);//Fijarse si necesitan destruirse los elementos tambien
 }
 
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {}
