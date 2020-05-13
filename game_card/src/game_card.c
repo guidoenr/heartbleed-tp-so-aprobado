@@ -27,6 +27,7 @@ int main(void) {
 
 
 	enviar_new_pokemon(luken,socket_br);
+	t_new_pokemon* a = recibir_new_pokemon(socket_br, 30);
 
 //	verificarPokemon(pikachu);
 //	verificarAperturaPokemon(pikachu);
@@ -335,15 +336,15 @@ void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
 	free(stream);
 }
 
-//void* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
-//		log_info(logger, "Recibiendo mensaje.");
-//		recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
-//		log_info(logger, "Tamano de paquete recibido: %d", *size);
-//		void* buffer = malloc(*size);
-//		recv(socket_cliente, buffer, *size, MSG_WAITALL);
-//		log_info(logger, "Mensaje recibido: %s", buffer);
-//		return buffer;
-//	}
+t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
+		log_info(logger, "Recibiendo mensaje.");
+		recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
+		log_info(logger, "Tamano de paquete recibido: %d", *size);
+		void* buffer = malloc(*size);
+		recv(socket_cliente, buffer, *size, MSG_WAITALL);
+		log_info(logger, "Mensaje recibido: %s", buffer);
+		return buffer;
+	}
 
 uint32_t tamanioNewPokemon(t_new_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
