@@ -11,7 +11,7 @@ int main(void) {
 	t_config_game_card* config = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
 
-	int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	//int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
@@ -23,8 +23,11 @@ int main(void) {
 	pikachu.posicion[1] = 65;
 	pikachu.pokemon = "GokuPokemon";
 
-	enviar_new_pokemon(pikachu,socket_br);
-
+	//enviar_new_pokemon(pikachu,socket_br);
+	crearMetadataFile("xd.bin",pikachu);
+	printf("abierto? : %d",isOpen("xd.bin"));
+	cerrarArchivo("xd.bin");
+	printf("abierto? : %d",isOpen("xd.bin"));
 //	verificarPokemon(pikachu);
 //	verificarAperturaPokemon(pikachu);
 
@@ -180,6 +183,22 @@ int isOpen(char* path){
 	fread(&fileMeta.open,sizeof(char),1,file);
 		fclose(file);
 		return fileMeta.open == 'Y';
+}
+
+void abrirArchivo(char* path){
+	FILE* f = fopen(path,"wb");
+	t_file_metadata fileMeta;
+	fileMeta.open = 'Y';
+	fwrite(&fileMeta.open,sizeof(char),1,f);
+	fclose(f);
+}
+
+void cerrarArchivo(char* path){
+	FILE* f = fopen(path,"wb");
+		t_file_metadata fileMeta;
+		fileMeta.open = 'N';
+		fwrite(&fileMeta.open,sizeof(char),1,f);
+		fclose(f);
 }
 
 void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende del que toque ese modulo.
