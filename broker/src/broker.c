@@ -1,13 +1,11 @@
 #include "broker.h"
 
 int main(void) {
-
-
+	sem_init(&semaforo, 0, 1);
 	iniciar_programa();
 	gestionar_mensajeria();
 	terminar_programa(logger, config_broker);
-
-	 return 0;
+	return 0;
 }
 
 void iniciar_programa(){
@@ -15,11 +13,9 @@ void iniciar_programa(){
 
 	leer_config();
 	iniciar_logger(config_broker->log_file, "broker");
-
 	crear_colas_de_mensajes();
     crear_listas_de_suscriptores();
 	log_info(logger, "IP: %s", config_broker -> ip_broker);
-
 	iniciar_servidor(config_broker -> ip_broker, config_broker -> puerto);
 
 }
@@ -167,10 +163,10 @@ void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size) {
 	//t_paquete* paquete = malloc(sizeof(t_paquete));
 	void* buffer;
 	log_info(logger, "Recibiendo mensaje.");
-
+	sem_wait(&semaforo);
 	recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
 	log_info(logger, "Tamano de paquete recibido: %d", *size);
-
+    sem_post(&semaforo);
 	buffer = malloc(*size);
 	recv(socket_cliente, buffer, *size, MSG_WAITALL);
 	log_info(logger, "Mensaje recibido: %s", buffer);
@@ -199,7 +195,11 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* payload, uint32_t soc
 
 	send(socket_cliente, a_agregar, bytes, 0); // a donde se envía este paquete?
 
+
+	sem_wait(&semaforo);
 	encolar_mensaje(paquete, paquete -> codigo_operacion);
+	sem_post(&semaforo);
+
 
 	free(a_agregar);
 	free(paquete -> buffer -> stream);

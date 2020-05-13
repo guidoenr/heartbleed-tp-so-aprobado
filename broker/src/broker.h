@@ -43,19 +43,17 @@ t_config_broker* config_broker;
 t_log* logger;
 t_listas_suscriptores* listas_de_suscriptos;
 t_colas_mensajes* colas_de_mensajes;
-sem_t* semaforo;
+
+sem_t semaforo;
 clock_t tiempo_suscripto;
 
-void iniciar_programa(void);
-void iniciar_logger(char*, char*);
-void leer_config(void);
 void terminar_programa(t_log*, t_config_broker*);
 void liberar_config(t_config_broker*);
 void crear_colas_de_mensajes(void);
 void crear_listas_de_suscriptores(void);
 void liberar_listas(void);
 void encolar_mensaje(t_paquete*, op_code);
-void recibir_suscripcion(t_paquete*);//, t_suscripcion*);
+void recibir_suscripcion(t_paquete*);
 void agregar_mensaje(uint32_t,uint32_t,void*,uint32_t);
 uint32_t generar_id_univoco(void);
 void suscribir_temporalmente(t_list* lista_de_suscriptores, uint32_t socket_cliente);

@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include <ctype.h>
 #include<commons/log.h>
 #include<commons/string.h>
 #include<commons/config.h>
@@ -20,20 +21,22 @@ typedef struct {
 t_log* logger;
 t_list* parametros;
 t_config_game_boy* config_game_boy;
+t_list* lista_parametros;
 void* mensaje;
 
 void iniciar_programa(uint32_t);
+void* parsear(char *parametros[]);
 void iniciar_logger(char*, char*);
 void leer_config(void);
 uint32_t seleccionar_proceso(char *parametros[]);
 op_code obtener_enum_de_string (char *);
-void armar_mensaje_get_pokemon(char *parametros[], t_get_pokemon*);
-void armar_mensaje_catch_pokemon(char *parametros[], t_catch_pokemon*);
-void armar_mensaje_localized_pokemon(char *parametros[], t_localized_pokemon*);
-void armar_mensaje_caught_pokemon(char *parametros[], t_caught_pokemon*);
-void armar_mensaje_appeared_pokemon(char *parametros[], t_appeared_pokemon*);
-void armar_mensaje_new_pokemon(char *parametros[], t_new_pokemon*);
-void armar_mensaje_suscripcion(char *parametros[], t_suscripcion*);
+void armar_mensaje_get_pokemon(t_get_pokemon*);
+void armar_mensaje_catch_pokemon(t_catch_pokemon*);
+void armar_mensaje_localized_pokemon(t_localized_pokemon*);
+void armar_mensaje_caught_pokemon(t_caught_pokemon*);
+void armar_mensaje_appeared_pokemon(t_appeared_pokemon*);
+void armar_mensaje_new_pokemon(t_new_pokemon*);
+void armar_mensaje_suscripcion(t_suscripcion*);
 void terminar_programa(uint32_t, t_log*, t_config_game_boy*);
 void liberar_conexion(uint32_t);
 void mostrar_menu(void);
