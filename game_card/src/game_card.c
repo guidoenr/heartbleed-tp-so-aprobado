@@ -11,23 +11,23 @@ int main(void) {
 	t_config_game_card* config = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
 
-	//int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
 
-	t_new_pokemon pikachu;
-	pikachu.cantidad = 10;
-	pikachu.id_mensaje = 92141;
-	pikachu.posicion[0] = 2;
-	pikachu.posicion[1] = 65;
-	pikachu.pokemon = "GokuPokemon";
+	t_new_pokemon* luken = malloc(sizeof(t_new_pokemon));
+	luken->cantidad = 20;
+	luken->id_mensaje= 1512;
+	luken->posicion[0]= 1;
+	luken->posicion[1]= 2;
+	luken->pokemon = "luken";
+	printf("tamaño: %d",tamanioNewPokemon(luken));
 
-	//enviar_new_pokemon(pikachu,socket_br);
-	crearMetadataFile("xd.bin",pikachu);
-	printf("abierto? : %d",isOpen("xd.bin"));
-	cerrarArchivo("xd.bin");
-	printf("abierto? : %d",isOpen("xd.bin"));
+
+
+	enviar_new_pokemon(luken,socket_br);
+
 //	verificarPokemon(pikachu);
 //	verificarAperturaPokemon(pikachu);
 
@@ -345,8 +345,8 @@ void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
 //		return buffer;
 //	}
 
-int tamanioNewPokemon(t_new_pokemon pokemon){
-	return sizeof(uint32_t) * 4 + strlen(pokemon.pokemon) + 1;
+uint32_t tamanioNewPokemon(t_new_pokemon* pokemon){
+	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 	// aca hay tremendo hardcodeo porque el int poisicon[2] es un recontra TODO
 }
 

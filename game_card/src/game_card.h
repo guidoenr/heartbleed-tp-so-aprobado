@@ -68,3 +68,4 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd);
 //parsers + tools
 char* concatenar(char* str1,char* str2);
 bool isFile(char* path);
+uint32_t tamanioNewPokemon(t_new_pokemon* pokemon);
