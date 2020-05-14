@@ -39,8 +39,6 @@ void* serializar_paquete(t_paquete* paquete, uint32_t* bytes) {
 	return stream;
 }
 
-
-
 uint32_t crear_conexion(char *ip, char* puerto) {
 	struct addrinfo huint32_ts;
 	struct addrinfo *server_info;
@@ -62,11 +60,11 @@ uint32_t crear_conexion(char *ip, char* puerto) {
 	return socket_cliente;
 }
 
-void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente) {
+void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
 	t_buffer* buffer = malloc(sizeof(t_buffer));
 
-	buffer -> size = sizeof(mensaje);
-	//buffer -> stream = malloc(buffer -> size);
+	buffer -> size = size_mensaje;
+	buffer -> stream = malloc(buffer -> size);
 	buffer -> stream = mensaje;
 	log_info(logger,"Armando paquete");
 
@@ -79,7 +77,7 @@ void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente) {
 	log_info(logger,"Paquete serializado con tamaño :%d",size_serializado);
 	send(socket_cliente, stream, size_serializado, 0);
 	log_info(logger,"Paquete enviado");
-	//free(buffer -> stream);
+	free(buffer -> stream);
 	free(buffer);
 	free(paquete);
 	free(stream);

@@ -27,8 +27,8 @@ typedef enum {
 
 typedef struct {
 	uint32_t socket;
-	op_code cola_a_suscribir;
 	uint32_t tiempo_suscripcion;
+	op_code cola_a_suscribir;
 } t_suscripcion;
 
 typedef struct {
@@ -106,7 +106,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd);
 uint32_t recibir_operacion(uint32_t);
 
 //mensaje
-void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente);
+void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje);
 void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size);
 void devolver_mensaje(uint32_t cod_op, uint32_t size, void* payload, uint32_t socket_cliente);
 void reenviar_mensaje(uint32_t cod_op, uint32_t size, void* payload, uint32_t socket_cliente);

@@ -48,7 +48,7 @@ void leer_config() {
 
 	config_broker = malloc(sizeof(t_config_broker));
 
-	config = config_create("broker.config");
+	config = config_create("Debug/broker.config");
 
 	if(config == NULL){
 		    	printf("No se pudo encontrar el path del config.");
@@ -259,40 +259,33 @@ void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
 
 void recibir_suscripcion(t_paquete* paquete){
 
-	//el problema está ACA
 	t_suscripcion* mensaje_suscripcion = malloc(sizeof(t_suscripcion));
-	mensaje_suscripcion = paquete -> buffer -> stream;
-	op_code cola_de_mensajes = mensaje_suscripcion -> cola_a_suscribir;
-	uint32_t socket_cliente = mensaje_suscripcion -> socket;
-	//uint32_t tiempo_de_suscripcion = mensaje_suscripcion -> tiempo_suscripcion;
-	//Ver de agregar la restriccion de tiempo en el switch
+	mensaje_suscripcion = despaquetar_suscripcion(paquete -> buffer -> stream);
 
 	log_info(logger, "Se recibe una suscripción.");
-
-
-		switch (cola_de_mensajes) {
+		switch (mensaje_suscripcion->cola_a_suscribir) {
 			 case GET_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_get, &socket_cliente);
+				list_add(listas_de_suscriptos -> lista_suscriptores_get, &mensaje_suscripcion->socket);
 				log_info(logger, "EL cliente fue suscripto a la cola de mensajes get.");
 				break;
 			 case CATCH_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_catch, &socket_cliente);
+				list_add(listas_de_suscriptos -> lista_suscriptores_catch, &mensaje_suscripcion->socket);
 				log_info(logger, "EL cliente fue suscripto a la cola de mensajes catch.");
 				break;
 			 case LOCALIZED_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_localized, &socket_cliente);
+				list_add(listas_de_suscriptos -> lista_suscriptores_localized, &mensaje_suscripcion->socket);
 				log_info(logger, "EL cliente fue suscripto a la cola de mensajes localized.");
 				break;
 			 case CAUGHT_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_caught, &socket_cliente);
+				list_add(listas_de_suscriptos -> lista_suscriptores_caught, &mensaje_suscripcion->socket);
 				log_info(logger, "EL cliente fue suscripto a la cola de mensajes caught.");
 				break;
 			 case APPEARED_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_appeared, &socket_cliente);
+				list_add(listas_de_suscriptos -> lista_suscriptores_appeared, &mensaje_suscripcion->socket);
 				log_info(logger, "EL cliente fue suscripto a la cola de mensajes appeared.");
 				break;
 			 case NEW_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_new, &socket_cliente);
+				list_add(listas_de_suscriptos -> lista_suscriptores_new, &mensaje_suscripcion->socket);
 				log_info(logger, "EL cliente fue suscripto a la cola de mensajes new.");
 				break;
 			 default:
@@ -302,6 +295,17 @@ void recibir_suscripcion(t_paquete* paquete){
 
 	 free(mensaje_suscripcion);
 	 //free(paquete);
+}
+
+t_suscripcion* despaquetar_suscripcion(void* stream){
+	t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
+	memcpy(&(suscripcion->socket), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	memcpy(&(suscripcion->tiempo_suscripcion), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	memcpy(&(suscripcion->cola_a_suscribir), stream, sizeof(op_code));
+	stream += sizeof(op_code);
+	return suscripcion;
 }
 
 void gestionar_mensajeria(){
