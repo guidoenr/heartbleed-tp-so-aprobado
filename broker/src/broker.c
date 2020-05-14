@@ -3,13 +3,15 @@
 int main(void) {
 	sem_init(&semaforo, 0, 1);
 	iniciar_programa();
-	enviar_mensajes_get();
+	gestionar_mensajeria();
 	terminar_programa(logger, config_broker);
 	return 0;
 }
 
 void iniciar_programa(){
-    leer_config();
+	id_mensaje_univoco = 0;
+
+	leer_config();
 	iniciar_logger(config_broker->log_file, "broker");
 	crear_colas_de_mensajes();
     crear_listas_de_suscriptores();
@@ -30,8 +32,8 @@ void crear_colas_de_mensajes(){
 }
 
 void crear_listas_de_suscriptores(){
-	listas_de_suscriptos = malloc(sizeof(t_listas_suscriptores));
 
+	listas_de_suscriptos = malloc(sizeof(t_listas_suscriptores));
 	listas_de_suscriptos -> lista_suscriptores_new = list_create();
 	listas_de_suscriptos -> lista_suscriptores_appeared = list_create();
 	listas_de_suscriptos -> lista_suscriptores_get = list_create();
@@ -50,7 +52,7 @@ void leer_config() {
 
 	if(config == NULL){
 		    	printf("No se pudo encontrar el path del config.");
-		    	return exit(-2);
+		    	exit(-2);
 	}
 	config_broker->size_memoria = config_get_int_value(config, "TAMANO_MEMORIA");
 	config_broker -> size_min_memoria = config_get_int_value(config, "TAMANO_MEMORIA");
@@ -179,9 +181,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* payload, uint32_t soc
 	log_info(logger, "Payload: %s", (char*) payload);
 	t_paquete* paquete = malloc(sizeof(t_paquete));
 
-	//Usar semaforos para incrementar
-	//Notificar al proceso que lo mando con el id_mensaje generado
-	paquete -> id_mensaje = id_mensaje_univoco++;
+	paquete -> id_mensaje = generar_id_univoco();
 	paquete -> codigo_operacion = cod_op;
 	paquete -> buffer = malloc(sizeof(t_buffer));
 	paquete -> buffer -> size = size;
@@ -195,19 +195,29 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* payload, uint32_t soc
 
 	send(socket_cliente, a_agregar, bytes, 0); // a donde se envía este paquete?
 
+
 	sem_wait(&semaforo);
-	if(cod_op == SUBSCRIPTION) {
-		recibir_suscripcion(paquete, paquete -> buffer -> stream);
-	} else {
-		encolar_mensaje(paquete, paquete -> codigo_operacion);
-	}
+	encolar_mensaje(paquete, paquete -> codigo_operacion);
 	sem_post(&semaforo);
+
 
 	free(a_agregar);
 	free(paquete -> buffer -> stream);
 	free(paquete -> buffer);
 	free(paquete);
 
+}
+
+uint32_t generar_id_univoco(){
+	pthread_mutex_t mutex_id_univoco = PTHREAD_MUTEX_INITIALIZER;
+
+	pthread_mutex_lock(&mutex_id_univoco);
+	id_mensaje_univoco++;
+	pthread_mutex_unlock(&mutex_id_univoco);
+
+	pthread_mutex_destroy(&mutex_id_univoco);
+
+	return id_mensaje_univoco;
 }
 
 void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
@@ -237,9 +247,9 @@ void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
 				list_add(colas_de_mensajes -> cola_new, paquete);
 				log_info(logger, "Mensaje agregado a cola de mensajes new.");
 				break;
-			/*case SUSCRIPTION:
+			case SUBSCRIPTION:
 				recibir_suscripcion(paquete);
-				break;*/
+				break;
 				//El stream de una suscripción debería tener el socket del cliente.
 			default:
 				log_info(logger, "El codigo de operacion es invalido");
@@ -247,49 +257,60 @@ void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
 	}
 }
 
-void recibir_suscripcion(t_paquete* paquete, t_suscripcion* mensaje_suscripcion){
+void recibir_suscripcion(t_paquete* paquete){
 
-	//RECIBE BIEN LA SUSCRIPCION PERO NO SABE A QUE COLA.
-
-	mensaje_suscripcion = malloc(sizeof(t_suscripcion));
+	//el problema está ACA
+	t_suscripcion* mensaje_suscripcion = malloc(sizeof(t_suscripcion));
+	mensaje_suscripcion = paquete -> buffer -> stream;
 	op_code cola_de_mensajes = mensaje_suscripcion -> cola_a_suscribir;
 	uint32_t socket_cliente = mensaje_suscripcion -> socket;
+	//uint32_t tiempo_de_suscripcion = mensaje_suscripcion -> tiempo_suscripcion;
+	//Ver de agregar la restriccion de tiempo en el switch
 
 	log_info(logger, "Se recibe una suscripción.");
 
-	 switch (cola_de_mensajes) {
-	 	 case GET_POKEMON:
-	 		list_add(listas_de_suscriptos -> lista_suscriptores_get, &socket_cliente);
-	 		log_info(logger, "EL cliente fue suscripto a la cola de mensajes get.");
-	 		break;
-	 	 case CATCH_POKEMON:
-			list_add(listas_de_suscriptos -> lista_suscriptores_catch, &socket_cliente);
-			log_info(logger, "EL cliente fue suscripto a la cola de mensajes catch.");
-			break;
-	 	 case LOCALIZED_POKEMON:
-			list_add(listas_de_suscriptos -> lista_suscriptores_localized, &socket_cliente);
-			log_info(logger, "EL cliente fue suscripto a la cola de mensajes localized.");
-			break;
-	 	 case CAUGHT_POKEMON:
-			list_add(listas_de_suscriptos -> lista_suscriptores_caught, &socket_cliente);
-			log_info(logger, "EL cliente fue suscripto a la cola de mensajes caught.");
-			break;
-	 	 case APPEARED_POKEMON:
-			list_add(listas_de_suscriptos -> lista_suscriptores_appeared, &socket_cliente);
-			log_info(logger, "EL cliente fue suscripto a la cola de mensajes appeared.");
-			break;
-	 	 /*case NEW_POKEMON:
-			list_add(listas_de_suscriptos -> lista_suscriptores_new, &socket_cliente);
-			log_info(logger, "EL cliente fue suscripto a la cola de mensajes new.");
-			break;*/
-	 	 default:
-	 		log_info(logger, "Ingrese un codigo de operacion valido");
-	 		break;
-	 }
+
+		switch (cola_de_mensajes) {
+			 case GET_POKEMON:
+				list_add(listas_de_suscriptos -> lista_suscriptores_get, &socket_cliente);
+				log_info(logger, "EL cliente fue suscripto a la cola de mensajes get.");
+				break;
+			 case CATCH_POKEMON:
+				list_add(listas_de_suscriptos -> lista_suscriptores_catch, &socket_cliente);
+				log_info(logger, "EL cliente fue suscripto a la cola de mensajes catch.");
+				break;
+			 case LOCALIZED_POKEMON:
+				list_add(listas_de_suscriptos -> lista_suscriptores_localized, &socket_cliente);
+				log_info(logger, "EL cliente fue suscripto a la cola de mensajes localized.");
+				break;
+			 case CAUGHT_POKEMON:
+				list_add(listas_de_suscriptos -> lista_suscriptores_caught, &socket_cliente);
+				log_info(logger, "EL cliente fue suscripto a la cola de mensajes caught.");
+				break;
+			 case APPEARED_POKEMON:
+				list_add(listas_de_suscriptos -> lista_suscriptores_appeared, &socket_cliente);
+				log_info(logger, "EL cliente fue suscripto a la cola de mensajes appeared.");
+				break;
+			 case NEW_POKEMON:
+				list_add(listas_de_suscriptos -> lista_suscriptores_new, &socket_cliente);
+				log_info(logger, "EL cliente fue suscripto a la cola de mensajes new.");
+				break;
+			 default:
+				log_info(logger, "Ingrese un codigo de operacion valido");
+				break;
+		 }
 
 	 free(mensaje_suscripcion);
+	 //free(paquete);
 }
 
+void gestionar_mensajeria(){
+	enviar_mensajes_get();
+	enviar_mensajes_catch();
+	enviar_mensajes_localized();
+	enviar_mensajes_caught();
+	enviar_mensajes_appeared();
+}
 
 void enviar_mensajes_get(){
 	//t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
@@ -299,6 +320,26 @@ void enviar_mensajes_get(){
 	//list_iterate(listas_de_suscriptos -> lista_suscriptores_get, ); El segundo parámetro es una operación que hace enviar a los sockets un paquete?
 	//free(paquete_a_enviar);
 }
+
+void enviar_mensajes_catch(){
+
+}
+
+
+void enviar_mensajes_localized(){
+
+}
+
+
+
+void enviar_mensajes_caught(){
+
+}
+
+void enviar_mensajes_appeared(){
+
+}
+
 
 
 

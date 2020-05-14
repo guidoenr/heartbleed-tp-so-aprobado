@@ -8,6 +8,7 @@ int main(int argc, char * argv[]) {
   uint32_t socket = seleccionar_proceso(argv);
   recibir_id_de_mensaje_enviado(socket, id_mensaje);
   terminar_programa(socket, logger, config_game_boy);
+
 }
 
 void iniciar_programa(uint32_t argc) {
@@ -28,7 +29,7 @@ void* parsear(char ** datos_de_consola) {
   uint32_t posicion = 0;
   int tienePosiciones = 1;
   op_code cod_op = obtener_enum_de_string(datos_de_consola[2]);
-  if(CAUGHT_POKEMON == cod_op && GET_POKEMON ==cod_op){
+  if(CAUGHT_POKEMON == cod_op && GET_POKEMON == cod_op){
 	  tienePosiciones = 0;
   }
   while ( * datos_de_consola != NULL) {
@@ -40,13 +41,13 @@ void* parsear(char ** datos_de_consola) {
      list_add(lista_parametros, posiciones);
 	}
 	if(posicion > 2 && posicion != 4 && posicion != 5){
-	 list_add(lista_parametros, datos_de_consola );
+	 list_add(lista_parametros, datos_de_consola);
 	 }
 	datos_de_consola++;
     posicion++;
 	}
   return lista_parametros;
-  }
+}
 
 uint32_t seleccionar_proceso(char* parametros[]) {
   uint32_t conexion;
@@ -191,61 +192,74 @@ op_code obtener_enum_de_string(char * string) {
   return 0;
 }
 
-void armar_mensaje_suscripcion( t_suscripcion * a_enviar) {
-/*
-  char * cola_a_suscribir = parametros[2];
+void armar_mensaje_suscripcion(t_suscripcion* a_enviar){
 
-  if (string_equals_ignore_case(cola_a_suscribir, "COLA_GET")) {
-    a_enviar -> cola_a_suscribir = GET_POKEMON;
-  }
+	/*if(string_equals_ignore_case(parametros[2],"COLA_GET")){
+		a_enviar -> cola_a_suscribir = GET_POKEMON;
+	}
 
-  if (string_equals_ignore_case(cola_a_suscribir, "COLA_CATCH")) {
-    a_enviar -> cola_a_suscribir = CATCH_POKEMON;
-  }
+	if(string_equals_ignore_case(parametros[2],"COLA_CATCH")){
+		a_enviar -> cola_a_suscribir = CATCH_POKEMON;
+	}
 
-  if (string_equals_ignore_case(cola_a_suscribir, "COLA_LOCALIZED")) {
-    a_enviar -> cola_a_suscribir = LOCALIZED_POKEMON;
-  }
+	if(string_equals_ignore_case(parametros[2],"COLA_LOCALIZED")){
+		a_enviar -> cola_a_suscribir = LOCALIZED_POKEMON;
+	}
 
-  if (string_equals_ignore_case(cola_a_suscribir, "COLA_CAUGHT")) {
-    a_enviar -> cola_a_suscribir = CAUGHT_POKEMON;
-  }
+	if(string_equals_ignore_case(parametros[2],"COLA_CAUGHT")){
+		a_enviar -> cola_a_suscribir = CAUGHT_POKEMON;
+	}
 
-  if (string_equals_ignore_case(cola_a_suscribir, "COLA_APPEARED")) {
-    a_enviar -> cola_a_suscribir = APPEARED_POKEMON;
-  }
+	if(string_equals_ignore_case(parametros[2],"COLA_APPEARED")){
+		a_enviar -> cola_a_suscribir = APPEARED_POKEMON;
+	}
 
-  if (string_equals_ignore_case(cola_a_suscribir, "COLA_NEW")) {
-    a_enviar -> cola_a_suscribir = NEW_POKEMON;
-  }
+	if(string_equals_ignore_case(parametros[2],"COLA_NEW")){
+		a_enviar -> cola_a_suscribir = NEW_POKEMON;
+	}
 
-  a_enviar -> socket = 10000; //Esto esta setteado, hay que adaptarlo.
-
-  //hay que pensar como agregar el tiempo de suscripcion para el caso de game_boy
-   *
-   */
+	a_enviar -> socket = 10000;//Esto esta setteado, hay que adaptarlo.
+	a_enviar -> tiempo_suscripcion = 0;
+	//hay que pensar como agregar el tiempo de suscripcion para el caso de game_boy
+*/
 }
 
 void armar_mensaje_get_pokemon(t_get_pokemon * a_enviar) {
+	/*a_enviar -> pokemon = lista_parametros[1];
+	a_enviar -> id_mensaje = 0;*/
 }
 
 void armar_mensaje_catch_pokemon(t_catch_pokemon * a_enviar) {
+	/*a_enviar -> pokemon = lista_parametros[1];
+	a_enviar -> posicion = lista_parametros[?];
+	a_enviar -> id_mensaje = 0;*/
 }
 
 void armar_mensaje_caught_pokemon(t_caught_pokemon * a_enviar) {
+	/*a_enviar -> resultado = lista_parametros[?];
+	a_enviar -> id_mensaje = 0;*/
 }
 
 void armar_mensaje_appeared_pokemon(t_appeared_pokemon * a_enviar) {
+	/*a_enviar -> pokemon = lista_parametros[1];
+	a_enviar -> posicion = lista_parametros[?];
+	a_enviar -> id_mensaje = 0;*/
 }
 
 void armar_mensaje_new_pokemon(t_new_pokemon * a_enviar) {
+	/*a_enviar -> pokemon = lista_parametros[1];
+	a_enviar -> posicion = lista_parametros[?];
+	a_enviar -> id_mensaje = 0;
+	a_enviar -> cantidad = lista_parametros[?];*/
 }
 
 void leer_config() {
 
   config_game_boy = malloc(sizeof(t_config_game_boy));
 
+
   t_config * config = config_create("Debug/game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
+
 
   if (config == NULL) {
     printf("no se pudo encontrar el path del config");
@@ -276,6 +290,7 @@ void terminar_programa(uint32_t conexion, t_log * logger, t_config_game_boy * co
   liberar_config(config);
   liberar_logger(logger);
   liberar_conexion(conexion);
+  list_destroy(lista_parametros);//Fijarse si necesitan destruirse los elementos tambien
 }
 
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {}

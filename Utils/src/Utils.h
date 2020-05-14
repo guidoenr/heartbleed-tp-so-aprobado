@@ -1,6 +1,7 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<sys/socket.h>
@@ -27,6 +28,7 @@ typedef enum {
 typedef struct {
 	uint32_t socket;
 	op_code cola_a_suscribir;
+	uint32_t tiempo_suscripcion;
 } t_suscripcion;
 
 typedef struct {
@@ -84,13 +86,6 @@ typedef struct {
 } t_paquete;
 
 
-
-/*typedef struct {
-	uint32_t socket;
-	char* cola_a_suscribir;
-} t_suscripcion;*/
-
-//t_suscripcion* mensaje_suscripcion;
 pthread_t thread;
 t_log* logger;
 uint32_t id_mensaje_univoco;

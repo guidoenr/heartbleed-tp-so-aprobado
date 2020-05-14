@@ -16,14 +16,18 @@ int main(void) {
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
 
-	t_new_pokemon pikachu;
-	pikachu.cantidad = 10;
-	pikachu.id_mensaje = 92141;
-	pikachu.posicion[0] = 2;
-	pikachu.posicion[1] = 65;
-	pikachu.pokemon = "GokuPokemon";
+	t_new_pokemon* luken = malloc(sizeof(t_new_pokemon));
+	luken->cantidad = 20;
+	luken->id_mensaje= 1512;
+	luken->posicion[0]= 1;
+	luken->posicion[1]= 2;
+	luken->pokemon = "luken";
+	printf("tamaño: %d",tamanioNewPokemon(luken));
 
-	enviar_new_pokemon(pikachu,socket_br);
+
+
+	enviar_new_pokemon(luken,socket_br);
+	t_new_pokemon* a = recibir_new_pokemon(socket_br, 30);
 
 //	verificarPokemon(pikachu);
 //	verificarAperturaPokemon(pikachu);
@@ -182,6 +186,22 @@ int isOpen(char* path){
 		return fileMeta.open == 'Y';
 }
 
+void abrirArchivo(char* path){
+	FILE* f = fopen(path,"wb");
+	t_file_metadata fileMeta;
+	fileMeta.open = 'Y';
+	fwrite(&fileMeta.open,sizeof(char),1,f);
+	fclose(f);
+}
+
+void cerrarArchivo(char* path){
+	FILE* f = fopen(path,"wb");
+		t_file_metadata fileMeta;
+		fileMeta.open = 'N';
+		fwrite(&fileMeta.open,sizeof(char),1,f);
+		fclose(f);
+}
+
 void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende del que toque ese modulo.
 	uint32_t* size;
 	void* msg;
@@ -316,18 +336,18 @@ void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
 	free(stream);
 }
 
-//void* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
-//		log_info(logger, "Recibiendo mensaje.");
-//		recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
-//		log_info(logger, "Tamano de paquete recibido: %d", *size);
-//		void* buffer = malloc(*size);
-//		recv(socket_cliente, buffer, *size, MSG_WAITALL);
-//		log_info(logger, "Mensaje recibido: %s", buffer);
-//		return buffer;
-//	}
+t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
+		log_info(logger, "Recibiendo mensaje.");
+		recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
+		log_info(logger, "Tamano de paquete recibido: %d", *size);
+		void* buffer = malloc(*size);
+		recv(socket_cliente, buffer, *size, MSG_WAITALL);
+		log_info(logger, "Mensaje recibido: %s", buffer);
+		return buffer;
+	}
 
-int tamanioNewPokemon(t_new_pokemon pokemon){
-	return sizeof(uint32_t) * 4 + strlen(pokemon.pokemon) + 1;
+uint32_t tamanioNewPokemon(t_new_pokemon* pokemon){
+	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 	// aca hay tremendo hardcodeo porque el int poisicon[2] es un recontra TODO
 }
 
