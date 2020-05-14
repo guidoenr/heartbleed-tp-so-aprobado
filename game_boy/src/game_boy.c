@@ -50,27 +50,27 @@ uint32_t seleccionar_proceso(char * parametros[]) {
     case GET_POKEMON:
       mensaje = malloc(sizeof(t_get_pokemon));
       armar_mensaje_get_pokemon(parametros, mensaje);
-      enviar_mensaje(1, mensaje, conexion,12);
+      enviar_mensaje(GET_POKEMON, mensaje, conexion,12);
       break;
     case CATCH_POKEMON:
       mensaje = malloc(sizeof(t_catch_pokemon));
       armar_mensaje_catch_pokemon(parametros, mensaje);
-      enviar_mensaje(2, mensaje, conexion,12);
+      enviar_mensaje(CATCH_POKEMON, mensaje, conexion,12);
       break;
     case CAUGHT_POKEMON:
       mensaje = malloc(sizeof(t_caught_pokemon));
       armar_mensaje_caught_pokemon(parametros, mensaje);
-      enviar_mensaje(4, mensaje, conexion,12);
+      enviar_mensaje(CAUGHT_POKEMON, mensaje, conexion,12);
       break;
     case APPEARED_POKEMON:
       mensaje = malloc(sizeof(t_appeared_pokemon));
       armar_mensaje_appeared_pokemon(parametros, mensaje);
-      enviar_mensaje(5, mensaje, conexion,12);
+      enviar_mensaje(APPEARED_POKEMON, mensaje, conexion,12);
       break;
     case NEW_POKEMON:
       mensaje = malloc(sizeof(t_new_pokemon));
       armar_mensaje_new_pokemon(parametros, mensaje);
-      enviar_mensaje(6, mensaje, conexion,12);
+      enviar_mensaje(NEW_POKEMON, mensaje, conexion,12);
       break;
     default:
       log_info(logger, "Ingrese un codigo de operacion valido");
@@ -84,17 +84,17 @@ uint32_t seleccionar_proceso(char * parametros[]) {
     case GET_POKEMON:
       mensaje = malloc(sizeof(t_get_pokemon));
       armar_mensaje_get_pokemon(parametros, mensaje);
-      enviar_mensaje(1, mensaje, conexion,12);
+      enviar_mensaje(GET_POKEMON, mensaje, conexion,12);
       break;
     case CATCH_POKEMON:
       mensaje = malloc(sizeof(t_catch_pokemon));
       armar_mensaje_catch_pokemon(parametros, mensaje);
-      enviar_mensaje(2, mensaje, conexion,12);
+      enviar_mensaje(CATCH_POKEMON, mensaje, conexion,12);
       break;
     case NEW_POKEMON:
       mensaje = malloc(sizeof(t_new_pokemon));
       armar_mensaje_new_pokemon(parametros, mensaje);
-      enviar_mensaje(5, mensaje, conexion,12);
+      enviar_mensaje(NEW_POKEMON, mensaje, conexion,12);
       break;
     default:
       log_info(logger, "Ingrese un codigo de operacion valido");
@@ -107,7 +107,7 @@ uint32_t seleccionar_proceso(char * parametros[]) {
     conexion = crear_conexion(config_game_boy -> ip_team, config_game_boy -> puerto_team);
     mensaje = malloc(sizeof(t_appeared_pokemon));
     armar_mensaje_appeared_pokemon(parametros, mensaje);
-    enviar_mensaje(4, mensaje, conexion,12);
+    enviar_mensaje(APPEARED_POKEMON, mensaje, conexion,12);
   }
 
   if (string_equals_ignore_case(proceso, "SUSCRIPTOR")) {
