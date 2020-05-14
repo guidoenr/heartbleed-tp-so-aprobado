@@ -157,7 +157,7 @@ void liberar_logger(){
 	}
 }
 
-t_get_pokemon* despaquetar_get_pokemon(void* stream){
+t_get_pokemon* deserealizar_get_pokemon(void* stream){
 	t_get_pokemon* mensaje_get_pokemon = malloc(sizeof(t_get_pokemon));
 	memcpy(&(mensaje_get_pokemon->id_mensaje), stream, sizeof(uint32_t));
 	stream += sizeof(uint32_t);
@@ -166,7 +166,7 @@ t_get_pokemon* despaquetar_get_pokemon(void* stream){
 	return mensaje_get_pokemon;
 }
 
-t_catch_pokemon* despaquetar_catch_pokemon(void* stream){
+t_catch_pokemon* deserealizar_catch_pokemon(void* stream){
 	t_catch_pokemon* mensaje_catch_pokemon = malloc(sizeof(t_catch_pokemon));
 	memcpy(&(mensaje_catch_pokemon->id_mensaje), stream, sizeof(uint32_t));
 	stream += sizeof(uint32_t);
@@ -177,7 +177,7 @@ t_catch_pokemon* despaquetar_catch_pokemon(void* stream){
 	return mensaje_catch_pokemon;
 }
 
-t_localized_pokemon* despaquetar_localized_pokemon(void* stream){
+t_localized_pokemon* deserealizar_localized_pokemon(void* stream){
 	t_localized_pokemon* mensaje_localized_pokemon = malloc(sizeof(t_localized_pokemon));
 	memcpy(&(mensaje_localized_pokemon->id_mensaje), stream, sizeof(uint32_t));
 	stream += sizeof(uint32_t);
@@ -187,7 +187,7 @@ t_localized_pokemon* despaquetar_localized_pokemon(void* stream){
 	return mensaje_localized_pokemon;
 }
 
-t_caught_pokemon* despaquetar_caught_pokemon(void* stream){
+t_caught_pokemon* deserealizar_caught_pokemon(void* stream){
 	t_caught_pokemon* mensaje_caught_pokemon = malloc(sizeof(t_caught_pokemon));
 	memcpy(&(mensaje_caught_pokemon->id_mensaje), stream, sizeof(uint32_t));
 	stream += sizeof(uint32_t);
@@ -198,7 +198,7 @@ t_caught_pokemon* despaquetar_caught_pokemon(void* stream){
 	return mensaje_caught_pokemon;
 }
 
-t_appeared_pokemon* despaquetar_appeared_pokemon(void* stream){
+t_appeared_pokemon* deserealizar_appeared_pokemon(void* stream){
 	t_appeared_pokemon* mensaje_appeared_pokemon = malloc(sizeof(t_appeared_pokemon));
 	memcpy(&(mensaje_appeared_pokemon->id_mensaje), stream, sizeof(uint32_t));
 	stream += sizeof(uint32_t);
@@ -211,7 +211,7 @@ t_appeared_pokemon* despaquetar_appeared_pokemon(void* stream){
 	return mensaje_appeared_pokemon;
 }
 
-t_new_pokemon* despaquetar_new_pokemon(void* stream){
+t_new_pokemon* deserealizar_new_pokemon(void* stream){
 	t_new_pokemon* mensaje_new_pokemon = malloc(sizeof(t_new_pokemon));
 	memcpy(&(mensaje_new_pokemon->id_mensaje), stream, sizeof(uint32_t));
 	stream += sizeof(uint32_t);

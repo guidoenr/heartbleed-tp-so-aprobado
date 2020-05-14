@@ -112,12 +112,12 @@ void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uin
 void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size);
 void devolver_mensaje(uint32_t cod_op, uint32_t size, void* payload, uint32_t socket_cliente);
 void reenviar_mensaje(uint32_t cod_op, uint32_t size, void* payload, uint32_t socket_cliente);
-t_get_pokemon* desempaquetar_get_pokemon(void* stream);
-t_catch_pokemon* desempaquetar_catch_pokemon(void* stream);
-t_localized_pokemon* desempaquetar_localized_pokemon(void* stream);
-t_caught_pokemon* desempaquetar_caught_pokemon(void* stream);
-t_appeared_pokemon* desempaquetar_appeared_pokemon(void* stream);
-t_new_pokemon* desempaquetar_new_pokemon(void* stream);
+t_get_pokemon* deserealizar_get_pokemon(void* stream);
+t_catch_pokemon* deserealizar_catch_pokemon(void* stream);
+t_localized_pokemon* deserealizar_localized_pokemon(void* stream);
+t_caught_pokemon* deserealizar_caught_pokemon(void* stream);
+t_appeared_pokemon* deserealizar_appeared_pokemon(void* stream);
+t_new_pokemon* deserealizar_new_pokemon(void* stream);
 
 void iniciar_logger(char* file, char* program_name);
 void liberar_conexion(uint32_t socket_cliente);

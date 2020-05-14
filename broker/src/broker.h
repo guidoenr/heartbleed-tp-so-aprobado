@@ -54,7 +54,7 @@ void crear_listas_de_suscriptores(void);
 void liberar_listas(void);
 void encolar_mensaje(t_paquete*, op_code);
 void recibir_suscripcion(t_paquete*);
-t_suscripcion* despaquetar_suscripcion(void*);
+t_suscripcion* deserealizar_suscripcion(void*);
 void agregar_mensaje(uint32_t,uint32_t,void*,uint32_t);
 uint32_t generar_id_univoco(void);
 //void anular_suscripciones_temporales(void);

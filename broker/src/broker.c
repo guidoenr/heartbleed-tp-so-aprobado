@@ -10,7 +10,6 @@ int main(void) {
 
 void iniciar_programa(){
 	id_mensaje_univoco = 0;
-
 	leer_config();
 	iniciar_logger(config_broker->log_file, "broker");
 	crear_colas_de_mensajes();
@@ -261,7 +260,7 @@ void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
 void recibir_suscripcion(t_paquete* paquete){
 
 	t_suscripcion* mensaje_suscripcion = malloc(sizeof(t_suscripcion));
-	mensaje_suscripcion = despaquetar_suscripcion(paquete -> buffer -> stream);
+	mensaje_suscripcion = deserealizar_suscripcion(paquete -> buffer -> stream);
 
 	log_info(logger, "Se recibe una suscripción.");
 		switch (mensaje_suscripcion->cola_a_suscribir) {
@@ -302,7 +301,7 @@ void recibir_suscripcion(t_paquete* paquete){
 
 }*/
 
-t_suscripcion* despaquetar_suscripcion(void* stream){
+t_suscripcion* deserealizar_suscripcion(void* stream){
 	t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
 	memcpy(&(suscripcion->socket), stream, sizeof(uint32_t));
 	stream += sizeof(uint32_t);

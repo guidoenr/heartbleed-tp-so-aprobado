@@ -27,6 +27,7 @@ t_log * logger;
 t_list * parametros;
 t_config_game_boy * config_game_boy;
 void * mensaje;
+uint32_t size_mensaje = 0;
 
 void iniciar_programa(uint32_t);
 void iniciar_logger(char * , char * );
