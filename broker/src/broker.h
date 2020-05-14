@@ -45,7 +45,7 @@ t_listas_suscriptores* listas_de_suscriptos;
 t_colas_mensajes* colas_de_mensajes;
 
 sem_t semaforo;
-clock_t tiempo_suscripto;
+//clock_t tiempo_suscripto;
 
 void terminar_programa(t_log*, t_config_broker*);
 void liberar_config(t_config_broker*);
@@ -57,8 +57,7 @@ void recibir_suscripcion(t_paquete*);
 t_suscripcion* despaquetar_suscripcion(void*);
 void agregar_mensaje(uint32_t,uint32_t,void*,uint32_t);
 uint32_t generar_id_univoco(void);
-void suscribir_temporalmente(t_list* lista_de_suscriptores, uint32_t socket_cliente);
-//void gestionar_suscripciones(void);
+//void anular_suscripciones_temporales(void);
 void gestionar_mensajeria(void);
 void enviar_mensajes_get(void);
 void enviar_mensajes_catch(void);

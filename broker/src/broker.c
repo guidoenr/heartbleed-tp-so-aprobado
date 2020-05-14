@@ -48,7 +48,7 @@ void leer_config() {
 
 	config_broker = malloc(sizeof(t_config_broker));
 
-	config = config_create("Debug/broker.config");
+	config = config_create("broker.config");
 
 	if(config == NULL){
 		    	printf("No se pudo encontrar el path del config.");
@@ -81,6 +81,7 @@ void terminar_programa(t_log* logger, t_config_broker* config) {
 	liberar_listas();
 	liberar_config(config);
 	liberar_logger(logger);
+	sem_destroy(&semaforo);
 }
 
 void liberar_listas(){
@@ -166,9 +167,9 @@ void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size) {
 	sem_wait(&semaforo);
 	recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
 	log_info(logger, "Tamano de paquete recibido: %d", *size);
-    sem_post(&semaforo);
 	buffer = malloc(*size);
 	recv(socket_cliente, buffer, *size, MSG_WAITALL);
+	sem_post(&semaforo);
 	log_info(logger, "Mensaje recibido: %s", buffer);
 
 	return buffer;
@@ -294,8 +295,12 @@ void recibir_suscripcion(t_paquete* paquete){
 		 }
 
 	 free(mensaje_suscripcion);
-	 //free(paquete);
+
 }
+
+/*void anular_suscripciones_temporales(){
+
+}*/
 
 t_suscripcion* despaquetar_suscripcion(void* stream){
 	t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));

@@ -181,7 +181,7 @@ void armar_mensaje_suscripcion(char * parametros[], t_suscripcion * a_enviar) {
   if (string_equals_ignore_case(cola_a_suscribir, "COLA_GET")) {
     a_enviar -> cola_a_suscribir = GET_POKEMON;
   }
-/*
+
   if (string_equals_ignore_case(cola_a_suscribir, "COLA_CATCH")) {
     a_enviar -> cola_a_suscribir = CATCH_POKEMON;
   }
@@ -202,26 +202,35 @@ void armar_mensaje_suscripcion(char * parametros[], t_suscripcion * a_enviar) {
     a_enviar -> cola_a_suscribir = NEW_POKEMON;
   }
 
-   //Esto esta setteado, hay que adaptarlo.*/
+   //Esto esta setteado, hay que adaptarlo.
   a_enviar -> tiempo_suscripcion = 20;
-  log_info(logger, "modificado");
   //hay que pensar como agregar el tiempo de suscripcion para el caso de game_boy
 }
 
+
 void armar_mensaje_get_pokemon(char * parametros[], t_get_pokemon * a_enviar) {
   a_enviar -> pokemon = parametros[3];
-  a_enviar -> id_mensaje = 1;
+  if(parametros[4] != NULL ){
+	  a_enviar -> id_mensaje = parametros[4];
+  } else {
+	  a_enviar -> id_mensaje = 0;
+  }
 }
 
 void armar_mensaje_catch_pokemon(char * parametros[], t_catch_pokemon * a_enviar) {
   a_enviar -> pokemon = parametros[3];
   a_enviar -> posicion[0] = (uint32_t) parametros[4];
   a_enviar -> posicion[1] = (uint32_t) parametros[5];
-  a_enviar -> id_mensaje = 1; ///A LABURAR A FUTURO
+  if(parametros[6] != NULL){
+	  a_enviar -> id_mensaje = parametros[6];
+  } else {
+	  a_enviar -> id_mensaje = 0; ///A LABURAR A FUTURO
+  }
 }
 
 void armar_mensaje_caught_pokemon(char * parametros[], t_caught_pokemon * a_enviar) {
-  a_enviar -> id_mensaje = (uint32_t) parametros[3];
+  a_enviar -> id_mensaje = 0;
+  a_enviar -> id_mensaje_correlativo = (uint32_t) parametros[3];
   a_enviar -> resultado = (uint32_t) parametros[4];
 }
 
@@ -229,16 +238,25 @@ void armar_mensaje_appeared_pokemon(char * parametros[], t_appeared_pokemon * a_
   a_enviar -> pokemon = parametros[3];
   a_enviar -> posicion[0] = (uint32_t) parametros[4];
   a_enviar -> posicion[1] = (uint32_t) parametros[5];
-  a_enviar -> id_mensaje = (uint32_t) parametros[6];
+  a_enviar -> id_mensaje = 0;
+  if(parametros[6] != NULL){
+	  a_enviar -> id_mensaje_correlativo = (uint32_t) parametros[6];
+  }
 }
 
 void armar_mensaje_new_pokemon(char * parametros[], t_new_pokemon * a_enviar) {
   a_enviar -> pokemon = parametros[3];
-  a_enviar -> posicion[0] = atoi(parametros[4]);
-  a_enviar -> posicion[1] = atoi(parametros[5]);
-  a_enviar -> cantidad = atoi(parametros[6]);
-  a_enviar -> id_mensaje = 1; /// A futuro
+  a_enviar -> posicion[0] = (uint32_t) parametros[4];
+  a_enviar -> posicion[1] = (uint32_t) parametros[5];
+  a_enviar -> cantidad = (uint32_t) parametros[6];
+  if(parametros[7] != NULL){
+	  a_enviar -> id_mensaje = parametros[7];
+  } else {
+	  a_enviar -> id_mensaje = 0; /// A futuro
+  }
+
 }
+
 
 void leer_config() {
 

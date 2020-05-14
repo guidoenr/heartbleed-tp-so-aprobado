@@ -156,3 +156,74 @@ void liberar_logger(){
 		log_destroy(logger);
 	}
 }
+
+t_get_pokemon* despaquetar_get_pokemon(void* stream){
+	t_get_pokemon* mensaje_get_pokemon = malloc(sizeof(t_get_pokemon));
+	memcpy(&(mensaje_get_pokemon->id_mensaje), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	memcpy(&(mensaje_get_pokemon->pokemon), stream, sizeof(char*));
+	stream += sizeof(char*);
+	return mensaje_get_pokemon;
+}
+
+t_catch_pokemon* despaquetar_catch_pokemon(void* stream){
+	t_catch_pokemon* mensaje_catch_pokemon = malloc(sizeof(t_catch_pokemon));
+	memcpy(&(mensaje_catch_pokemon->id_mensaje), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	memcpy(&(mensaje_catch_pokemon->pokemon), stream, sizeof(char*));
+	stream += sizeof(char*);
+	memcpy(&(mensaje_catch_pokemon->posicion), stream, (sizeof(uint32_t)*2));
+	stream += (sizeof(uint32_t) * 2);
+	return mensaje_catch_pokemon;
+}
+
+t_localized_pokemon* despaquetar_localized_pokemon(void* stream){
+	t_localized_pokemon* mensaje_localized_pokemon = malloc(sizeof(t_localized_pokemon));
+	memcpy(&(mensaje_localized_pokemon->id_mensaje), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	memcpy(&(mensaje_localized_pokemon->pokemon), stream, sizeof(char*));
+	stream += sizeof(char*);
+	//Falta el memcpy de la lista de entrenadores
+	return mensaje_localized_pokemon;
+}
+
+t_caught_pokemon* despaquetar_caught_pokemon(void* stream){
+	t_caught_pokemon* mensaje_caught_pokemon = malloc(sizeof(t_caught_pokemon));
+	memcpy(&(mensaje_caught_pokemon->id_mensaje), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	memcpy(&(mensaje_caught_pokemon->id_mensaje_correlativo), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	memcpy(&(mensaje_caught_pokemon->resultado), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	return mensaje_caught_pokemon;
+}
+
+t_appeared_pokemon* despaquetar_appeared_pokemon(void* stream){
+	t_appeared_pokemon* mensaje_appeared_pokemon = malloc(sizeof(t_appeared_pokemon));
+	memcpy(&(mensaje_appeared_pokemon->id_mensaje), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	memcpy(&(mensaje_appeared_pokemon->id_mensaje_correlativo), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	memcpy(&(mensaje_appeared_pokemon->pokemon), stream, sizeof(char*));
+	stream += sizeof(char*);
+	memcpy(&(mensaje_appeared_pokemon->posicion), stream, (sizeof(uint32_t)*2));
+	stream += (sizeof(uint32_t) * 2);
+	return mensaje_appeared_pokemon;
+}
+
+t_new_pokemon* despaquetar_new_pokemon(void* stream){
+	t_new_pokemon* mensaje_new_pokemon = malloc(sizeof(t_new_pokemon));
+	memcpy(&(mensaje_new_pokemon->id_mensaje), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	memcpy(&(mensaje_new_pokemon->pokemon), stream, sizeof(char*));
+	stream += sizeof(char*);
+	memcpy(&(mensaje_new_pokemon->posicion), stream, (sizeof(uint32_t)*2));
+	stream += (sizeof(uint32_t) * 2);
+	memcpy(&(mensaje_new_pokemon->cantidad), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	return mensaje_new_pokemon;
+}
+
+
+
+
