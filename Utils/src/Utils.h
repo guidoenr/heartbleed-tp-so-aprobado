@@ -12,6 +12,7 @@
 #include<string.h>
 #include<pthread.h>
 
+
 typedef enum {
 	GET_POKEMON = 1,
 	CATCH_POKEMON= 2,
@@ -93,6 +94,7 @@ typedef struct {
 pthread_t thread;
 t_log* logger;
 uint32_t id_mensaje_univoco;
+
 void* recibir_buffer(uint32_t*, uint32_t); /// este no esta definido en utils.c
 
 //client
