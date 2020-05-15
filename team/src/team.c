@@ -43,7 +43,7 @@ void iniciar_programa() {
 	inicializar_semaforos();
 	determinar_objetivo_global();
 
-	//iniciar_entrenadores(); // iniciar a los entrenadores
+	iniciar_entrenadores(); // iniciar a los entrenadores
 	mapa_pokemons = list_create();
 	pedidos_captura = list_create();
 	suscribirme_a_colas();
@@ -249,19 +249,18 @@ void* operar_entrenador(void* un_entrenador) {
 
 		sem_wait(&(entrenador -> sem_binario));
 
-		while(!esperando_caught) {
+		while(!esperando_caught) { // query estado
 
 			agarrar_pokemon(pedido);
 		}
 
 		while(esperando_caught); // settear a 0 en el process request
 
-		if(espere_caught){
+		if(espere_caught) {
 			procesar_caught(pedido);
-			sem_post(&(sem_planificador));
 		}
 
-		sem_post(&(entrenador -> sem_binario));
+		sem_post(&(sem_exec_libre));
 	}
 
 	return entrenador;
@@ -320,7 +319,7 @@ t_pedido_captura* buscar_pedido(t_entrenador* entrenador) {
 
 void planificar_entrenadores() {
 
-	if(mapa_pokemons -> elements_count) {
+	if(mapa_pokemons -> elements_count) { // chequear tmb entrenadores pendientes de ir a ready
 
 		// NO SE SI VA O NO: list_iterate(mapa_pokemons, limpiar_mapa); // borra pokemons cargados en mapa que ya no estan en objetivo global
 
@@ -344,7 +343,7 @@ void planificar_entrenadores() {
 
 		planificar_segun_algoritmo();
 
-	} else{
+	} else {
 		// contempla el caso de deadlock
 	}
 }
@@ -363,21 +362,23 @@ void planificar_segun_algoritmo() {
 
 	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-SD")) {
 
+	} else {
+		log_error(logger, "algoritmo de planificacion recibido: %s", config -> algoritmo_planificacion);
 	}
 
 
 }
 
-void planificar_fifo() {
+void planificar_fifo() { // ejecutar_un_entrenador, planificar_alg va a ser otra funcion
 
-	if(!estado_exec -> head) {
+	if(!estado_exec -> head) { // chequear q estado_ready tenga algo
 		t_entrenador* entrenador = estado_ready -> head -> data;
 
 		cambiar_a_estado(estado_exec, entrenador);
 		log_info(logger, "fifo: primer entrenador cambiado a estado exec");
 		sem_post(&(entrenador -> sem_binario));
 
-		sem_wait(&(sem_planificador));
+		sem_wait(&(entrenador -> sem_exec_libre));
 		cambiar_a_estado(estado_block, entrenador);
 		log_info(logger, "el entrenador termino de ejecutarse y se mueve a block");
 	}

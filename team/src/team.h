@@ -11,7 +11,7 @@
 // agregar un id 0 al mensaje a mandar al broker
 
 typedef struct {
-	sem_t sem_contador;
+	sem_t sem_contador; // aka quantum
 	sem_t sem_binario;
 	uint32_t posicion[2];
 	t_list* pokemons;
@@ -46,7 +46,6 @@ typedef struct {
 
 t_config_team* config;
 t_log* logger;
-sem_t sem_planificador;
 
 // utils
 char* append(const char*, char);
