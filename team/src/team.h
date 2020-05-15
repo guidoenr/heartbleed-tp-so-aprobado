@@ -11,7 +11,7 @@
 // agregar un id 0 al mensaje a mandar al broker
 
 typedef struct {
-	sem_t sem_contador; // aka quantum
+	uint32_t pasos_a_moverse;
 	sem_t sem_binario;
 	uint32_t posicion[2];
 	t_list* pokemons;
@@ -61,7 +61,7 @@ void suscribirse_a(op_code);
 
 
 // entrenadores
-void inciar_entrenadores();
+void iniciar_entrenadores();
 void* operar_entrenador(void*);
 void obtener_entrenadores(void*);
 t_list* load_entrenadores(t_list*, t_list*, t_list*);
@@ -77,9 +77,15 @@ void procesar_caught(t_pedido_captura*);
 
 
 // planificacion
-void planificar_segun_algoritmo();
 t_pedido_captura* buscar_pedido(t_entrenador*);
+void planificar_entrenadores();
+void planificar_segun_algoritmo();
 void planificar_fifo();
+void planificar_rr();
+void planificar_sjf_sd();
+void planificar_sjf_cd();
+void ejecutar_fifo_o_rr();
+
 
 // ejecucion
 void agarrar_pokemon(t_pedido_captura*);
@@ -104,7 +110,15 @@ void inicializar_semaforos();
 
 // mapa
 t_list* mapa_pokemons;
+
+
+// pedido
 t_list* pedidos_captura;
+
+void eliminar_pedido(t_pedido_captura*);
+void destruir_pedido(void*);
+void armar_pedido(t_pedido_captura*);
+void destruir_pokemon(t_pokemon_mapa*);
 
 void limpiar_mapa(void*);
 void destruir_pokemon_mapa(void*);
@@ -117,6 +131,7 @@ t_list* objetivo_global;
 void determinar_objetivo_global();
 bool no_esta_en_objetivo(void*);
 void eliminar_los_que_ya_tengo();
+bool cumplio_objetivo_personal(t_entrenador*);
 
 // terminar
 void liberar_config();

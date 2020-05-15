@@ -1,33 +1,64 @@
 #include "team.h"
 
 int main(void) {
-	printf("HOLA");
 
 	iniciar_programa();
-	//enviar_mensaje(GET_POKEMON, "Pikachu", socket); // se va
 
-	//t_buffer* recibido = recibir_mensaje(socket, strlen("Hola")+ 1);
-	log_info(logger, "La ip es : %s", config -> ip_broker);
-	log_info(logger, "El port es : %s ", config -> puerto_broker);
+	log_info(logger, "La ip es: %s", config -> ip_broker);
+	log_info(logger, "El port es: %s", config -> puerto_broker);
 
-	agregar_a_estado(estado_new, config -> entrenadores -> head -> data);
-	log_info(logger, "agregado a new");
-
-	if(esta_en_estado(estado_new, config -> entrenadores -> head -> data)) {
-		log_info(logger, "esta en new");
+	t_pokemon_mapa* pikachu1 = malloc(sizeof(t_pokemon_mapa));
+	pikachu1 -> nombre = "Pikachu";
+	pikachu1 -> posicion[0] = 0;
+	pikachu1 -> posicion[1] = 0;
+	pikachu1 -> cantidad = 1;
+	list_add(mapa_pokemons, pikachu1);
+	t_pokemon_mapa* pikachu2 = malloc(sizeof(t_pokemon_mapa));
+	pikachu2 -> nombre = "Pikachu";
+	pikachu2 -> posicion[0] = 8;
+	pikachu2 -> posicion[1] = 8;
+	pikachu2 -> cantidad = 1;
+	list_add(mapa_pokemons, pikachu2);
+	t_pokemon_mapa* charmander = malloc(sizeof(t_pokemon_mapa));
+	charmander -> nombre = "Charmander";
+	charmander -> posicion[0] = 12;
+	charmander -> posicion[1] = 12;
+	charmander -> cantidad = 1;
+	list_add(mapa_pokemons, charmander);
+	while(1) {
+		planificar_entrenadores();
+		ejecutar_fifo_o_rr();
 	}
-	cambiar_a_estado(estado_ready, config -> entrenadores -> head -> data);
-	log_info(logger, "cambiado a ready");
+	/*
+	esperando_caught = 0;
+	t_pedido_captura* pedido = malloc(sizeof(t_pedido_captura));
+	pedido = buscar_pedido(config -> entrenadores -> head -> data);
 
-	if(esta_en_estado(estado_ready, config -> entrenadores -> head -> data)) {
-		log_info(logger, "esta en ready");
+	while(pedido -> entrenador -> pasos_a_moverse > 0 && buscar_en_estados(estados, pedido -> entrenador) == estado_exec) {
+
+		agarrar_pokemon(pedido);
 	}
 
-	/* while(algo) {
-	 planificar_entrenadores();
-	 */
+	if(!esperando_caught && pedido -> entrenador -> pasos_a_moverse <= 0) { // RR
+		cambiar_a_estado(estado_ready, pedido -> entrenador);
+		log_info(logger, "el entrenador termino su quantum y vuelve a ready");
+	} else if(pedido -> entrenador -> pasos_a_moverse <= 0) { // FIFO o SJF Sin Desalojo o ultimo paso del RR
 
+		while(esperando_caught); // settear a 0 en el process request
+		procesar_caught(pedido);
 
+		if(cumplio_objetivo_personal(pedido -> entrenador)) {
+
+			cambiar_a_estado(estado_exit, pedido -> entrenador);
+			log_info(logger, "el entrenador cumplio su objetivo personal y se mueve a exit");
+
+		} else {
+
+			cambiar_a_estado(estado_block, pedido -> entrenador);
+			log_info(logger, "el entrenador termino de procesar el caught y se mueve a block");
+		}
+	}
+	*/
 
 
 	terminar_programa(/*socket*/);
@@ -40,13 +71,17 @@ void iniciar_programa() {
 	iniciar_logger("team.log", "team");
 	leer_config();
 	inicializar_estados();
-	inicializar_semaforos();
+	//inicializar_semaforos();
 	determinar_objetivo_global();
 
-	iniciar_entrenadores(); // iniciar a los entrenadores
+
+	esperando_caught = 0;
+
+
+	iniciar_entrenadores();
 	mapa_pokemons = list_create();
 	pedidos_captura = list_create();
-	suscribirme_a_colas();
+	//suscribirme_a_colas();
 	//iniciar_conexion_game_boy(); abrir socket con el game_boy (pthread_create)
 }
 
@@ -56,6 +91,12 @@ void inicializar_estados() {
 	estado_exec = list_create();
 	estado_block = list_create();
 	estado_exit = list_create();
+	estados = list_create();
+	list_add(estados, estado_new);
+	list_add(estados, estado_ready);
+	list_add(estados, estado_exec);
+	list_add(estados, estado_block);
+	list_add(estados, estado_exit);
 }
 
 void inicializar_semaforos() {
@@ -220,14 +261,14 @@ void suscribirse_a(op_code una_cola) {
 
 // ------------------------------- ENTRENADORES -------------------------------//
 
-void inciar_entrenadores() {
+void iniciar_entrenadores() {
 
 	void crear_hilo_entrenador(void* un_entrenador) {
 		pthread_t hilo;
 		t_entrenador* entrenador = un_entrenador;
-		agregar_a_estado(estado_new, un_entrenador);
-		sem_init(&(entrenador -> sem_contador), 0, 0);
-		sem_init(&(entrenador -> sem_binario), 0, 1);
+		agregar_a_estado(estado_new, entrenador);
+		entrenador -> pasos_a_moverse = 0;
+		sem_init(&(entrenador -> sem_binario), 0, 0);
 		uint32_t err = pthread_create(&hilo, NULL, operar_entrenador, entrenador);
 		if(err != 0) {
 			log_error(logger, "el hilo no pudo ser creado"); // preguntar si estos logs se pueden hacer
@@ -240,39 +281,106 @@ void inciar_entrenadores() {
 //TODO
 void* operar_entrenador(void* un_entrenador) {
 	t_entrenador* entrenador = un_entrenador;
-	t_list* estado_actual = estado_new;
+	t_list* estado_actual = buscar_en_estados(estados, entrenador);
 
 	while(estado_actual != estado_exit) {
 
-		t_pedido_captura* pedido = buscar_pedido(entrenador);
-		uint32_t espere_caught = 0;
-
 		sem_wait(&(entrenador -> sem_binario));
+		t_pedido_captura* pedido = buscar_pedido(entrenador);
 
-		while(!esperando_caught) { // query estado
+		while(entrenador -> pasos_a_moverse > 0 && buscar_en_estados(estados, entrenador) == estado_exec) {
 
 			agarrar_pokemon(pedido);
 		}
 
-		while(esperando_caught); // settear a 0 en el process request
+		if(!esperando_caught && entrenador -> pasos_a_moverse <= 0) { // RR
+			cambiar_a_estado(estado_ready, entrenador);
+			log_info(logger, "el entrenador termino su quantum y vuelve a ready");
+		} else if(entrenador -> pasos_a_moverse <= 0) { // FIFO o SJF Sin Desalojo o ultimo paso del RR
 
-		if(espere_caught) {
+			while(esperando_caught); // settear a 0 en el process request
 			procesar_caught(pedido);
+
+			if(cumplio_objetivo_personal(entrenador)) {
+
+				cambiar_a_estado(estado_exit, entrenador);
+				log_info(logger, "el entrenador cumplio su objetivo personal y se mueve a exit");
+
+			} else {
+
+				cambiar_a_estado(estado_block, entrenador);
+				log_info(logger, "el entrenador termino de procesar el caught y se mueve a block");
+			}
 		}
 
-		sem_post(&(sem_exec_libre));
+		estado_actual = buscar_en_estados(estados, entrenador);
 	}
 
 	return entrenador;
 }
 
+bool cumplio_objetivo_personal(t_entrenador* entrenador) {
+
+	uint32_t cumplio_objetivo = 1;
+
+	void chequear_cantidad_de_pokemons(void* un_pokemon) {
+		char* pokemon = un_pokemon;
+
+		bool es_el_pokemon(void* otro_pokemon) {
+			char* another_pokemon = otro_pokemon;
+			return string_equals_ignore_case(another_pokemon, pokemon);
+		}
+
+		if(list_count_satisfying(entrenador -> pokemons, es_el_pokemon) !=
+			list_count_satisfying(entrenador -> objetivos, es_el_pokemon)) {
+			cumplio_objetivo = 0;
+		}
+	}
+
+	list_iterate(entrenador -> pokemons, chequear_cantidad_de_pokemons);
+
+	return cumplio_objetivo;
+}
+
 void procesar_caught(t_pedido_captura* pedido){
 
-	if(resultado_caught){
+	log_info(logger, "ENTRE A PROCESAR CAUGHT");
+	resultado_caught = 1;
+	if(resultado_caught) { // settear a lo que corresponda en el process_request ANTES de cambiar el esperando_caught
+		log_info(logger, "TAMBIEN AL IF ;)");
 		list_add(pedido -> entrenador -> pokemons, pedido -> pokemon -> nombre);
-	}
-		// que pasa si el el caught es 0
+	} // que pasa si el el caught es 0
+
+	// sacar el pedido de los pedidos
+	eliminar_pedido(pedido);
+
 }
+
+void eliminar_pedido(t_pedido_captura* pedido) {
+
+	bool es_el_pedido(void* un_pedido) {
+		t_pedido_captura* otro_pedido = un_pedido;
+		if(otro_pedido -> entrenador == pedido -> entrenador) {
+			log_info(logger, "SON IGUALES PAPI SON IGUALES PAPI");
+		}
+
+		return otro_pedido -> entrenador == pedido -> entrenador && otro_pedido -> pokemon == pedido -> pokemon;
+	}
+
+	list_remove_and_destroy_by_condition(pedidos_captura, es_el_pedido, destruir_pedido);
+}
+
+void destruir_pedido(void* one_pedido) {
+	t_pedido_captura* another_pedido = one_pedido;
+	destruir_pokemon(another_pedido -> pokemon);
+	free(another_pedido );
+}
+
+void destruir_pokemon(t_pokemon_mapa* pokemon) {
+	//free(pokemon -> nombre); FALTA MALLOC AL AGREGAR
+	free(pokemon);
+}
+
 
 void agarrar_pokemon(t_pedido_captura* pedido) {
 
@@ -297,12 +405,11 @@ void agarrar_pokemon(t_pedido_captura* pedido) {
 		log_info(logger, "mande el catch para un %s en la posicion [%d,%d]",
 				pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 
-		// no_mande_catch = 0;
 		esperando_caught = 1;
-		sem_wait(&(pedido -> entrenador -> sem_binario));
+		esperando_caught = 0; //ESTA ES PARA TEST MIENTRAS NO TENGAMOS BROKER
 	}
 
-	sem_wait(&(pedido -> entrenador -> sem_contador));
+	pedido -> entrenador -> pasos_a_moverse --;
 }
 
 t_pedido_captura* buscar_pedido(t_entrenador* entrenador) {
@@ -319,27 +426,20 @@ t_pedido_captura* buscar_pedido(t_entrenador* entrenador) {
 
 void planificar_entrenadores() {
 
-	if(mapa_pokemons -> elements_count) { // chequear tmb entrenadores pendientes de ir a ready
-
-		// NO SE SI VA O NO: list_iterate(mapa_pokemons, limpiar_mapa); // borra pokemons cargados en mapa que ya no estan en objetivo global
+	if(mapa_pokemons -> elements_count && (estado_new -> head || estado_block -> head)) {
 
 		t_pedido_captura* pedido = malloc(sizeof(t_pedido_captura));
-		pedido -> entrenador = NULL;
-		pedido -> pokemon = mapa_pokemons -> head -> data;
-		pedido -> distancia = -1;
-		matchear_pokemon_con_entrenador(pedido);
-		list_add(pedidos_captura, pedido);
+		armar_pedido(pedido);
 
 		eliminar_pokemon_de_mapa(pedido -> pokemon);
 
 		cambiar_a_estado(estado_ready, pedido -> entrenador);
 		log_info(logger, "entrenador cambiado a estado ready con su pedido de captura");
 
-		for(int i = 0; i < pedido -> distancia; i++) { // capaz distancia +1
-			sem_post(&(pedido -> entrenador -> sem_contador));
-		}
 
-		free(pedido);
+		pedido -> entrenador -> pasos_a_moverse = pedido -> distancia + 1; // NO APLICA A RR
+
+		//free(pedido); -- VER CON VALGRIND
 
 		planificar_segun_algoritmo();
 
@@ -348,11 +448,20 @@ void planificar_entrenadores() {
 	}
 }
 
+void armar_pedido(t_pedido_captura* pedido) {
+
+	pedido -> entrenador = NULL;
+	pedido -> pokemon = mapa_pokemons -> head -> data;
+	pedido -> distancia = -1;
+	matchear_pokemon_con_entrenador(pedido);
+	list_add(pedidos_captura, pedido);
+}
+
 void planificar_segun_algoritmo() {
 
 	if(string_equals_ignore_case(config -> algoritmo_planificacion, "FIFO")) {
 
-		planificar_fifo();
+		//ejecutar_fifo_o_rr(); // COMO EL ORTO LLAMADA ACA
 
 	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "RR")) {
 
@@ -365,22 +474,16 @@ void planificar_segun_algoritmo() {
 	} else {
 		log_error(logger, "algoritmo de planificacion recibido: %s", config -> algoritmo_planificacion);
 	}
-
-
 }
 
-void planificar_fifo() { // ejecutar_un_entrenador, planificar_alg va a ser otra funcion
+void ejecutar_fifo_o_rr() { // ejecutar_un_entrenador, planificar_alg va a ser otra funcion
 
-	if(!estado_exec -> head) { // chequear q estado_ready tenga algo
+	if(!estado_exec -> head && estado_ready -> head) {
 		t_entrenador* entrenador = estado_ready -> head -> data;
 
 		cambiar_a_estado(estado_exec, entrenador);
-		log_info(logger, "fifo: primer entrenador cambiado a estado exec");
+		log_info(logger, "entrenador cambiado a estado exec");
 		sem_post(&(entrenador -> sem_binario));
-
-		sem_wait(&(entrenador -> sem_exec_libre));
-		cambiar_a_estado(estado_block, entrenador);
-		log_info(logger, "el entrenador termino de ejecutarse y se mueve a block");
 	}
 }
 
@@ -450,6 +553,8 @@ void matchear_pokemon_con_entrenador(t_pedido_captura* pedido) {
 	remover_entrenadores_en_deadlock(entrenadores_para_ready);
 
 	list_iterate(entrenadores_para_ready, hallar_match);
+
+	list_destroy(entrenadores_para_ready);
 }
 
 void remover_entrenadores_en_deadlock(t_list* entrenadores_para_ready){
