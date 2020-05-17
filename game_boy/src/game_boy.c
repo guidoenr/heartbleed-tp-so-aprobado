@@ -26,6 +26,7 @@ uint32_t seleccionar_proceso(char * parametros[]) {
 
   uint32_t conexion;
   char * proceso = parametros[1];
+  uint32_t size_mensaje;
 
   if (string_equals_ignore_case(proceso, "")) {
     log_info(logger, "No ha ingresado un proceso correcto");
@@ -47,67 +48,67 @@ uint32_t seleccionar_proceso(char * parametros[]) {
     }
 
     switch (cod_op) {
-    case GET_POKEMON:
-      mensaje = malloc(sizeof(t_get_pokemon));
-      size_mensaje = sizeof(GET_POKEMON);
-      armar_mensaje_get_pokemon(parametros, mensaje);
-      enviar_mensaje(GET_POKEMON, mensaje, conexion,size_mensaje);
-      break;
-    case CATCH_POKEMON:
-      mensaje = malloc(sizeof(t_catch_pokemon));
-      size_mensaje = sizeof(t_catch_pokemon);
-      armar_mensaje_catch_pokemon(parametros, mensaje);
-      enviar_mensaje(CATCH_POKEMON, mensaje, conexion,size_mensaje);
-      break;
-    case CAUGHT_POKEMON:
-      mensaje = malloc(sizeof(t_caught_pokemon));
-      size_mensaje = sizeof(t_caught_pokemon);
-      armar_mensaje_caught_pokemon(parametros, mensaje);
-      enviar_mensaje(CAUGHT_POKEMON, mensaje, conexion,size_mensaje);
-      break;
-    case APPEARED_POKEMON:
-      mensaje = malloc(sizeof(t_appeared_pokemon));
-      size_mensaje = sizeof(t_appeared_pokemon);
-      armar_mensaje_appeared_pokemon(parametros, mensaje);
-      enviar_mensaje(APPEARED_POKEMON, mensaje, conexion,size_mensaje);
-      break;
-    case NEW_POKEMON:
-      mensaje = malloc(sizeof(t_new_pokemon));
-      size_mensaje = sizeof(t_new_pokemon);
-      armar_mensaje_new_pokemon(parametros, mensaje);
-      enviar_mensaje(NEW_POKEMON, mensaje, conexion,size_mensaje);
-      break;
-    default:
-      log_info(logger, "Ingrese un codigo de operacion valido");
-      exit(-6);
-      break;
+		case GET_POKEMON:
+		  mensaje = malloc(sizeof(t_get_pokemon));
+		  size_mensaje = sizeof(GET_POKEMON);
+		  armar_mensaje_get_pokemon(parametros, mensaje);
+		  enviar_mensaje(GET_POKEMON, mensaje, conexion,size_mensaje);
+		  break;
+		case CATCH_POKEMON:
+		  mensaje = malloc(sizeof(t_catch_pokemon));
+		  size_mensaje = sizeof(t_catch_pokemon);
+		  armar_mensaje_catch_pokemon(parametros, mensaje);
+		  enviar_mensaje(CATCH_POKEMON, mensaje, conexion,size_mensaje);
+		  break;
+		case CAUGHT_POKEMON:
+		  mensaje = malloc(sizeof(t_caught_pokemon));
+		  size_mensaje = sizeof(t_caught_pokemon);
+		  armar_mensaje_caught_pokemon(parametros, mensaje);
+		  enviar_mensaje(CAUGHT_POKEMON, mensaje, conexion,size_mensaje);
+		  break;
+		case APPEARED_POKEMON:
+		  mensaje = malloc(sizeof(t_appeared_pokemon));
+		  size_mensaje = sizeof(t_appeared_pokemon);
+		  armar_mensaje_appeared_pokemon(parametros, mensaje);
+		  enviar_mensaje(APPEARED_POKEMON, mensaje, conexion,size_mensaje);
+		  break;
+		case NEW_POKEMON:
+		  mensaje = malloc(sizeof(t_new_pokemon));
+		  size_mensaje = sizeof(t_new_pokemon);
+		  armar_mensaje_new_pokemon(parametros, mensaje);
+		  enviar_mensaje(NEW_POKEMON, mensaje, conexion,size_mensaje);
+		  break;
+		default:
+		  log_info(logger, "Ingrese un codigo de operacion valido");
+		  exit(-6);
+		  break;
     }
   }
   if (string_equals_ignore_case(proceso, "GAMECARD")) {
     conexion = crear_conexion(config_game_boy -> ip_gameCard, config_game_boy -> puerto_gameCard);
     switch (cod_op) {
-    case GET_POKEMON:
-      mensaje = malloc(sizeof(t_get_pokemon));
-      size_mensaje = sizeof(GET_POKEMON);
-      armar_mensaje_get_pokemon(parametros, mensaje);
-      enviar_mensaje(GET_POKEMON, mensaje, conexion,size_mensaje);
-      break;
-    case CATCH_POKEMON:
-      mensaje = malloc(sizeof(t_catch_pokemon));
-      size_mensaje = sizeof(CATCH_POKEMON);
-      armar_mensaje_catch_pokemon(parametros, mensaje);
-      enviar_mensaje(CATCH_POKEMON, mensaje, conexion,size_mensaje);
-      break;
-    case NEW_POKEMON:
-      mensaje = malloc(sizeof(t_new_pokemon));
-      size_mensaje = sizeof(NEW_POKEMON);
-      armar_mensaje_new_pokemon(parametros, mensaje);
-      enviar_mensaje(NEW_POKEMON, mensaje, conexion,size_mensaje);
-      break;
-    default:
-      log_info(logger, "Ingrese un codigo de operacion valido");
-      exit(-6);
-      break;
+		case GET_POKEMON:
+		  mensaje = malloc(sizeof(t_get_pokemon));
+		  size_mensaje = sizeof(GET_POKEMON);
+		  armar_mensaje_get_pokemon(parametros, mensaje);
+		  enviar_mensaje(GET_POKEMON, mensaje, conexion,size_mensaje);
+		  break;
+		case CATCH_POKEMON:
+		  mensaje = malloc(sizeof(t_catch_pokemon));
+		  size_mensaje = sizeof(CATCH_POKEMON);
+		  armar_mensaje_catch_pokemon(parametros, mensaje);
+		  enviar_mensaje(CATCH_POKEMON, mensaje, conexion,size_mensaje);
+		  break;
+		case NEW_POKEMON:
+		  mensaje = malloc(sizeof(t_new_pokemon));
+		  size_mensaje = sizeof(NEW_POKEMON);
+		  armar_mensaje_new_pokemon(parametros, mensaje);
+		  enviar_mensaje(NEW_POKEMON, mensaje, conexion,size_mensaje);
+		  break;
+		default:
+		  log_info(logger, "Ingrese un codigo de operacion valido");
+		  exit(-6);
+		  break;
     }
   }
 
@@ -211,7 +212,7 @@ void armar_mensaje_suscripcion(char * parametros[], t_suscripcion * a_enviar) {
   }
 
    //Esto esta setteado, hay que adaptarlo.
-  a_enviar -> tiempo_suscripcion = 20;
+  a_enviar -> tiempo_suscripcion = (uint32_t)parametros[3];
   //hay que pensar como agregar el tiempo de suscripcion para el caso de game_boy
 }
 
@@ -219,9 +220,9 @@ void armar_mensaje_suscripcion(char * parametros[], t_suscripcion * a_enviar) {
 void armar_mensaje_get_pokemon(char * parametros[], t_get_pokemon * a_enviar) {
   a_enviar -> pokemon = parametros[3];
   if(parametros[4] != NULL ){
-	  a_enviar -> id_mensaje = parametros[4];
+	  a_enviar -> id_mensaje = (uint32_t) parametros[4];
   } else {
-	  a_enviar -> id_mensaje = 0;
+	  a_enviar -> id_mensaje = (uint32_t)0;
   }
 }
 
@@ -230,14 +231,14 @@ void armar_mensaje_catch_pokemon(char * parametros[], t_catch_pokemon * a_enviar
   a_enviar -> posicion[0] = (uint32_t) parametros[4];
   a_enviar -> posicion[1] = (uint32_t) parametros[5];
   if(parametros[6] != NULL){
-	  a_enviar -> id_mensaje = parametros[6];
+	  a_enviar -> id_mensaje = (uint32_t) parametros[6];
   } else {
-	  a_enviar -> id_mensaje = 0; ///A LABURAR A FUTURO
+	  a_enviar -> id_mensaje = (uint32_t) 0; ///A LABURAR A FUTURO
   }
 }
 
 void armar_mensaje_caught_pokemon(char * parametros[], t_caught_pokemon * a_enviar) {
-  a_enviar -> id_mensaje = 0;
+  a_enviar -> id_mensaje = (uint32_t) 0;
   a_enviar -> id_mensaje_correlativo = (uint32_t) parametros[3];
   a_enviar -> resultado = (uint32_t) parametros[4];
 }
@@ -246,7 +247,7 @@ void armar_mensaje_appeared_pokemon(char * parametros[], t_appeared_pokemon * a_
   a_enviar -> pokemon = parametros[3];
   a_enviar -> posicion[0] = (uint32_t) parametros[4];
   a_enviar -> posicion[1] = (uint32_t) parametros[5];
-  a_enviar -> id_mensaje = 0;
+  a_enviar -> id_mensaje = (uint32_t) 0;
   if(parametros[6] != NULL){
 	  a_enviar -> id_mensaje_correlativo = (uint32_t) parametros[6];
   }
@@ -258,7 +259,7 @@ void armar_mensaje_new_pokemon(char * parametros[], t_new_pokemon * a_enviar) {
   a_enviar -> posicion[1] = (uint32_t) parametros[5];
   a_enviar -> cantidad = (uint32_t) parametros[6];
   if(parametros[7] != NULL){
-	  a_enviar -> id_mensaje = parametros[7];
+	  a_enviar -> id_mensaje = (uint32_t) parametros[7];
   } else {
 	  a_enviar -> id_mensaje = 0; /// A futuro
   }

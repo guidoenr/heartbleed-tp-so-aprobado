@@ -12,11 +12,19 @@ void iniciar_programa(){
 	id_mensaje_univoco = 0;
 	leer_config();
 	iniciar_logger(config_broker->log_file, "broker");
+	reservar_memoria();
+
 	crear_colas_de_mensajes();
     crear_listas_de_suscriptores();
 	log_info(logger, "IP: %s", config_broker -> ip_broker);
 	iniciar_servidor(config_broker -> ip_broker, config_broker -> puerto);
 
+}
+
+void reservar_memoria(){
+	uint32_t tamanio_memoria = config_broker ->  size_memoria;
+	memoria_cache = malloc(tamanio_memoria);
+	//SE RESERVA LA MEMORIA DINÁMICAMENTE-REVISAR 0_0
 }
 
 void crear_colas_de_mensajes(){
@@ -53,7 +61,7 @@ void leer_config() {
 		    	printf("No se pudo encontrar el path del config.");
 		    	exit(-2);
 	}
-	config_broker->size_memoria = config_get_int_value(config, "TAMANO_MEMORIA");
+	config_broker -> size_memoria = config_get_int_value(config, "TAMANO_MEMORIA");
 	config_broker -> size_min_memoria = config_get_int_value(config, "TAMANO_MEMORIA");
 	config_broker -> algoritmo_memoria = strdup(config_get_string_value(config, "ALGORITMO_MEMORIA"));
 	config_broker -> algoritmo_reemplazo = strdup(config_get_string_value(config, "ALGORITMO_REEMPLAZO"));
@@ -80,7 +88,13 @@ void terminar_programa(t_log* logger, t_config_broker* config) {
 	liberar_listas();
 	liberar_config(config);
 	liberar_logger(logger);
+	liberar_memoria_cache();
 	sem_destroy(&semaforo);
+}
+
+void liberar_memoria_cache(){
+	free(memoria_cache -> mensaje);
+	free(memoria_cache);
 }
 
 void liberar_listas(){
@@ -250,10 +264,9 @@ void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
 			case SUBSCRIPTION:
 				recibir_suscripcion(paquete);
 				break;
-				//El stream de una suscripción debería tener el socket del cliente.
 			default:
 				log_info(logger, "El codigo de operacion es invalido");
-				exit (-6);
+				exit(-6);
 	}
 }
 
@@ -265,28 +278,22 @@ void recibir_suscripcion(t_paquete* paquete){
 	log_info(logger, "Se recibe una suscripción.");
 		switch (mensaje_suscripcion->cola_a_suscribir) {
 			 case GET_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_get, &mensaje_suscripcion->socket);
-				log_info(logger, "EL cliente fue suscripto a la cola de mensajes get.");
+				suscribir_a_cola(listas_de_suscriptos -> lista_suscriptores_get, mensaje_suscripcion);
 				break;
 			 case CATCH_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_catch, &mensaje_suscripcion->socket);
-				log_info(logger, "EL cliente fue suscripto a la cola de mensajes catch.");
+				suscribir_a_cola(listas_de_suscriptos -> lista_suscriptores_catch, mensaje_suscripcion);
 				break;
 			 case LOCALIZED_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_localized, &mensaje_suscripcion->socket);
-				log_info(logger, "EL cliente fue suscripto a la cola de mensajes localized.");
+				suscribir_a_cola(listas_de_suscriptos -> lista_suscriptores_localized, mensaje_suscripcion);
 				break;
 			 case CAUGHT_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_caught, &mensaje_suscripcion->socket);
-				log_info(logger, "EL cliente fue suscripto a la cola de mensajes caught.");
+				suscribir_a_cola(listas_de_suscriptos -> lista_suscriptores_caught, mensaje_suscripcion);
 				break;
 			 case APPEARED_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_appeared, &mensaje_suscripcion->socket);
-				log_info(logger, "EL cliente fue suscripto a la cola de mensajes appeared.");
+				suscribir_a_cola(listas_de_suscriptos -> lista_suscriptores_appeared, mensaje_suscripcion);
 				break;
 			 case NEW_POKEMON:
-				list_add(listas_de_suscriptos -> lista_suscriptores_new, &mensaje_suscripcion->socket);
-				log_info(logger, "EL cliente fue suscripto a la cola de mensajes new.");
+				suscribir_a_cola(listas_de_suscriptos -> lista_suscriptores_new, mensaje_suscripcion);
 				break;
 			 default:
 				log_info(logger, "Ingrese un codigo de operacion valido");
@@ -297,9 +304,67 @@ void recibir_suscripcion(t_paquete* paquete){
 
 }
 
-/*void anular_suscripciones_temporales(){
+//REVISAR EL LIST REMOVE BY CONDITION (debería ser remove & destroy?).
+//Ver de agregar threads.
+void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion){
 
-}*/
+	list_add(lista_suscriptores, &suscripcion -> socket);
+	log_info(logger, "EL cliente fue suscripto a la cola de mensajes:%s.", (char*)(suscripcion -> cola_a_suscribir));
+	uint32_t socket_suscripto = suscripcion -> socket;
+
+	bool es_la_misma_suscripcion(void* socket_suscripcion){
+		return socket_suscripto == (uint32_t)socket_suscripcion;
+	}
+
+	//Nombre malisimo, hay que revisar.
+	informar_mensajes_previos(suscripcion);
+
+	if(suscripcion -> tiempo_suscripcion != 0){
+		sleep(suscripcion -> tiempo_suscripcion);
+		list_remove_by_condition(lista_suscriptores, es_la_misma_suscripcion);
+		log_info(logger, "La suscripcion fue anulada correctamente.");
+	}
+
+}
+
+//REVISAR SI LOS HISTORIALES ESTÁN BIEN RELACIONADOS
+void informar_mensajes_previos(t_suscripcion* una_suscripcion){
+
+	switch(una_suscripcion -> cola_a_suscribir){
+		case GET_POKEMON: //GAME_CARD SUSCRIPTO
+			descargar_historial_mensajes(listas_de_suscriptos -> lista_suscriptores_get, una_suscripcion -> socket);
+			log_info(logger, "El proceso suscripto recibe los mensajes get del historial");
+			break;
+		case CATCH_POKEMON: //GAME_CARD SUSCRIPTO
+			descargar_historial_mensajes(listas_de_suscriptos -> lista_suscriptores_catch, una_suscripcion -> socket);
+			log_info(logger, "El proceso suscripto recibe los mensajes catch del historial");
+			break;
+		case LOCALIZED_POKEMON: //TEAM SUSCRIPTO
+			descargar_historial_mensajes(listas_de_suscriptos -> lista_suscriptores_localized, una_suscripcion -> socket);
+			log_info(logger, "El proceso suscripto recibe los mensajes localized del historial");
+			break;
+		case CAUGHT_POKEMON: //TEAM SUSCRIPTO
+			descargar_historial_mensajes(listas_de_suscriptos -> lista_suscriptores_caught, una_suscripcion -> socket);
+			log_info(logger, "El proceso suscripto recibe los mensajes caught del historial");
+			break;
+		case NEW_POKEMON: //GAME_CARD SUSCRIPTO
+			descargar_historial_mensajes(listas_de_suscriptos -> lista_suscriptores_new, una_suscripcion -> socket);
+			log_info(logger, "El proceso suscripto recibe los mensajes new del historial");
+			break;
+		case APPEARED_POKEMON: //TEAM SUSCRIPTO
+			descargar_historial_mensajes(listas_de_suscriptos -> lista_suscriptores_appeared, una_suscripcion -> socket);
+			log_info(logger, "El proceso suscripto recibe los mensajes appeared del historial");
+			break;
+		default:
+			log_info(logger, "No se pudo descargar el historial de mensajes satisfactoriamente.");
+			break;
+	}
+}
+
+void descargar_historial_mensajes(t_list* lista_suscripta, uint32_t socket_cliente){
+//LA LISTA EN REALIDAD TIENE QUE SER EL CACHE DE ESA LISTA. Más adelante hay que cambiarlo cuando ya sepamos
+// cómo es la estructura de la cache.
+}
 
 t_suscripcion* deserealizar_suscripcion(void* stream){
 	t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
@@ -313,41 +378,96 @@ t_suscripcion* deserealizar_suscripcion(void* stream){
 }
 
 void gestionar_mensajeria(){
-	enviar_mensajes_get();
+	/*enviar_mensajes_get();
 	enviar_mensajes_catch();
 	enviar_mensajes_localized();
 	enviar_mensajes_caught();
-	enviar_mensajes_appeared();
+	enviar_mensajes_appeared();*/
 }
 
+/*REVISAR 0_0
 void enviar_mensajes_get(){
-	//t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
+	t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
 	//Se toma la cola de mensajes get y se envía a todos los procesos suscriptos
 	// a la cola get.
-	//paquete_a_enviar = list_get(colas_de_mensajes -> cola_get, 0);
-	//list_iterate(listas_de_suscriptos -> lista_suscriptores_get, ); El segundo parámetro es una operación que hace enviar a los sockets un paquete?
-	//free(paquete_a_enviar);
+	paquete_a_enviar = list_get(colas_de_mensajes -> cola_get, 0);
+
+	void enviar_mensaje_get(void* socket){
+		enviar_mensaje(GET_POKEMON, paquete_a_enviar, socket, sizeof(t_paquete)); //REVISAR SIZEOF
+		recibir_confirmacion_de_recepcion(socket);
+	}
+
+	list_iterate(listas_de_suscriptos -> lista_suscriptores_get, enviar_mensaje_get); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
+	free(paquete_a_enviar);
 }
 
 void enviar_mensajes_catch(){
+	t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
+	//Se toma la cola de mensajes catch y se envía a todos los procesos suscriptos
+	// a la cola.
+	paquete_a_enviar = list_get(colas_de_mensajes -> cola_catch, 0);
 
+	void enviar_mensaje_catch(void* socket){
+		enviar_mensaje(CATCH_POKEMON, paquete_a_enviar, socket, sizeof(t_paquete)); //REVISAR SIZEOF
+		recibir_confirmacion_de_recepcion(socket);
+	}
+
+	list_iterate(listas_de_suscriptos -> lista_suscriptores_catch, enviar_mensaje_catch); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
+	free(paquete_a_enviar);
 }
-
 
 void enviar_mensajes_localized(){
+	t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
+	//Se toma la cola de mensajes localized y se envía a todos los procesos suscriptos
+	// a la cola.
+	paquete_a_enviar = list_get(colas_de_mensajes -> cola_localized, 0);
+
+	void enviar_mensaje_localized(void* socket){
+		enviar_mensaje(LOCALIZED_POKEMON, paquete_a_enviar, socket, sizeof(t_paquete)); //REVISAR SIZEOF
+		recibir_confirmacion_de_recepcion(socket);
+	}
+
+	list_iterate(listas_de_suscriptos -> lista_suscriptores_localized, enviar_mensaje_localized); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
+	free(paquete_a_enviar);
 
 }
 
-
-
 void enviar_mensajes_caught(){
+	t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
+	//Se toma la cola de mensajes caught y se envía a todos los procesos suscriptos
+	// a la cola.
+	paquete_a_enviar = list_get(colas_de_mensajes -> cola_caught, 0);
 
+	void enviar_mensaje_caught(void* socket){
+		enviar_mensaje(CAUGHT_POKEMON, paquete_a_enviar, socket, sizeof(t_paquete)); //REVISAR SIZEOF
+		recibir_confirmacion_de_recepcion(socket);
+	}
+
+	list_iterate(listas_de_suscriptos -> lista_suscriptores_caught, enviar_mensaje_caught); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
+	free(paquete_a_enviar);
 }
 
 void enviar_mensajes_appeared(){
+	t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
+	//Se toma la cola de mensajes appeared y se envía a todos los procesos suscriptos
+	// a la cola.
+	paquete_a_enviar = list_get(colas_de_mensajes -> cola_appeared, 0);
 
+	void enviar_mensaje_appeared(void* socket){
+		enviar_mensaje(APPEARED_POKEMON, paquete_a_enviar, socket, sizeof(t_paquete)); //REVISAR SIZEOF
+		recibir_confirmacion_de_recepcion(socket);
+	}
+
+	list_iterate(listas_de_suscriptos -> lista_suscriptores_appeared, enviar_mensaje_appeared); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
+	free(paquete_a_enviar);
+}*/
+
+void recibir_confirmacion_de_recepcion(uint32_t socket_cliente){
+	op_code acknowledgment;
+	recv(socket_cliente, & acknowledgment, sizeof(op_code), MSG_WAITALL);
+	log_info(logger, "El mensaje enviado fue recibido correctamente");
+	//HAY QUE DEFINIR QUE SE HACE CON LA CONFIRMACION
 }
-
 
 
 

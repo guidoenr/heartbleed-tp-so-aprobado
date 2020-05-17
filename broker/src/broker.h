@@ -38,6 +38,12 @@ typedef struct {
 	t_list* lista_suscriptores_appeared;
 } t_listas_suscriptores;
 
+//Preguntar por estructuras auxiliares que se mencionan en el enunciado
+typedef struct {
+	void* mensaje;
+} t_memoria_cache;
+
+t_memoria_cache* memoria_cache;
 t_config_broker* config;
 t_config_broker* config_broker;
 t_log* logger;
@@ -45,24 +51,35 @@ t_listas_suscriptores* listas_de_suscriptos;
 t_colas_mensajes* colas_de_mensajes;
 
 sem_t semaforo;
-//clock_t tiempo_suscripto;
 
+//FUnciones generales
+void iniciar_programa(void);
+void reservar_memoria(void);
+void leer_config(void);
 void terminar_programa(t_log*, t_config_broker*);
 void liberar_config(t_config_broker*);
 void crear_colas_de_mensajes(void);
 void crear_listas_de_suscriptores(void);
 void liberar_listas(void);
+void liberar_memoria_cache(void);
+
+//Administracion de mensajes
 void encolar_mensaje(t_paquete*, op_code);
 void recibir_suscripcion(t_paquete*);
 t_suscripcion* deserealizar_suscripcion(void*);
 void agregar_mensaje(uint32_t,uint32_t,void*,uint32_t);
 uint32_t generar_id_univoco(void);
-//void anular_suscripciones_temporales(void);
+void suscribir_a_cola(t_list*, t_suscripcion*);
+bool es_la_misma_suscripcion(void*);
+void informar_mensajes_previos(t_suscripcion*);
+void descargar_historial_mensajes(t_list*, uint32_t);
 void gestionar_mensajeria(void);
 void enviar_mensajes_get(void);
 void enviar_mensajes_catch(void);
 void enviar_mensajes_localized(void);
 void enviar_mensajes_caught(void);
 void enviar_mensajes_appeared(void);
+void enviar_mensaje_get(void*);
+void recibir_confirmacion_de_recepcion(uint32_t);
 
 
