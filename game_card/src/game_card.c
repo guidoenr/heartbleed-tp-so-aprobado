@@ -16,6 +16,8 @@ int main(void) {
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
 
+	//suscribirme_a_colas();
+
 	t_new_pokemon* luken = malloc(sizeof(t_new_pokemon));
 	luken->cantidad = 20;
 	luken->id_mensaje= 1512;
@@ -35,6 +37,16 @@ int main(void) {
 	terminar_programa(socket,config);
 }
 
+/*void suscribirme_a_colas() {
+	suscribirse_a(NEW_POKEMON);
+	suscribirse_a(CATCH_POKEMON);
+	suscribirse_a(GET_POKEMON);
+}
+
+void suscribirse_a(op_code una_cola) {
+	//uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	//mandar por stream el socket
+}*/
 
 t_config_game_card* leer_config() {
 

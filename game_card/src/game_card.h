@@ -61,6 +61,8 @@ void terminar_programa(int, t_config_game_card*);
 void liberar_conexion(uint32_t);
 void liberar_logger();
 void liberar_config(t_config_game_card*);
+void suscribirme_a_colas();
+void suscribirse_a(op_code);
 
 //procces
 void process_request(uint32_t cod_op, uint32_t cliente_fd);
