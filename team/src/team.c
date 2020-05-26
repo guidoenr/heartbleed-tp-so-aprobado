@@ -677,25 +677,29 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 		case GET_POKEMON:
 			msg = malloc(sizeof(t_get_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
+			t_get_pokemon* mensaje_recibido = desempaquetar_get_pokemon(msg);
+			agregar_mensaje(GET_POKEMON, size, mensaje_recibido, cliente_fd);
 			free(msg);
 			break;
 		case LOCALIZED_POKEMON:
 			msg = malloc(sizeof(t_localized_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(LOCALIZED_POKEMON, size, msg, cliente_fd);
+			t_localized_pokemon* mensaje_recibido = desempaquetar_localized_pokemon(msg);
+			agregar_mensaje(LOCALIZED_POKEMON, size, mensaje_recibido, cliente_fd);
 			free(msg);
 			break;
 		case CAUGHT_POKEMON:
 			msg = malloc(sizeof(t_caught_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(CAUGHT_POKEMON, size, msg, cliente_fd);
+			t_caught_pokemon* mensaje_recibido = despaquetar_caught_pokemon(msg);
+			agregar_mensaje(CAUGHT_POKEMON, size,  mensaje_recibido, cliente_fd);
 			free(msg);
 			break;
 		case APPEARED_POKEMON:
 			msg = malloc(sizeof(t_caught_pokemon));
 			msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(APPEARED_POKEMON, size, msg, cliente_fd);
+			t_appeared_pokemon* mensajeRecibido = despaquetar_appeared_pokemon(msg);
+			agregar_mensaje(APPEARED_POKEMON, size, mensajeRecibido, cliente_fd);
 			free(msg);
 			break;
 
