@@ -4,12 +4,14 @@
 #include<commons/string.h>
 #include<commons/config.h>
 #include<readline/readline.h>
+#include <semaphore.h>
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.h"
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 
 
 //global
 t_log* logger;
+
 
 
 typedef struct {
@@ -25,6 +27,8 @@ typedef struct {
 
 } t_config_game_card;
 
+
+t_config_game_card* config;
 t_config_game_card* leer_config(void);
 
 
@@ -42,6 +46,7 @@ typedef struct{
 }t_file_metadata;
 
 //package sending
+void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente);
 t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size);
 void informarAlBroker(int socket,op_code codigo);
 

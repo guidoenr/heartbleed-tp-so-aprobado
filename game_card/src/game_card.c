@@ -8,7 +8,7 @@
 
 
 int main(void) {
-	t_config_game_card* config = leer_config();
+	config = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
 
 	int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
@@ -37,16 +37,22 @@ int main(void) {
 	terminar_programa(socket,config);
 }
 
-/*void suscribirme_a_colas() {
+void suscribirme_a_colas() {
 	suscribirse_a(NEW_POKEMON);
 	suscribirse_a(CATCH_POKEMON);
 	suscribirse_a(GET_POKEMON);
 }
 
 void suscribirse_a(op_code una_cola) {
-	//uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
-	//mandar por stream el socket
-}*/
+	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	char* msgSub = concatenar("Subscription FROM game_card to: ",(char*) una_cola);
+	uint32_t size = sizeof(msgSub) + 1;
+	enviar_mensaje(SUBSCRIPTION, msgSub ,socket,size);
+	//recibir el mensaje del broker TODO
+
+	//duda serve_client? process_request? crear hilo para atender solicitud? ayuda plis TODO TODO TODO
+
+}
 
 t_config_game_card* leer_config() {
 
