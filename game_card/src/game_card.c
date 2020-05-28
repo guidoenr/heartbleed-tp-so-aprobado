@@ -238,10 +238,12 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende
 		case NEW_POKEMON:
 			//void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size);
 			msg = malloc(sizeof(t_new_pokemon));
-
-			informarAlBroker(msg,cliente_fd,NEW_POKEMON);
+			msg = recibir_new_pokemon(cliente_fd,412); // 4123 ni idea
+			informarAlBroker(cliente_fd, NEW_POKEMON);
 
 			// hilo
+
+
 			//agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd); ??
 			free(msg);
 			break;
@@ -254,11 +256,10 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende
 	}
 }
 
-void informarAlBroker(void* msg,int socket,op_code codigo){
-
-	// como castear el void* a un msg?
-	//enviar_mensaje(ACK, "Recibi el mensaje: %s", "ASDASDASD", socket);
-	log_info(logger,"recibi el msg %s",codigo);
+void informarAlBroker(int socket,op_code codigo){
+	char* aviso = concatenar("ACK:",(char*) codigo);
+	int tamanioAviso = sizeof(aviso) + 1;
+	enviar_mensaje(codigo,aviso,socket, tamanioAviso);
 }
 
 int funcionHiloNewPokemon(void* buffer){

@@ -43,7 +43,7 @@ typedef struct{
 
 //package sending
 t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size);
-void informarAlBroker(void* msg,int socket,op_code codigo);
+void informarAlBroker(int socket,op_code codigo);
 
 //metadata + fileSystem
 void leerMetadata();

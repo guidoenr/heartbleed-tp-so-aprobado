@@ -34,7 +34,7 @@ void* serializar_paquete(t_paquete* paquete, uint32_t* bytes) {
 	log_info(logger, "bytes: %d", *bytes);
 	log_info(logger, "cod op a enviar %d", paquete -> codigo_operacion);
 	log_info(logger, "tam a enviar %d", paquete -> buffer -> size);
-	log_info(logger, "mensaje a enviar %s", typeof_paquete);
+	log_info(logger, "mensaje a enviar %s", (char*) typeof_paquete);
 
 	return stream;
 }
