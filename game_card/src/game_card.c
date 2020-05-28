@@ -238,7 +238,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende
 		case NEW_POKEMON:
 			//void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size);
 			msg = malloc(sizeof(t_new_pokemon));
-			msg = recibir_new_pokemon(cliente_fd,412); // 4123 ni idea
+			msg = recibir_new_pokemon(cliente_fd,size); // 4123 ni idea
 			informarAlBroker(cliente_fd, NEW_POKEMON);
 
 			// hilo
@@ -356,7 +356,8 @@ t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
 		void* buffer = malloc(*size);
 		recv(socket_cliente, buffer, *size, MSG_WAITALL);
 		log_info(logger, "Mensaje recibido: %s", buffer);
-		return buffer;
+		t_new_pokemon* pokemon = deserealizar_new_pokemon(buffer);
+		return pokemon;
 	}
 
 uint32_t tamanioNewPokemon(t_new_pokemon* pokemon){
