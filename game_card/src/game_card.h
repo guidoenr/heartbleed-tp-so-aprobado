@@ -56,8 +56,8 @@ void escribirMetadata();
 void crearMetadata();
 int tamanio_de_metadata(t_metadata metadata);
 int existeDirectorio(char* path);
-void verificarPokemon(t_new_pokemon pokemon);
-void verificarAperturaPokemon(t_new_pokemon msg);
+void verificarExistenciaPokemon(t_new_pokemon* pokemon);
+void verificarAperturaPokemon(t_new_pokemon* msg);
 int tamanio_file_metadata(t_file_metadata fileMeta);
 
 
@@ -71,6 +71,7 @@ void suscribirse_a(op_code);
 
 //procces
 void process_request(uint32_t cod_op, uint32_t cliente_fd);
+void funcionHiloNewPokemon(t_new_pokemon* pokemon);
 
 //parsers + tools
 char* concatenar(char* str1,char* str2);

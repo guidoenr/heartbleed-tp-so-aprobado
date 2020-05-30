@@ -114,14 +114,14 @@ void crearMetadata(char* path){
 
 }
 
-void crearMetadataFile(char* path,t_new_pokemon newPoke){
+void crearMetadataFile(char* path,t_new_pokemon* newPoke){
 	FILE* file = fopen(path,"wb");
 
 	t_file_metadata meta;
 	meta.directory = 'Y';
 	meta.size = 62; //TODO preguntar que es esto?
-	meta.blocks[0] = newPoke.posicion[0];
-	meta.blocks[1] = newPoke.posicion[1];// recontra TODO ni idea
+	meta.blocks[0] = newPoke->posicion[0];
+	meta.blocks[1] = newPoke->posicion[1];// recontra TODO ni idea
 	meta.open = 'N';
 
 	fwrite(&meta,sizeof(tamanio_de_file_metadata(meta)),1,file);
@@ -221,7 +221,7 @@ void cerrarArchivo(char* path){
 }
 
 void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende del que toque ese modulo.
-	uint32_t* size;
+	uint32_t* size = 30; //TODO, preguntar.
 	void* msg;
 
 	log_info(logger,"Codigo de operacion %d",cod_op);
@@ -244,10 +244,9 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende
 		case NEW_POKEMON:
 			//void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size);
 			msg = malloc(sizeof(t_new_pokemon));
-			msg = recibir_new_pokemon(cliente_fd,size); // 4123 ni idea
+			msg = recibir_new_pokemon(cliente_fd,size); // retorna un t_new_pokemon
 			informarAlBroker(cliente_fd, NEW_POKEMON);
-
-			// hilo
+			funcionHiloNewPokemon(msg);
 
 
 			//agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd); ??
@@ -263,27 +262,26 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende
 }
 
 void informarAlBroker(int socket,op_code codigo){
-	char* aviso = concatenar("ACK:",(char*) codigo);
+	char* aviso = concatenar("ACK[gamecard]: ",(char*) codigo);
 	int tamanioAviso = sizeof(aviso) + 1;
-	enviar_mensaje(codigo,aviso,socket, tamanioAviso);
+	enviar_mensaje(codigo,aviso,socket,tamanioAviso);
 }
 
-int funcionHiloNewPokemon(void* buffer){
+void funcionHiloNewPokemon(t_new_pokemon* pokemon){
 
-								//TODO como castear el buffer al t_new_pokemon
-	t_new_pokemon msg;
-	verificarPokemon(msg);
-	verificarAperturaPokemon(msg);
+	verificarExistenciaPokemon(pokemon);
+	verificarAperturaPokemon(pokemon);
+
+
 
 //	if (existePokemonEnEsaPosicion()){
 //		agregarAPoisiconExistente();
 //	} else {
 //		agregarAlFinalDelArchivo();
 //	}
-//
-//	cerrarArchivo();
 
-	return 1;
+	//cerrarArchivo();
+
 }
 
 char* concatenar(char* str1,char* str2){
@@ -298,12 +296,16 @@ char* concatenar(char* str1,char* str2){
 	return new_str;
 }
 
-void verificarPokemon(t_new_pokemon newpoke){
-	char* montaje = "montaje/Pokemon/";		  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
-	char* path = concatenar(montaje,newpoke.pokemon); // DE TODAS FORMAS DEJO UNA ALGORITMIA FANTASTATICA
+void verificarExistenciaPokemon(t_new_pokemon* newpoke){
+	char* montaje = "montaje/Pokemon/";		  			  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
+	char* path = concatenar(montaje,newpoke->pokemon); 	  // DE TODAS FORMAS DEJO UNA ALGORITMIA FANTASTATICA
+
 	if (existeDirectorio(path)){
+
 		log_info(logger,"existe el dir: %s",path);
+
 	} else{
+
 		mkdir(path, 0777);
 		log_info(logger,"se creo el directorio: %s",path);
 		char* metaPath = concatenar(path,"/Metadata.bin");
@@ -321,12 +323,15 @@ int existeDirectorio(char* path){
 	return x;
 }
 
-void verificarAperturaPokemon(t_new_pokemon msg){
-	char* path = concatenar ("montaje/Pokemon/",msg.pokemon);
+void verificarAperturaPokemon(t_new_pokemon* msg){
+	char* path = concatenar ("montaje/Pokemon/",msg->pokemon);
 	char* path2 = concatenar (path,"/Metadata.bin"); //terrible negrada esto, pero anda o no anda?
 
 	if (isOpen(path2)){
-		//finalizar hilo y reintentar operacion TODO
+		int secs = config->tiempo_reintento_operacion;
+		sleep(secs);
+		funcionHiloNewPokemon(msg);
+
 	} else {
 		log_info(logger,"se puede acceder /n");
 	}
@@ -356,19 +361,17 @@ void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
 }
 
 t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
-		log_info(logger, "Recibiendo mensaje.");
+		log_info(logger, "recibiendo new_pokemon");
 		recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
-		log_info(logger, "Tamano de paquete recibido: %d", *size);
+		log_info(logger, "tamaño new_pokemon: %d", *size);
 		void* buffer = malloc(*size);
 		recv(socket_cliente, buffer, *size, MSG_WAITALL);
-		log_info(logger, "Mensaje recibido: %s", buffer);
+		log_info(logger, "mensaje recibido: %s", buffer);
+
 		t_new_pokemon* pokemon = deserealizar_new_pokemon(buffer);
 		return pokemon;
 	}
 
 uint32_t tamanioNewPokemon(t_new_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
-	// aca hay tremendo hardcodeo porque el int poisicon[2] es un recontra TODO
 }
-
-
