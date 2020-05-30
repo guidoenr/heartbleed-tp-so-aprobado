@@ -375,3 +375,5 @@ t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
 uint32_t tamanioNewPokemon(t_new_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 }
+
+//probando bugs para hackerone
