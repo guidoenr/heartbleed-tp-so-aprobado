@@ -376,4 +376,4 @@ uint32_t tamanioNewPokemon(t_new_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 }
 
-//probando bugs para hackerone
+//probando bugs para hackeronea
