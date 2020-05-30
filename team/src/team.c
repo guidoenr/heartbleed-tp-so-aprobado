@@ -25,40 +25,10 @@ int main(void) {
 	charmander -> posicion[1] = 12;
 	charmander -> cantidad = 1;
 	list_add(mapa_pokemons, charmander);
-	while(1) {
-		planificar_entrenadores();
-		ejecutar_fifo_o_rr();
-	}
-	/*
-	esperando_caught = 0;
-	t_pedido_captura* pedido = malloc(sizeof(t_pedido_captura));
-	pedido = buscar_pedido(config -> entrenadores -> head -> data);
 
-	while(pedido -> entrenador -> pasos_a_moverse > 0 && buscar_en_estados(estados, pedido -> entrenador) == estado_exec) {
-
-		agarrar_pokemon(pedido);
-	}
-
-	if(!esperando_caught && pedido -> entrenador -> pasos_a_moverse <= 0) { // RR
-		cambiar_a_estado(estado_ready, pedido -> entrenador);
-		log_info(logger, "el entrenador termino su quantum y vuelve a ready");
-	} else if(pedido -> entrenador -> pasos_a_moverse <= 0) { // FIFO o SJF Sin Desalojo o ultimo paso del RR
-
-		while(esperando_caught); // settear a 0 en el process request
-		procesar_caught(pedido);
-
-		if(cumplio_objetivo_personal(pedido -> entrenador)) {
-
-			cambiar_a_estado(estado_exit, pedido -> entrenador);
-			log_info(logger, "el entrenador cumplio su objetivo personal y se mueve a exit");
-
-		} else {
-
-			cambiar_a_estado(estado_block, pedido -> entrenador);
-			log_info(logger, "el entrenador termino de procesar el caught y se mueve a block");
-		}
-	}
-	*/
+	//pthread_join(hiloAlgoritmo, NULL);
+	//pthread_join(hiloEntrenadores, NULL);
+	sleep(35);
 
 
 	terminar_programa(/*socket*/);
@@ -71,18 +41,22 @@ void iniciar_programa() {
 	iniciar_logger("team.log", "team");
 	leer_config();
 	inicializar_estados();
-	//inicializar_semaforos();
+	inicializar_semaforos();
 	determinar_objetivo_global();
-
-
-	esperando_caught = 0;
 
 
 	iniciar_entrenadores();
 	mapa_pokemons = list_create();
 	pedidos_captura = list_create();
+
+	iniciar_hilos_ejecucion();
 	//suscribirme_a_colas();
 	//iniciar_conexion_game_boy(); abrir socket con el game_boy (pthread_create)
+}
+
+void iniciar_hilos_ejecucion() {
+	crear_hilo_segun_algoritmo();
+	crear_hilo_planificar_entrenadores();
 }
 
 void inicializar_estados() {
@@ -100,6 +74,12 @@ void inicializar_estados() {
 }
 
 void inicializar_semaforos() {
+	sem_init(&(mx_estado_new), 0, 1);
+	sem_init(&(mx_estado_ready), 0, 1);
+	sem_init(&(mx_estado_exec), 0, 1);
+	sem_init(&(mx_estado_block), 0, 1);
+	sem_init(&(mx_estado_exit), 0, 1);
+	sem_init(&(entrenadores_ready), 0, 0);
 }
 
 void leer_config(void) {
@@ -268,7 +248,9 @@ void iniciar_entrenadores() {
 		t_entrenador* entrenador = un_entrenador;
 		agregar_a_estado(estado_new, entrenador);
 		entrenador -> pasos_a_moverse = 0;
+		entrenador -> tire_catch = 0;
 		sem_init(&(entrenador -> sem_binario), 0, 0);
+		sem_init(&(entrenador -> esperar_caught), 0, 0);
 		uint32_t err = pthread_create(&hilo, NULL, operar_entrenador, entrenador);
 		if(err != 0) {
 			log_error(logger, "el hilo no pudo ser creado"); // preguntar si estos logs se pueden hacer
@@ -278,7 +260,6 @@ void iniciar_entrenadores() {
 	list_iterate(config -> entrenadores, crear_hilo_entrenador);
 }
 
-//TODO
 void* operar_entrenador(void* un_entrenador) {
 	t_entrenador* entrenador = un_entrenador;
 	t_list* estado_actual = buscar_en_estados(estados, entrenador);
@@ -286,33 +267,37 @@ void* operar_entrenador(void* un_entrenador) {
 	while(estado_actual != estado_exit) {
 
 		sem_wait(&(entrenador -> sem_binario));
+
 		t_pedido_captura* pedido = buscar_pedido(entrenador);
 
-		while(entrenador -> pasos_a_moverse > 0 && buscar_en_estados(estados, entrenador) == estado_exec) {
+		while(!(entrenador -> tire_catch) && entrenador -> pasos_a_moverse > 0 && buscar_en_estados(estados, entrenador) == estado_exec) {
 
 			agarrar_pokemon(pedido);
 		}
 
-		if(!esperando_caught && entrenador -> pasos_a_moverse <= 0) { // RR
+		if(!(entrenador -> tire_catch) && entrenador -> pasos_a_moverse <= 0) { // RR DESALOJADO
+			sem_wait(&mx_estado_ready);
 			cambiar_a_estado(estado_ready, entrenador);
+			sem_post(&mx_estado_ready);
+			sem_post(&entrenadores_ready);
+			sem_post(&mx_estado_exec);
 			log_info(logger, "el entrenador termino su quantum y vuelve a ready");
-		} else if(entrenador -> pasos_a_moverse <= 0) { // FIFO o SJF Sin Desalojo o ultimo paso del RR
+			entrenador -> pasos_a_moverse = config -> quantum;
 
-			while(esperando_caught); // settear a 0 en el process request
+		} else if(!(entrenador -> tire_catch)) { // SJF Con Desalojo DESALOJADO
+
+
+		} else { // FIFO o SJF Sin Desalojo // RR/SJF NO DESALOJADO
+			sem_wait(&(entrenador -> esperar_caught)); // darle verde en el process request
 			procesar_caught(pedido);
 
 			if(cumplio_objetivo_personal(entrenador)) {
-
+				sem_wait(&mx_estado_exit);
 				cambiar_a_estado(estado_exit, entrenador);
+				sem_post(&mx_estado_exit);
 				log_info(logger, "el entrenador cumplio su objetivo personal y se mueve a exit");
-
-			} else {
-
-				cambiar_a_estado(estado_block, entrenador);
-				log_info(logger, "el entrenador termino de procesar el caught y se mueve a block");
 			}
 		}
-
 		estado_actual = buscar_en_estados(estados, entrenador);
 	}
 
@@ -344,13 +329,16 @@ bool cumplio_objetivo_personal(t_entrenador* entrenador) {
 
 void procesar_caught(t_pedido_captura* pedido){
 
-	log_info(logger, "ENTRE A PROCESAR CAUGHT");
-	resultado_caught = 1;
-	if(resultado_caught) { // settear a lo que corresponda en el process_request ANTES de cambiar el esperando_caught
-		log_info(logger, "TAMBIEN AL IF ;)");
-		list_add(pedido -> entrenador -> pokemons, pedido -> pokemon -> nombre);
-	} // que pasa si el el caught es 0
+	log_info(logger, "ENTRE A PROCESAR CAUGHT"); // delete
 
+	if(pedido -> entrenador -> resultado_caught) { // settear a lo que corresponda en el process_request ANTES de cambiar el esperando_caught
+		log_info(logger, "ATRAPE :)"); // delete
+		list_add(pedido -> entrenador -> pokemons, pedido -> pokemon -> nombre);
+	} else {
+		log_info(logger, "NO ATRAPE :("); // delete
+		list_add(objetivo_global, pedido -> pokemon -> nombre);
+	}
+	pedido -> entrenador -> tire_catch = 0;
 	// sacar el pedido de los pedidos
 	eliminar_pedido(pedido);
 
@@ -402,13 +390,16 @@ void agarrar_pokemon(t_pedido_captura* pedido) {
 		log_info(logger, "me movi a [%d,%d]", pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 	} else { // misma posicion
 		// tirar el catch (agarrar)
-		log_info(logger, "mande el catch para un %s en la posicion [%d,%d]",
+		sem_wait(&mx_estado_block);
+		cambiar_a_estado(estado_block, pedido -> entrenador);
+		sem_post(&mx_estado_block);
+		sem_post(&mx_estado_exec);
+		log_info(logger, "mande el catch para un %s en la posicion [%d,%d] y se mueve a block",
 				pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 
-		esperando_caught = 1;
-		esperando_caught = 0; //ESTA ES PARA TEST MIENTRAS NO TENGAMOS BROKER
+		pedido -> entrenador -> tire_catch = 1;
 	}
-
+	sleep(config -> retardo_cpu);// RETARDO_CICLO_CPU
 	pedido -> entrenador -> pasos_a_moverse --;
 }
 
@@ -424,28 +415,83 @@ t_pedido_captura* buscar_pedido(t_entrenador* entrenador) {
 }
 
 
-void planificar_entrenadores() {
+void* planificar_entrenadores() {
+	while(1){ // no 1
+		//wait(sem_cont_mapa);
+		//wait(sem_cont_entrenadores_a_replanif);
+		if(mapa_pokemons -> elements_count && (estado_new -> head || estado_block_replanificable_no_interbloqueado())) {
 
-	if(mapa_pokemons -> elements_count && (estado_new -> head || estado_block -> head)) {
+			t_pedido_captura* pedido = malloc(sizeof(t_pedido_captura));
+			armar_pedido(pedido);
 
-		t_pedido_captura* pedido = malloc(sizeof(t_pedido_captura));
-		armar_pedido(pedido);
+			eliminar_pokemon_de_mapa(pedido -> pokemon);
+			planificar_segun_algoritmo(pedido);
 
-		eliminar_pokemon_de_mapa(pedido -> pokemon);
+			//free(pedido); -- VER CON VALGRIND
 
+
+		} else {
+			// contempla el caso de deadlock
+		}
+	}
+}
+
+bool tengo_la_mochila_llena(t_entrenador* entrenador) {
+	return entrenador -> pokemons -> elements_count >= entrenador -> objetivos -> elements_count;
+}
+
+int estado_block_replanificable_no_interbloqueado() {
+	bool encontrar_replanificable_no_interbloqueado(void* un_entrenador) {
+		t_entrenador* entrenador = un_entrenador;
+		if(!(entrenador -> tire_catch) && !tengo_la_mochila_llena(entrenador)) {
+			return 1;
+		}
+		return 0;
+	}
+
+	if(list_find(estado_block, encontrar_replanificable_no_interbloqueado)) {
+
+		return 1;
+	}
+	return 0;
+}
+
+
+void planificar_segun_algoritmo(t_pedido_captura* pedido) {
+
+	if(string_equals_ignore_case(config -> algoritmo_planificacion, "FIFO") ||
+			string_equals_ignore_case(config -> algoritmo_planificacion, "RR")) {
+		sem_wait(&mx_estado_ready);
 		cambiar_a_estado(estado_ready, pedido -> entrenador);
 		log_info(logger, "entrenador cambiado a estado ready con su pedido de captura");
+		sem_post(&mx_estado_ready);
+		sem_post(&entrenadores_ready);
 
 
-		pedido -> entrenador -> pasos_a_moverse = pedido -> distancia + 1; // NO APLICA A RR
-
-		//free(pedido); -- VER CON VALGRIND
-
-		planificar_segun_algoritmo();
-
-	} else {
-		// contempla el caso de deadlock
+	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-SD")) {
+		log_error(logger, "FALTA CODEAR SJF");
+		//log_info(logger, "entrenador cambiado a estado ready con su pedido de captura");
+	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-CD")) {
+		log_error(logger, "FALTA CODEAR SJF");
 	}
+
+	pedido -> entrenador -> pasos_a_moverse = distancia_segun_algoritmo(pedido);
+}
+
+int distancia_segun_algoritmo(t_pedido_captura* pedido) {
+	if(string_equals_ignore_case(config -> algoritmo_planificacion, "FIFO") ||
+			string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-SD")) {
+
+		return pedido -> distancia + 1;
+	}
+	if(string_equals_ignore_case(config -> algoritmo_planificacion, "RR")) {
+		return config -> quantum;
+	}
+	if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-CD")) {
+		return pedido -> distancia + 1; // NO SE SI ESTE VA ASI.
+	}
+	log_error(logger, "algoritmo de planificacion recibido: %s", config -> algoritmo_planificacion);
+	return 0;
 }
 
 void armar_pedido(t_pedido_captura* pedido) {
@@ -457,34 +503,45 @@ void armar_pedido(t_pedido_captura* pedido) {
 	list_add(pedidos_captura, pedido);
 }
 
-void planificar_segun_algoritmo() {
+void crear_hilo_segun_algoritmo() {
 
-	if(string_equals_ignore_case(config -> algoritmo_planificacion, "FIFO")) {
-
-		//ejecutar_fifo_o_rr(); // COMO EL ORTO LLAMADA ACA
-
-	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "RR")) {
-
-
+	if(string_equals_ignore_case(config -> algoritmo_planificacion, "FIFO") ||
+			string_equals_ignore_case(config -> algoritmo_planificacion, "RR") ||
+			string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-SD")) {
+		uint32_t err = pthread_create(&hiloAlgoritmo, NULL, ejecutar_fifo_o_rr_o_sjf_sd, NULL);
+		if(err != 0) {
+			log_error(logger, "el hilo no pudo ser creado"); // preguntar si estos logs se pueden hacer
+		}
 	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-CD")) {
-
-
-	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-SD")) {
+		log_error(logger, "NO ESTA CODEADO SJF-CD");
 
 	} else {
 		log_error(logger, "algoritmo de planificacion recibido: %s", config -> algoritmo_planificacion);
 	}
 }
 
-void ejecutar_fifo_o_rr() { // ejecutar_un_entrenador, planificar_alg va a ser otra funcion
+void crear_hilo_planificar_entrenadores() {
 
-	if(!estado_exec -> head && estado_ready -> head) {
-		t_entrenador* entrenador = estado_ready -> head -> data;
-
-		cambiar_a_estado(estado_exec, entrenador);
-		log_info(logger, "entrenador cambiado a estado exec");
-		sem_post(&(entrenador -> sem_binario));
+	uint32_t err = pthread_create(&hiloEntrenadores, NULL, planificar_entrenadores, NULL);
+	if(err != 0) {
+		log_error(logger, "el hilo no pudo ser creado"); // preguntar si estos logs se pueden hacer
 	}
+}
+
+void* ejecutar_fifo_o_rr_o_sjf_sd() { // ejecutar_un_entrenador, planificar_alg va a ser otra funcion
+
+	while(config -> entrenadores -> elements_count > estado_exit -> elements_count) { // matamos este hilo o muere con el programa?
+
+		sem_wait(&mx_estado_exec);
+		sem_wait(&entrenadores_ready);
+		if(!estado_exec -> head && estado_ready -> head) {
+			t_entrenador* entrenador = estado_ready -> head -> data;
+			cambiar_a_estado(estado_exec, entrenador);
+			log_info(logger, "entrenador cambiado a estado exec");
+			sem_post(&(entrenador -> sem_binario));
+		}
+	}
+	return 0;
 }
 
 void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
@@ -569,7 +626,7 @@ void remover_entrenadores_en_deadlock(t_list* entrenadores_para_ready){
 			return otro_entrenador == entrenador;
 		}
 
-		if(entrenador -> pokemons -> elements_count == entrenador -> objetivos -> elements_count ){
+		if(tengo_la_mochila_llena(entrenador)){
 
 			list_remove_by_condition(entrenadores_para_ready, es_el_entrenador);
 		}
