@@ -20,6 +20,20 @@ typedef struct {
 	char* log_file;
 } t_config_broker;
 
+typedef enum{
+	EN_ESPERA =0, //NO LO ENVIAMOS
+	ENVIADO = 1,/// SE LO ENVIA A UN PROCESO
+	CONFIRMADO = 2, /// ME CONFIRMO EL PROCESO
+} status_mensaje;
+
+typedef struct {
+	t_paquete* mensaje;
+	uint32_t id;
+	uint32_t id_correlativo;///AConfirmar
+	status_mensaje estado_mensaje;
+	char[20] suscriptor; //Esto esta horrible, lo tenemos que pensar.
+}t_mensaje;
+
 typedef struct {
 	t_list* cola_catch;
 	t_list* cola_caught;
@@ -28,6 +42,11 @@ typedef struct {
 	t_list* cola_new;
 	t_list* cola_appeared;
 } t_colas_mensajes;
+
+typedef struct{
+  uint32_t id_mensaje;
+  uint32_t socket;
+}t_ack;
 
 typedef struct {
 	t_list* lista_suscriptores_catch;

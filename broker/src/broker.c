@@ -165,6 +165,10 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			agregar_mensaje(SUBSCRIPTION, size, msg, cliente_fd);
 			free(msg);
 			break;
+		case ACK:
+			msg = malloc(sizeof(t_ack));
+			msg = recibit_mensaje(cliente_fd, &size);
+			free(msg);
 		case 0:
 			log_info(logger,"No se encontro el tipo de mensaje");
 			pthread_exit(NULL);
@@ -236,33 +240,38 @@ uint32_t generar_id_univoco(){
 
 void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
 
+	t_mensaje *mensaje = malloc(sizeof(t_mensaje));
+	mensaje->estado_mensaje = EN_ESPERA;
+	mensaje->id = paquete->id_mensaje;
+	mensaje->mensaje = paquete->buffer;
+
 	switch (codigo_operacion) {
 			case GET_POKEMON:
-				list_add(colas_de_mensajes -> cola_get, paquete);
+				list_add(colas_de_mensajes -> cola_get, mensaje);
 				log_info(logger, "Mensaje agregado a cola de mensajes get.");
 				break;
 			case CATCH_POKEMON:
-				list_add(colas_de_mensajes -> cola_catch, paquete);
+				list_add(colas_de_mensajes -> cola_catch, mensaje);
 				log_info(logger, "Mensaje agregado a cola de mensajes catch.");
 				break;
 			case LOCALIZED_POKEMON:
-				list_add(colas_de_mensajes -> cola_localized, paquete);
+				list_add(colas_de_mensajes -> cola_localized, mensaje);
 				log_info(logger, "Mensaje agregado a cola de mensajes localized.");
 				break;
 			case CAUGHT_POKEMON:
-				list_add(colas_de_mensajes -> cola_caught, paquete);
+				list_add(colas_de_mensajes -> cola_caught, mensaje);
 				log_info(logger, "Mensaje agregado a cola de mensajes caught.");
 				break;
 			case APPEARED_POKEMON:
-				list_add(colas_de_mensajes -> cola_appeared, paquete);
+				list_add(colas_de_mensajes -> cola_appeared, mensaje);
 				log_info(logger, "Mensaje agregado a cola de mensajes appeared.");
 				break;
 			case NEW_POKEMON:
-				list_add(colas_de_mensajes -> cola_new, paquete);
+				list_add(colas_de_mensajes -> cola_new, mensaje);
 				log_info(logger, "Mensaje agregado a cola de mensajes new.");
 				break;
 			case SUBSCRIPTION:
-				recibir_suscripcion(paquete);
+				recibir_suscripcion(mensaje);
 				break;
 			default:
 				log_info(logger, "El codigo de operacion es invalido");
@@ -378,29 +387,27 @@ t_suscripcion* deserealizar_suscripcion(void* stream){
 }
 
 void gestionar_mensajeria(){
-	/*enviar_mensajes_get();
-	enviar_mensajes_catch();
+	enviar_mensajes_get();
+	/*enviar_mensajes_catch();
 	enviar_mensajes_localized();
 	enviar_mensajes_caught();
 	enviar_mensajes_appeared();*/
 }
 
-/*REVISAR 0_0
+
 void enviar_mensajes_get(){
-	t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
-	//Se toma la cola de mensajes get y se envía a todos los procesos suscriptos
-	// a la cola get.
-	paquete_a_enviar = list_get(colas_de_mensajes -> cola_get, 0);
-
-	void enviar_mensaje_get(void* socket){
-		enviar_mensaje(GET_POKEMON, paquete_a_enviar, socket, sizeof(t_paquete)); //REVISAR SIZEOF
-		recibir_confirmacion_de_recepcion(socket);
+	void enviar_mensaje_get(void* mensaje){
+		t_mensaje* mensaje_a_enviar = malloc(sizeof(t_mensaje));
+	    mensaje_a_enviar = mensaje;
+	    if(mensaje_a_enviar == EN_ESPERA) {
+		enviar_mensaje(GET_POKEMON, mensaje_a_enviar-> mensaje, socket, sizeof(t_paquete)); //REVISAR SIZEOF
+		free(mensaje_a_enviar);
+	    }
 	}
-
 	list_iterate(listas_de_suscriptos -> lista_suscriptores_get, enviar_mensaje_get); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
-	free(paquete_a_enviar);
 }
 
+/*REVISAR 0_0
 void enviar_mensajes_catch(){
 	t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
 	//Se toma la cola de mensajes catch y se envía a todos los procesos suscriptos
