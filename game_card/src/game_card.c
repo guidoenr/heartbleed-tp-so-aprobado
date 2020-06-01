@@ -380,7 +380,7 @@ t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
 		t_new_pokemon* pokemon = deserealizar_new_pokemon(buffer);
 		return pokemon;
 	}
-
+//
 uint32_t tamanioNewPokemon(t_new_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 }
