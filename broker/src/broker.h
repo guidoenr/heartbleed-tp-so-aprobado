@@ -31,7 +31,7 @@ typedef struct {
 	uint32_t id;
 	uint32_t id_correlativo;///AConfirmar
 	status_mensaje estado_mensaje;
-	char[20] suscriptor; //Esto esta horrible, lo tenemos que pensar.
+	//char[20] suscriptor; //Esto esta horrible, lo tenemos que pensar.
 }t_mensaje;
 
 typedef struct {
@@ -92,13 +92,12 @@ void suscribir_a_cola(t_list*, t_suscripcion*);
 bool es_la_misma_suscripcion(void*);
 void informar_mensajes_previos(t_suscripcion*);
 void descargar_historial_mensajes(t_list*, uint32_t);
-void gestionar_mensajeria(void);
 void enviar_mensajes_get(void);
 void enviar_mensajes_catch(void);
 void enviar_mensajes_localized(void);
 void enviar_mensajes_caught(void);
 void enviar_mensajes_appeared(void);
 void enviar_mensaje_get(void*);
-void recibir_confirmacion_de_recepcion(uint32_t);
-
+op_code recibir_confirmacion_de_recepcion(uint32_t, uint32_t);
+void desencolar_mensaje(uint32_t, op_code);
 

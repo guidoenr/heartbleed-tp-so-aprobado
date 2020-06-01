@@ -3,7 +3,6 @@
 int main(void) {
 	sem_init(&semaforo, 0, 1);
 	iniciar_programa();
-	gestionar_mensajeria();
 	terminar_programa(logger, config_broker);
 	return 0;
 }
@@ -167,7 +166,9 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			break;
 		case ACK:
 			msg = malloc(sizeof(t_ack));
-			msg = recibit_mensaje(cliente_fd, &size);
+			uint32_t id_mensaje;
+			op_code codigo = recibir_confirmacion_de_recepcion(cliente_fd, &id_mensaje);
+			desencolar_mensaje(id_mensaje,codigo);
 			free(msg);
 		case 0:
 			log_info(logger,"No se encontro el tipo de mensaje");
@@ -175,6 +176,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 		case -1:
 			pthread_exit(NULL);
 	}
+	sem_destroy(&semaforo);///mmm dudoso
 }
 
 void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size) {
@@ -188,8 +190,7 @@ void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size) {
 	recv(socket_cliente, buffer, *size, MSG_WAITALL);
 	sem_post(&semaforo);
 	log_info(logger, "Mensaje recibido: %s", buffer);
-
-	return buffer;
+    return buffer;
 }
 
 void agregar_mensaje(uint32_t cod_op, uint32_t size, void* payload, uint32_t socket_cliente){
@@ -386,15 +387,6 @@ t_suscripcion* deserealizar_suscripcion(void* stream){
 	return suscripcion;
 }
 
-void gestionar_mensajeria(){
-	enviar_mensajes_get();
-	/*enviar_mensajes_catch();
-	enviar_mensajes_localized();
-	enviar_mensajes_caught();
-	enviar_mensajes_appeared();*/
-}
-
-
 void enviar_mensajes_get(){
 	void enviar_mensaje_get(void* mensaje){
 		t_mensaje* mensaje_a_enviar = malloc(sizeof(t_mensaje));
@@ -469,15 +461,50 @@ void enviar_mensajes_appeared(){
 	free(paquete_a_enviar);
 }*/
 
-void recibir_confirmacion_de_recepcion(uint32_t socket_cliente){
+op_code recibir_confirmacion_de_recepcion(uint32_t socket_cliente, uint32_t id_mensaje){
 	op_code acknowledgment;
 	recv(socket_cliente, & acknowledgment, sizeof(op_code), MSG_WAITALL);
-	log_info(logger, "El mensaje enviado fue recibido correctamente");
-	//HAY QUE DEFINIR QUE SE HACE CON LA CONFIRMACION
+	recv(socket_cliente, id_mensaje, sizeof(uint32_t), MSG_WAITALL);
+	return acknowledgment;
 }
 
 
 
+void desencolar_mensaje(uint32_t id_mensaje, op_code codigo_operacion){
+
+ switch (codigo_operacion) {
+			case GET_POKEMON:
+				list_remove_and_destroy_element(colas_de_mensajes -> cola_get, id_mensaje, sizeof(t_mensaje));
+				log_info(logger, "Mensaje eliminado a cola de mensajes get.");
+				break;
+			case CATCH_POKEMON:
+				list_remove_and_destroy_element(colas_de_mensajes -> cola_catch, id_mensaje,sizeof(t_mensaje));
+				log_info(logger, "Mensaje eliminado a cola de mensajes catch.");
+				break;
+			case LOCALIZED_POKEMON:
+				list_remove_and_destroy_element(colas_de_mensajes -> cola_localized, id_mensaje,sizeof(t_mensaje));
+				log_info(logger, "Mensaje eliminado a cola de mensajes localized.");
+				break;
+			case CAUGHT_POKEMON:
+				list_remove_and_destroy_element(colas_de_mensajes -> cola_caught, id_mensaje,sizeof(t_mensaje));
+				log_info(logger, "Mensaje eliminado a cola de mensajes caught.");
+				break;
+			case APPEARED_POKEMON:
+				list_remove_and_destroy_element(colas_de_mensajes -> cola_appeared, id_mensaje,sizeof(t_mensaje));
+				log_info(logger, "Mensaje eliminado a cola de mensajes appeared.");
+				break;
+			case NEW_POKEMON:
+				list_remove_and_destroy_element(colas_de_mensajes -> cola_new, id_mensaje,sizeof(t_mensaje));
+				log_info(logger, "Mensaje eliminado a cola de mensajes new.");
+				break;
+			/*case SUBSCRIPTION:
+				recibir_suscripcion(mensaje);
+				break;*/
+			default:
+				log_info(logger, "El codigo de operacion es invalido");
+				exit(-6);
+	}
+}
 
 
 
