@@ -11,11 +11,14 @@
 // agregar un id 0 al mensaje a mandar al broker
 
 typedef struct {
-	uint32_t pasos_a_moverse;
 	sem_t sem_binario;
 	uint32_t posicion[2];
 	t_list* pokemons;
 	t_list* objetivos;
+	uint32_t pasos_a_moverse;
+	uint32_t tire_catch;
+	uint32_t resultado_caught;
+	sem_t esperar_caught;
 } t_entrenador;
 
 typedef struct {
@@ -67,28 +70,34 @@ void obtener_entrenadores(void*);
 t_list* load_entrenadores(t_list*, t_list*, t_list*);
 void cargar_pokemons_a_entrenador(t_list*, t_link_element*, t_list*);
 void remover_entrenadores_en_deadlock(t_list*);
-
+bool tengo_la_mochila_llena(t_entrenador*);
 
 // mensajes
-uint32_t esperando_caught;
-uint32_t resultado_caught;
+
+// segun algoritmo:
+int distancia_segun_algoritmo(t_pedido_captura*);
+void planificar_segun_algoritmo(t_pedido_captura* pedido);
+
 
 void procesar_caught(t_pedido_captura*);
 
 
 // planificacion
 t_pedido_captura* buscar_pedido(t_entrenador*);
-void planificar_entrenadores();
-void planificar_segun_algoritmo();
+void* planificar_entrenadores();
 void planificar_fifo();
 void planificar_rr();
 void planificar_sjf_sd();
 void planificar_sjf_cd();
-void ejecutar_fifo_o_rr();
-
+void* ejecutar_fifo_o_rr_o_sjf_sd();
+void crear_hilo_planificar_entrenadores();
 
 // ejecucion
 void agarrar_pokemon(t_pedido_captura*);
+void iniciar_hilos_ejecucion();
+void crear_hilo_segun_algoritmo();
+pthread_t hiloAlgoritmo;
+pthread_t hiloEntrenadores;
 
 // estados
 
@@ -104,9 +113,17 @@ void eliminar_de_estado(t_list*, t_entrenador*);
 void cambiar_a_estado(t_list*, t_entrenador*);
 t_list* buscar_en_estados(t_list*, t_entrenador*);
 bool esta_en_estado(t_list*, t_entrenador*);
+int estado_block_replanificable_no_interbloqueado();
 
 //semaforos
+sem_t mx_estado_new;
+sem_t mx_estado_ready;
+sem_t mx_estado_exec;
+sem_t mx_estado_block;
+sem_t mx_estado_exit;
+sem_t entrenadores_ready;
 void inicializar_semaforos();
+
 
 // mapa
 t_list* mapa_pokemons;
