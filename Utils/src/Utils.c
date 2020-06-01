@@ -52,8 +52,10 @@ uint32_t crear_conexion(char *ip, char* puerto) {
 
 	uint32_t socket_cliente = socket(server_info -> ai_family, server_info -> ai_socktype, server_info -> ai_protocol);
 
-	if(connect(socket_cliente, server_info -> ai_addr, server_info -> ai_addrlen) == -1)
-		printf("error");
+	if(connect(socket_cliente, server_info -> ai_addr, server_info -> ai_addrlen) == -1){
+		printf("TERRIBLE FERRARI ERRROR");
+		return -1;
+	}
 
 	freeaddrinfo(server_info);
 
