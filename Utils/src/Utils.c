@@ -53,7 +53,7 @@ uint32_t crear_conexion(char *ip, char* puerto) {
 	uint32_t socket_cliente = socket(server_info -> ai_family, server_info -> ai_socktype, server_info -> ai_protocol);
 
 	if(connect(socket_cliente, server_info -> ai_addr, server_info -> ai_addrlen) == -1){
-		printf("TERRIBLE FERRARI ERRROR");
+		printf("error de conexion por socket");
 		return -1;
 	}
 
@@ -226,6 +226,16 @@ t_new_pokemon* deserealizar_new_pokemon(void* stream){
 	return mensaje_new_pokemon;
 }
 
-
+char* concatenar(char* str1,char* str2){
+	char* new_str ;
+	if((new_str = malloc(strlen(str1)+strlen(str2)+1)) != NULL){
+	    new_str[0] = '\0';
+	    strcat(new_str,str1);
+	    strcat(new_str,str2);
+	} else {
+	    log_error(logger,"error al concatenar");
+	}
+	return new_str;
+}
 
 

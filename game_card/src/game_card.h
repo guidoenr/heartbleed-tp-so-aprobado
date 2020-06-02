@@ -50,6 +50,10 @@ typedef struct{
 void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente);
 t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size);
 void informarAlBroker(int socket,op_code codigo);
+t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon);
+bool existePokemonEnPosicion(t_new_pokemon* pokemon);
+
+
 
 //metadata + fileSystem
 void leerMetadata();
@@ -58,7 +62,7 @@ void crearMetadata();
 int tamanio_de_metadata(t_metadata metadata);
 int existeDirectorio(char* path);
 void verificarExistenciaPokemon(t_new_pokemon* pokemon);
-void verificarAperturaPokemon(t_new_pokemon* msg);
+void verificarAperturaPokemon(t_new_pokemon* msg,int socket);
 int tamanio_file_metadata(t_file_metadata fileMeta);
 
 
@@ -72,10 +76,11 @@ void suscribirse_a(op_code);
 
 //procces
 void process_request(uint32_t cod_op, uint32_t cliente_fd);
-void funcionHiloNewPokemon(t_new_pokemon* pokemon);
+void funcionHiloNewPokemon(t_new_pokemon* pokemon,int socket);
 
 //parsers + tools
 char* concatenar(char* str1,char* str2);
 bool isFile(char* path);
-uint32_t tamanioNewPokemon(t_new_pokemon* pokemon);
+uint32_t sizeNewPokemon(t_new_pokemon* pokemon);
+uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon);
 

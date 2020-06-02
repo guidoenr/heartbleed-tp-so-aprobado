@@ -25,7 +25,7 @@ int main(void) {
 //	luken->pokemon = "luken";
 //	printf("tamaño: %d",tamanioNewPokemon(luken));
 
-/
+
 //
 //	enviar_new_pokemon(luken,socket_br);
 //	t_new_pokemon* a = recibir_new_pokemon(socket_br, 30);
@@ -258,8 +258,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende
 			msg = malloc(sizeof(t_new_pokemon));
 			msg = recibir_new_pokemon(cliente_fd,size); // retorna un t_new_pokemon
 			informarAlBroker(cliente_fd, NEW_POKEMON);
-			funcionHiloNewPokemon(msg);
-
+			funcionHiloNewPokemon(msg,cliente_fd);
 
 			//agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd); ??
 			free(msg);
@@ -279,32 +278,49 @@ void informarAlBroker(int socket,op_code codigo){
 	enviar_mensaje(codigo,aviso,socket,tamanioAviso);
 }
 
-void funcionHiloNewPokemon(t_new_pokemon* pokemon){
+void funcionHiloNewPokemon(t_new_pokemon* new_pokemon,int socket){
 
-	verificarExistenciaPokemon(pokemon);
-	verificarAperturaPokemon(pokemon);
+	verificarExistenciaPokemon(new_pokemon);
+	verificarAperturaPokemon(new_pokemon,socket);
 
-//	if (existePokemonEnEsaPosicion()){
-//		agregarAPoisiconExistente();
-//	} else {
-//		agregarAlFinalDelArchivo();
-//	}
+	if (existePokemonEnPosicion(new_pokemon)){
+		log_info(logger,"Existe pokemon \n");
 
-	//cerrarArchivo();
-
-}
-
-char* concatenar(char* str1,char* str2){
-	char* new_str ;
-	if((new_str = malloc(strlen(str1)+strlen(str2)+1)) != NULL){
-	    new_str[0] = '\0';
-	    strcat(new_str,str1);
-	    strcat(new_str,str2);
+		//agregarAPoisiconExistente(); TODO PARA BLOCKS Y FILESYTEM
 	} else {
-	    log_error(logger,"error al concatenar");
+		log_info(logger,"No existe pokemon \n");
+
+		//agregarAlFinalDelArchivo(); TODO PARA BLOCKS Y FILESYTEM
 	}
-	return new_str;
+
+	t_appeared_pokemon* appeared_pokemon = armar_appeared(new_pokemon);
+
+	enviar_appeared_pokemon(appeared_pokemon,socket);
+
 }
+
+t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
+		t_appeared_pokemon* appeared_pokemon;
+		appeared_pokemon->posicion[0] = new_pokemon->posicion[0];
+		appeared_pokemon->posicion[1] = new_pokemon->posicion[1];
+		appeared_pokemon->pokemon = new_pokemon->pokemon;
+		appeared_pokemon->id_mensaje_correlativo = new_pokemon->id_mensaje;
+		appeared_pokemon->id_mensaje = 11234; // TODO que onda este ID
+		return appeared_pokemon;
+}
+
+
+//char* concatenar(char* str1,char* str2){
+//	char* new_str ;
+//	if((new_str = malloc(strlen(str1)+strlen(str2)+1)) != NULL){
+//	    new_str[0] = '\0';
+//	    strcat(new_str,str1);
+//	    strcat(new_str,str2);
+//	} else {
+//	    log_error(logger,"error al concatenar");
+//	}
+//	return new_str;
+//}
 
 void verificarExistenciaPokemon(t_new_pokemon* newpoke){
 	char* montaje = "montaje/Pokemon/";		  			  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
@@ -333,25 +349,29 @@ int existeDirectorio(char* path){
 	return x;
 }
 
-void verificarAperturaPokemon(t_new_pokemon* msg){
+void verificarAperturaPokemon(t_new_pokemon* msg,int socket){
 	char* path = concatenar ("montaje/Pokemon/",msg->pokemon);
 	char* path2 = concatenar (path,"/Metadata.bin"); //terrible negrada esto, pero anda o no anda?
 
-	if (isOpen(path2)){ //TODO VER QUE ONDA
+	if (isOpen(path2)){
 		int secs = config->tiempo_retardo_operacion;
 		log_info(logger,"no se puede acceder a este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
 		sleep(secs);
-		funcionHiloNewPokemon(msg);
-
+		funcionHiloNewPokemon(msg,socket);
 	} else {
 		log_info(logger,"se puede acceder /n");
 	}
 }
 
+bool existePokemonEnPosicion(t_new_pokemon* pokemon){
+
+	return 1; //TODO TALLGRASS
+}
+
 void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
 	t_buffer* buffer = malloc(sizeof(t_buffer));
 
-	buffer -> size = tamanioNewPokemon(pokemon);
+	buffer -> size = sizeNewPokemon(pokemon);
 	buffer -> stream = malloc(buffer -> size);
 	buffer -> stream = pokemon;
 	log_info(logger,"Armando paquete New_Pokemon");
@@ -371,6 +391,29 @@ void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
 	free(stream);
 }
 
+enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket){
+		t_buffer* buffer = malloc(sizeof(t_buffer));
+
+		buffer -> size = sizeAppearedPokemon(appeared_pokemon);
+		buffer -> stream = malloc(buffer -> size);
+		buffer -> stream = appeared_pokemon;
+		log_info(logger,"Armando paquete APPEARED_POKEMON");
+
+		t_paquete* paquete = malloc(sizeof(t_paquete));
+		paquete -> codigo_operacion = APPEARED_POKEMON;
+		paquete -> buffer = buffer;
+
+		uint32_t size_serializado;
+		void* stream = serializar_paquete(paquete, &size_serializado);
+		log_info(logger,"Paquete serializado con tamaño :%d",size_serializado);
+		send(socket, stream, size_serializado, 0);
+		log_info(logger,"Paquete enviado");
+		//free(buffer -> stream);
+		free(buffer);
+		free(paquete);
+		free(stream);
+}
+
 t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
 		log_info(logger, "recibiendo new_pokemon");
 		recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
@@ -382,8 +425,28 @@ t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
 		t_new_pokemon* pokemon = deserealizar_new_pokemon(buffer);
 		return pokemon;
 	}
+
+t_appeared_pokemon* recibir_appeared_pokemon(uint32_t socket_cliente, uint32_t* size){
+		log_info(logger, "recibiendo appeared_pokemon");
+		recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
+		log_info(logger, "tamaño appeared_pokemon: %d", *size);
+		void* buffer = malloc(*size);
+		recv(socket_cliente, buffer, *size, MSG_WAITALL);
+		log_info(logger, "mensaje recibido: %s", buffer);
+
+		t_new_pokemon* pokemon = deserealizar_appeared_pokemon(buffer);
+		return pokemon;
+	}
 //
-uint32_t tamanioNewPokemon(t_new_pokemon* pokemon){
+uint32_t sizeNewPokemon(t_new_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 }
+
+// son la misma pero chupala
+uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon){
+	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
+}
+
+
+
 
