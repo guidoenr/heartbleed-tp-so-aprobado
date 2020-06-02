@@ -17,6 +17,7 @@ t_log* logger;
 typedef struct {
     int tiempo_reintento_conexion;
 	int tiempo_reintento_operacion;
+	int tiempo_retardo_operacion;
 	char* punto_montaje_tallgrass;
 	char* ip_broker;
 	char* puerto_broker;

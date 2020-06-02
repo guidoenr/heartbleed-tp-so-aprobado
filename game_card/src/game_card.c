@@ -39,10 +39,12 @@ void conectarse(int socket){
 	socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
 	int time = config->tiempo_reintento_conexion;
 	if (socket == -1 ){
-		log_info(logger,"No me pude conectar reintento en %d",time);
+		log_info(logger,"imposible conectar con broker, reintento en: %d",time);
 		sleep(time);
 		socket=0;
 		conectarse(socket); //terrible negrada, pero anda o no nada?
+	} else {
+		log_info(logger,"conexion exitosa con broker ");
 	}
 }
 
@@ -78,6 +80,7 @@ t_config_game_card* leer_config() {
 	config_game_card -> puerto_gameBoy= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
 	config_game_card -> ip_gameCard= strdup(config_get_string_value(config, "IP_GAMEBOY"));
 	config_game_card -> puerto_gameCard= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
+	config_game_card -> tiempo_retardo_operacion = config_get_int_value(config,"TIEMPO_RETARDO_OPERACION");
 
 	config_destroy(config);
 
@@ -281,8 +284,6 @@ void funcionHiloNewPokemon(t_new_pokemon* pokemon){
 	verificarExistenciaPokemon(pokemon);
 	verificarAperturaPokemon(pokemon);
 
-
-
 //	if (existePokemonEnEsaPosicion()){
 //		agregarAPoisiconExistente();
 //	} else {
@@ -336,8 +337,9 @@ void verificarAperturaPokemon(t_new_pokemon* msg){
 	char* path = concatenar ("montaje/Pokemon/",msg->pokemon);
 	char* path2 = concatenar (path,"/Metadata.bin"); //terrible negrada esto, pero anda o no anda?
 
-	if (isOpen(path2)){
-		int secs = config->tiempo_reintento_operacion;
+	if (isOpen(path2)){ //TODO VER QUE ONDA
+		int secs = config->tiempo_retardo_operacion;
+		log_info(logger,"no se puede acceder a este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
 		sleep(secs);
 		funcionHiloNewPokemon(msg);
 
