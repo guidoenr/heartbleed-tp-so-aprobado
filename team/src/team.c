@@ -250,10 +250,14 @@ void suscribirme_a_colas() {
 }
 
 
-//TODO
-void suscribirse_a(op_code una_cola) {
-	//uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
-	//mandar por stream el socket
+//TODO CHEQUEAR, robado de game_card :p
+void suscribirse_a(op_code cola) {
+	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	char* suscripcion = string_new(); // se necesita free?
+	string_append(&suscripcion, "Subscription from team to: ");
+	string_append(&suscripcion, (char*) cola);
+	uint32_t size = sizeof(suscripcion) + 1;
+	enviar_mensaje(SUBSCRIPTION, suscripcion, socket, size);
 }
 
 // ------------------------------- ENTRENADORES -------------------------------//
@@ -264,13 +268,15 @@ void iniciar_entrenadores() {
 		pthread_t hilo;
 		t_entrenador* entrenador = un_entrenador;
 		agregar_a_estado(estado_new, entrenador);
+
 		entrenador -> pasos_a_moverse = 0;
 		entrenador -> tire_catch = 0;
 		sem_init(&(entrenador -> sem_binario), 0, 0);
 		sem_init(&(entrenador -> esperar_caught), 0, 0);
+
 		uint32_t err = pthread_create(&hilo, NULL, operar_entrenador, entrenador);
 		if(err != 0) {
-			log_error(logger, "el hilo no pudo ser creado"); // preguntar si estos logs se pueden hacer
+			log_error(logger, "el hilo no pudo ser creado");
 		}
 
 		sem_post(&sem_cont_entrenadores_a_replanif);
@@ -1147,6 +1153,7 @@ void liberar_estados() {
 	list_destroy(estado_exec);
 	list_destroy(estado_block);
 	list_destroy(estado_exit);
+	list_destroy(estados);
 }
 
 void liberar_semaforos() {
