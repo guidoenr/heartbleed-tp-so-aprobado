@@ -33,6 +33,13 @@ typedef struct {
 	uint32_t distancia;
 } t_pedido_captura;
 
+typedef struct {
+	t_entrenador* entrenador_buscando;
+	t_entrenador* entrenador_esperando;
+	uint32_t distancia;
+	char* pokemon_a_dar;
+	char* pokemon_a_recibir;
+} t_pedido_intercambio;
 
 typedef struct {
 	t_list* entrenadores;
@@ -61,7 +68,8 @@ void inicializar_estados();
 void leer_config(void);
 void suscribirme_a_colas();
 void suscribirse_a(op_code);
-
+void inicializar_semaforos();
+void iniciar_hilos_ejecucion();
 
 // entrenadores
 void iniciar_entrenadores();
@@ -71,6 +79,14 @@ t_list* load_entrenadores(t_list*, t_list*, t_list*);
 void cargar_pokemons_a_entrenador(t_list*, t_link_element*, t_list*);
 void remover_entrenadores_en_deadlock(t_list*);
 bool tengo_la_mochila_llena(t_entrenador*);
+bool estoy_en_deadlock(t_entrenador*);
+char* encontrar_pokemon_faltante(t_entrenador*);
+char* encontrar_pokemon_sobrante(t_entrenador*);
+bool le_sobra_pokemon(t_entrenador*, char*);
+void manejar_desalojo_captura(t_pedido_captura*);
+void capturar_pokemon(t_pedido_captura*);
+void tradear_pokemon(t_pedido_intercambio*);
+void ejecutar_trade(t_pedido_intercambio*);
 
 // mensajes
 
@@ -83,21 +99,22 @@ void procesar_caught(t_pedido_captura*);
 
 
 // planificacion
-t_pedido_captura* buscar_pedido(t_entrenador*);
 void* planificar_entrenadores();
-void planificar_fifo();
-void planificar_rr();
+void planificar_fifo_o_rr();
 void planificar_sjf_sd();
 void planificar_sjf_cd();
 void* ejecutar_fifo_o_rr_o_sjf_sd();
+void* ejecutar_sjf_cd();
 void crear_hilo_planificar_entrenadores();
+void resolver_deadlocks();
+void resolver_deadlock_segun_rr();
+void resolver_deadlock_fifo_o_sjf();
 
 // ejecucion
-void agarrar_pokemon(t_pedido_captura*);
-void iniciar_hilos_ejecucion();
-void crear_hilo_segun_algoritmo();
 pthread_t hiloAlgoritmo;
 pthread_t hiloEntrenadores;
+void crear_hilo_segun_algoritmo();
+
 
 // estados
 
@@ -122,7 +139,8 @@ sem_t mx_estado_exec;
 sem_t mx_estado_block;
 sem_t mx_estado_exit;
 sem_t entrenadores_ready;
-void inicializar_semaforos();
+sem_t sem_cont_mapa;
+sem_t sem_cont_entrenadores_a_replanif;
 
 
 // mapa
@@ -131,16 +149,19 @@ t_list* mapa_pokemons;
 
 // pedido
 t_list* pedidos_captura;
+t_list* pedidos_intercambio;
 
 void eliminar_pedido(t_pedido_captura*);
 void destruir_pedido(void*);
-void armar_pedido(t_pedido_captura*);
+void armar_pedido_captura(t_pedido_captura*);
 void destruir_pokemon(t_pokemon_mapa*);
 
+t_pedido_captura* buscar_pedido_captura(t_entrenador*);
 void limpiar_mapa(void*);
 void destruir_pokemon_mapa(void*);
 void matchear_pokemon_con_entrenador(t_pedido_captura*);
 void eliminar_pokemon_de_mapa(t_pokemon_mapa*);
+void armar_pedido_intercambio_segun_algoritmo();
 
 // objetivo
 t_list* objetivo_global;
@@ -149,6 +170,7 @@ void determinar_objetivo_global();
 bool no_esta_en_objetivo(void*);
 void eliminar_los_que_ya_tengo();
 bool cumplio_objetivo_personal(t_entrenador*);
+bool comparar_pokemon(void*, void*);
 
 // terminar
 void liberar_config();
@@ -157,3 +179,5 @@ void liberar_entrenadores();
 void terminar_programa(/*uint32_t*/);
 void liberar_conexion(uint32_t);
 void liberar_estados();
+void liberar_listas();
+void liberar_semaforos();
