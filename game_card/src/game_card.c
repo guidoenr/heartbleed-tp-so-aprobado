@@ -25,7 +25,7 @@ int main(void) {
 //	luken->pokemon = "luken";
 //	printf("tamaño: %d",tamanioNewPokemon(luken));
 
-
+/
 //
 //	enviar_new_pokemon(luken,socket_br);
 //	t_new_pokemon* a = recibir_new_pokemon(socket_br, 30);
