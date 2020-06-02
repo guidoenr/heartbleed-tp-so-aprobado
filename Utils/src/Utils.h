@@ -83,6 +83,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t id_mensaje;
+	uint32_t id_mensaje_correlativo;
 	op_code codigo_operacion;
 	t_buffer* buffer;
 } t_paquete;

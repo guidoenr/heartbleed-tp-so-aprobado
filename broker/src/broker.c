@@ -1,4 +1,5 @@
-#include "broker.h"
+#include "broker_envio_mensajes.c"
+
 
 int main(void) {
 	sem_init(&semaforo, 0, 1);
@@ -168,8 +169,11 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			msg = malloc(sizeof(t_ack));
 			uint32_t id_mensaje;
 			op_code codigo = recibir_confirmacion_de_recepcion(cliente_fd, &id_mensaje);
+			//En realidad el mensaje se desencola cuando TODOS ya lo recibieron.
+			//Habría que revisar.
 			desencolar_mensaje(id_mensaje,codigo);
 			free(msg);
+			break;
 		case 0:
 			log_info(logger,"No se encontro el tipo de mensaje");
 			pthread_exit(NULL);
@@ -200,7 +204,12 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* payload, uint32_t soc
 	log_info(logger, "Payload: %s", (char*) payload);
 	t_paquete* paquete = malloc(sizeof(t_paquete));
 
-	paquete -> id_mensaje = generar_id_univoco();
+	if(paquete -> id_mensaje != 0){
+		paquete -> id_mensaje_correlativo = generar_id_univoco();
+	} else {
+		paquete -> id_mensaje = generar_id_univoco();
+	}
+
 	paquete -> codigo_operacion = cod_op;
 	paquete -> buffer = malloc(sizeof(t_buffer));
 	paquete -> buffer -> size = size;
@@ -242,9 +251,10 @@ uint32_t generar_id_univoco(){
 void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
 
 	t_mensaje *mensaje = malloc(sizeof(t_mensaje));
-	mensaje->estado_mensaje = EN_ESPERA;
-	mensaje->id = paquete->id_mensaje;
-	mensaje->mensaje = paquete->buffer;
+	mensaje -> estado_mensaje = EN_ESPERA;
+	mensaje -> id = paquete->id_mensaje;
+	mensaje -> mensaje = paquete->buffer;
+	//mensaje ->
 
 	switch (codigo_operacion) {
 			case GET_POKEMON:
@@ -387,85 +397,14 @@ t_suscripcion* deserealizar_suscripcion(void* stream){
 	return suscripcion;
 }
 
-void enviar_mensajes_get(){
-	void enviar_mensaje_get(void* mensaje){
-		t_mensaje* mensaje_a_enviar = malloc(sizeof(t_mensaje));
-	    mensaje_a_enviar = mensaje;
-	    if(mensaje_a_enviar == EN_ESPERA) {
-		enviar_mensaje(GET_POKEMON, mensaje_a_enviar-> mensaje, socket, sizeof(t_paquete)); //REVISAR SIZEOF
-		free(mensaje_a_enviar);
-	    }
-	}
-	list_iterate(listas_de_suscriptos -> lista_suscriptores_get, enviar_mensaje_get); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
-}
 
-/*REVISAR 0_0
-void enviar_mensajes_catch(){
-	t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
-	//Se toma la cola de mensajes catch y se envía a todos los procesos suscriptos
-	// a la cola.
-	paquete_a_enviar = list_get(colas_de_mensajes -> cola_catch, 0);
-
-	void enviar_mensaje_catch(void* socket){
-		enviar_mensaje(CATCH_POKEMON, paquete_a_enviar, socket, sizeof(t_paquete)); //REVISAR SIZEOF
-		recibir_confirmacion_de_recepcion(socket);
-	}
-
-	list_iterate(listas_de_suscriptos -> lista_suscriptores_catch, enviar_mensaje_catch); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
-	free(paquete_a_enviar);
-}
-
-void enviar_mensajes_localized(){
-	t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
-	//Se toma la cola de mensajes localized y se envía a todos los procesos suscriptos
-	// a la cola.
-	paquete_a_enviar = list_get(colas_de_mensajes -> cola_localized, 0);
-
-	void enviar_mensaje_localized(void* socket){
-		enviar_mensaje(LOCALIZED_POKEMON, paquete_a_enviar, socket, sizeof(t_paquete)); //REVISAR SIZEOF
-		recibir_confirmacion_de_recepcion(socket);
-	}
-
-	list_iterate(listas_de_suscriptos -> lista_suscriptores_localized, enviar_mensaje_localized); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
-	free(paquete_a_enviar);
-
-}
-
-void enviar_mensajes_caught(){
-	t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
-	//Se toma la cola de mensajes caught y se envía a todos los procesos suscriptos
-	// a la cola.
-	paquete_a_enviar = list_get(colas_de_mensajes -> cola_caught, 0);
-
-	void enviar_mensaje_caught(void* socket){
-		enviar_mensaje(CAUGHT_POKEMON, paquete_a_enviar, socket, sizeof(t_paquete)); //REVISAR SIZEOF
-		recibir_confirmacion_de_recepcion(socket);
-	}
-
-	list_iterate(listas_de_suscriptos -> lista_suscriptores_caught, enviar_mensaje_caught); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
-	free(paquete_a_enviar);
-}
-
-void enviar_mensajes_appeared(){
-	t_paquete* paquete_a_enviar = malloc(sizeof(t_paquete));
-	//Se toma la cola de mensajes appeared y se envía a todos los procesos suscriptos
-	// a la cola.
-	paquete_a_enviar = list_get(colas_de_mensajes -> cola_appeared, 0);
-
-	void enviar_mensaje_appeared(void* socket){
-		enviar_mensaje(APPEARED_POKEMON, paquete_a_enviar, socket, sizeof(t_paquete)); //REVISAR SIZEOF
-		recibir_confirmacion_de_recepcion(socket);
-	}
-
-	list_iterate(listas_de_suscriptos -> lista_suscriptores_appeared, enviar_mensaje_appeared); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
-	free(paquete_a_enviar);
-}*/
 
 op_code recibir_confirmacion_de_recepcion(uint32_t socket_cliente, uint32_t id_mensaje){
 	op_code acknowledgment;
 	recv(socket_cliente, & acknowledgment, sizeof(op_code), MSG_WAITALL);
 	recv(socket_cliente, id_mensaje, sizeof(uint32_t), MSG_WAITALL);
 	return acknowledgment;
+	//Recibe una estructura, no solo el opcode --> REVISAR
 }
 
 
@@ -507,7 +446,30 @@ void desencolar_mensaje(uint32_t id_mensaje, op_code codigo_operacion){
 }
 
 
+//--------------MEMORIA-------------//
+void ubicar_particion_de_memoria(){
+	char algoritmo_de_memoria = config_broker -> algoritmo_memoria;
+	if(string_equals_ignore_case(algoritmo_de_memoria, "BS")){
+		//ubicar_con_particiones_dinamicas();
+	} else {
+		//ubicar_con_buddy_system();
+	}
+}
 
+void eliminar_particion_de_memoria(){
+	char algoritmo_de_reemplazo = config_broker -> algoritmo_reemplazo;
+	if(string_equals_ignore_case(algoritmo_de_reemplazo, "FF")){
+		//eliminar con fifo
+	} else {
+		//eliminar con lru
+	}
+}
+
+void compactar_memoria(){
+	//Esto debería ser un hilo que periódicamente haga la compactación?
+	uint32_t frecuencia_de_compactacion = config_broker -> frecuencia_compactacion;
+
+}
 
 
 
