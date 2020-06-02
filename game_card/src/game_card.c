@@ -10,31 +10,40 @@
 int main(void) {
 	config = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
+	int socket_br;
+	conectarse(socket_br);
 
-	int socket_br = crear_conexion(config -> ip_broker, config -> puerto_broker);
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
-	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
-	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
-
-	//suscribirme_a_colas();
-
-	t_new_pokemon* luken = malloc(sizeof(t_new_pokemon));
-	luken->cantidad = 20;
-	luken->id_mensaje= 1512;
-	luken->posicion[0]= 1;
-	luken->posicion[1]= 2;
-	luken->pokemon = "luken";
-	printf("tamaño: %d",tamanioNewPokemon(luken));
+//	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
+//	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
+//	//suscribirme_a_colas();
+//	t_new_pokemon* luken = malloc(sizeof(t_new_pokemon));
+//	luken->cantidad = 20;
+//	luken->id_mensaje= 1512;
+//	luken->posicion[0]= 1;
+//	luken->posicion[1]= 2;
+//	luken->pokemon = "luken";
+//	printf("tamaño: %d",tamanioNewPokemon(luken));
 
 
-
-	enviar_new_pokemon(luken,socket_br);
-	t_new_pokemon* a = recibir_new_pokemon(socket_br, 30);
+//
+//	enviar_new_pokemon(luken,socket_br);
+//	t_new_pokemon* a = recibir_new_pokemon(socket_br, 30);
 
 //	verificarPokemon(pikachu);
 //	verificarAperturaPokemon(pikachu);
 
 	terminar_programa(socket,config);
+}
+void conectarse(int socket){
+	socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	int time = config->tiempo_reintento_conexion;
+	if (socket == -1 ){
+		log_info(logger,"No me pude conectar reintento en %d",time);
+		sleep(time);
+		socket=0;
+		conectarse(socket); //terrible negrada, pero anda o no nada?
+	}
 }
 
 void suscribirme_a_colas() {
@@ -221,7 +230,7 @@ void cerrarArchivo(char* path){
 }
 
 void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende del que toque ese modulo.
-	uint32_t* size = 30; //TODO, preguntar.
+	uint32_t* size;
 	void* msg;
 
 	log_info(logger,"Codigo de operacion %d",cod_op);
@@ -376,4 +385,3 @@ uint32_t tamanioNewPokemon(t_new_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 }
 
-//probando bugs para hackeronea
