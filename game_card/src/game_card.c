@@ -297,6 +297,9 @@ void funcionHiloNewPokemon(t_new_pokemon* new_pokemon,int socket){
 
 	enviar_appeared_pokemon(appeared_pokemon,socket);
 
+	char* path = obtenerPathMetaFile(new_pokemon);
+	cerrarArchivo(path);
+
 }
 
 t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
@@ -309,18 +312,6 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 		return appeared_pokemon;
 }
 
-
-//char* concatenar(char* str1,char* str2){
-//	char* new_str ;
-//	if((new_str = malloc(strlen(str1)+strlen(str2)+1)) != NULL){
-//	    new_str[0] = '\0';
-//	    strcat(new_str,str1);
-//	    strcat(new_str,str2);
-//	} else {
-//	    log_error(logger,"error al concatenar");
-//	}
-//	return new_str;
-//}
 
 void verificarExistenciaPokemon(t_new_pokemon* newpoke){
 	char* montaje = "montaje/Pokemon/";		  			  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
@@ -350,17 +341,25 @@ int existeDirectorio(char* path){
 }
 
 void verificarAperturaPokemon(t_new_pokemon* msg,int socket){
-	char* path = concatenar ("montaje/Pokemon/",msg->pokemon);
-	char* path2 = concatenar (path,"/Metadata.bin"); //terrible negrada esto, pero anda o no anda?
-
-	if (isOpen(path2)){
+//	char* path = concatenar ("montaje/Pokemon/",msg->pokemon);
+//	char* path2 = concatenar (path,"/Metadata.bin"); //terrible negrada esto, pero anda o no anda?
+	char* path = obtenerPathMetaFile(msg);
+	if (isOpen(path)){
 		int secs = config->tiempo_retardo_operacion;
 		log_info(logger,"no se puede acceder a este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
 		sleep(secs);
 		funcionHiloNewPokemon(msg,socket);
 	} else {
 		log_info(logger,"se puede acceder /n");
+		abrirArchivo(path);
+		}
 	}
+
+char* obtenerPathMetaFile(t_new_pokemon* pokemon){
+	char* path = concatenar ("montaje/Pokemon/",pokemon->pokemon);
+	char* path2 = concatenar (path,"/Metadata.bin"); //terrible negrada esto, pero anda o no anda?
+
+	return path2;
 }
 
 bool existePokemonEnPosicion(t_new_pokemon* pokemon){
@@ -391,7 +390,7 @@ void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
 	free(stream);
 }
 
-enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket){
+void enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket){
 		t_buffer* buffer = malloc(sizeof(t_buffer));
 
 		buffer -> size = sizeAppearedPokemon(appeared_pokemon);

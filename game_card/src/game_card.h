@@ -52,6 +52,7 @@ t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size);
 void informarAlBroker(int socket,op_code codigo);
 t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon);
 bool existePokemonEnPosicion(t_new_pokemon* pokemon);
+void enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket);
 
 
 
@@ -83,4 +84,5 @@ char* concatenar(char* str1,char* str2);
 bool isFile(char* path);
 uint32_t sizeNewPokemon(t_new_pokemon* pokemon);
 uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon);
+char* obtenerPathMetaFile(t_new_pokemon* pokemon);
 
