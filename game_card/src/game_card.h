@@ -85,4 +85,4 @@ bool isFile(char* path);
 uint32_t sizeNewPokemon(t_new_pokemon* pokemon);
 uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon);
 char* obtenerPathMetaFile(t_new_pokemon* pokemon);
-
+void conectarse(int socket);

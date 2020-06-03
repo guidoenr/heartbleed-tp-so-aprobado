@@ -59,10 +59,10 @@ void suscribirse_a(op_code una_cola) {
 	char* msgSub = concatenar("Subscription FROM game_card to: ",(char*) una_cola);
 	uint32_t size = sizeof(msgSub) + 1;
 	enviar_mensaje(SUBSCRIPTION, msgSub ,socket,size);
+
 	//recibir el mensaje del broker TODO
 
-	//duda serve_client? process_request? crear hilo para atender solicitud? ayuda plis TODO TODO TODO
-
+	//duda serve_client? process_request? crear hilo para atender solicitud? ayuda plis TODO
 }
 
 t_config_game_card* leer_config() {
@@ -307,8 +307,8 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 		appeared_pokemon->posicion[0] = new_pokemon->posicion[0];
 		appeared_pokemon->posicion[1] = new_pokemon->posicion[1];
 		appeared_pokemon->pokemon = new_pokemon->pokemon;
-		appeared_pokemon->id_mensaje_correlativo = new_pokemon->id_mensaje;
-		appeared_pokemon->id_mensaje = 11234; // TODO que onda este ID
+		appeared_pokemon->id_mensaje_correlativo = 0;
+		appeared_pokemon->id_mensaje = new_pokemon->id_mensaje; // TODO que onda este ID
 		return appeared_pokemon;
 }
 
