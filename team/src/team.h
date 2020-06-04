@@ -11,12 +11,13 @@
 // agregar un id 0 al mensaje a mandar al broker
 
 typedef struct {
+	pthread_t* hilo;
 	sem_t sem_binario;
 	uint32_t posicion[2];
 	t_list* pokemons;
 	t_list* objetivos;
 	uint32_t pasos_a_moverse;
-	uint32_t tire_catch;
+	uint32_t tire_accion;
 	uint32_t resultado_caught;
 	sem_t esperar_caught;
 } t_entrenador;
@@ -87,6 +88,7 @@ void manejar_desalojo_captura(t_pedido_captura*);
 void capturar_pokemon(t_pedido_captura*);
 void tradear_pokemon(t_pedido_intercambio*);
 void ejecutar_trade(t_pedido_intercambio*);
+void asignar_estado_luego_de_trade(t_entrenador*);
 
 // mensajes
 
@@ -111,8 +113,8 @@ void resolver_deadlock_segun_rr();
 void resolver_deadlock_fifo_o_sjf();
 
 // ejecucion
-pthread_t hiloAlgoritmo;
-pthread_t hiloEntrenadores;
+pthread_t hilo_algoritmo;
+pthread_t hilo_entrenadores;
 void crear_hilo_segun_algoritmo();
 
 
@@ -157,11 +159,12 @@ void armar_pedido_captura(t_pedido_captura*);
 void destruir_pokemon(t_pokemon_mapa*);
 
 t_pedido_captura* buscar_pedido_captura(t_entrenador*);
+t_pedido_intercambio* buscar_pedido_intercambio(t_entrenador*);
 void limpiar_mapa(void*);
 void destruir_pokemon_mapa(void*);
 void matchear_pokemon_con_entrenador(t_pedido_captura*);
 void eliminar_pokemon_de_mapa(t_pokemon_mapa*);
-void armar_pedido_intercambio_segun_algoritmo();
+t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo();
 
 // objetivo
 t_list* objetivo_global;
