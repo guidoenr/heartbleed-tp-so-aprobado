@@ -155,6 +155,7 @@ void crearBlocks(char* path){
 		fclose(file);
 		i++;
 	}
+	log_info(logger,"Se crearon %d blocks",cantidadBloques);
 
 }
 
@@ -190,7 +191,7 @@ void crearMetadataFile(char* path,t_new_pokemon* newPoke){
 	meta.directory = 'Y';
 	meta.size = 0; //TODO preguntar que es esto?
 	meta.blocks[0] = newPoke->posicion[0];
-	meta.blocks[1] = newPoke->posicion[1];// recontra TODO ni idea
+	meta.blocks[1] = newPoke->posicion[1];// TODO pero con idea ahora, hay que buscar blocks libres
 	meta.open = 'N';
 
 	fwrite(&meta,sizeof(tamanio_de_file_metadata(meta)),1,file);
@@ -212,7 +213,7 @@ t_metadata leerMetadata(char* path){
 	FILE* file = fopen(path,"rb"); //read-binary
 
 	if (!isFile(path)){
-		log_warning(logger,"no existe el archivo a leer");
+		log_warning(logger,"No existe el archivo a leer");
 	}
 
 	t_metadata metadata; //despues vemos como se usa esta verga
@@ -220,7 +221,7 @@ t_metadata leerMetadata(char* path){
 	fread(&(metadata.blocksize),sizeof(int),1,file);
 	fread(&(metadata.blocks),sizeof(int),1,file);
 	fread(&(metadata.magic),13,1,file);
-	log_info(logger, "se leyo el metadata con tamaño %d",tamanio_de_metadata(metadata));
+	log_info(logger, "Se leyo el metadata con tamaño %d",tamanio_de_metadata(metadata));
 
 	fclose(file);
 
