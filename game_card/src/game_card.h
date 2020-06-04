@@ -11,6 +11,8 @@
 
 //global
 t_log* logger;
+char* punto_montaje;
+t_new_pokemon* luken;
 
 
 
@@ -57,7 +59,8 @@ void enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket);
 
 
 //metadata + fileSystem
-void leerMetadata();
+void iniciarTallGrass();
+t_metadata leerMetadata();
 void escribirMetadata();
 void crearMetadata();
 int tamanio_de_metadata(t_metadata metadata);

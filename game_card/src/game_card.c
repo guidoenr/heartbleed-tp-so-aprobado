@@ -10,28 +10,24 @@
 int main(void) {
 	config = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
+	//iniciarTallGrass();
 	int socket_br;
-	conectarse(socket_br);
 
+	crearDirectorios(config->punto_montaje_tallgrass);
+	//conectarse(socket_br);
+	//iniciarTallGrass();
+	//crearMetadata();
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
-//	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
-//	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
-//	//suscribirme_a_colas();
-//	t_new_pokemon* luken = malloc(sizeof(t_new_pokemon));
-//	luken->cantidad = 20;
-//	luken->id_mensaje= 1512;
-//	luken->posicion[0]= 1;
-//	luken->posicion[1]= 2;
-//	luken->pokemon = "luken";
-//	printf("tamaño: %d",tamanioNewPokemon(luken));
+	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
+	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
+	//suscribirme_a_colas();
 
 
-//
-//	enviar_new_pokemon(luken,socket_br);
-//	t_new_pokemon* a = recibir_new_pokemon(socket_br, 30);
+	//enviar_new_pokemon(luken,socket_br);
+	//t_new_pokemon* a = recibir_new_pokemon(socket_br, 30);
 
-//	verificarPokemon(pikachu);
-//	verificarAperturaPokemon(pikachu);
+	//verificarPokemon(pikachu);
+	//verificarAperturaPokemon(pikachu);
 
 	terminar_programa(socket,config);
 }
@@ -46,6 +42,24 @@ void conectarse(int socket){
 	} else {
 		log_info(logger,"conexion exitosa con broker ");
 	}
+}
+
+void iniciarTallGrass(){
+	punto_montaje = config->punto_montaje_tallgrass;
+	crearDirectorios(punto_montaje);
+	crearMetadata(punto_montaje);
+	crearBitmap(punto_montaje);
+	crearBlocks(punto_montaje);
+
+	//luken es el poke de prueba
+	luken = malloc(sizeof(t_new_pokemon));
+	luken->cantidad = 11;
+	luken->id_mensaje= 0420;
+	luken->posicion[0]= 2;
+	luken->posicion[1]= 2;
+	luken->pokemon = "Luken";
+
+	crearMetadataFile(punto_montaje,luken);
 }
 
 void suscribirme_a_colas() {
@@ -100,38 +114,89 @@ void terminar_programa(int conexion,t_config_game_card* config) {
 	liberar_conexion(conexion);
 }
 
+void crearDirectorios(char* path){
 
-void crearMetadata(char* path){
+	char* tallgrass = concatenar(path,"/Montaje");
+	char* blocks = concatenar(tallgrass,"/Blocks");
+	char* metadata = concatenar(tallgrass,"/Metadata");
+	char* files = concatenar(tallgrass,"/Files");
 
-	FILE* file = fopen(path,"wb"); //write-binary
-	if (file==NULL){
-		FILE* file = fopen(path,"wb");
+	//podria verificar si existen los directorios pero ni idea TODO
+	//aclaro que esta terrible negrada es porque el fopen(w+b) no te crea directorios, python si obvio porque es mejor
+
+	mkdir(tallgrass,0777);
+	mkdir(metadata,0777);
+	mkdir(files,0777);
+	mkdir(blocks,0777);
+
+}
+void crearBlocks(char* path){
+
+	char* realPath = concatenar(path,"/Montaje/Metadata/Metadata.bin");
+	t_metadata metadata = leerMetadata(realPath);
+
+	int cantidadBloques = metadata.blocks;
+	int sizeBlock = metadata.blocksize;
+	int i = 1;
+
+	char* blocksPath = concatenar(path,"/Montaje/Blocks/");
+
+	while(i <= cantidadBloques){
+		char* block = concatenar (blocksPath,(char*) i);
+		char* bloque = concatenar (block,".bin");
+		FILE* file = fopen(bloque,"wb");
 		fclose(file);
-		log_info(logger,"se creo el archivo metadata.bin VACIO");
-
-	}else{
-
-		t_metadata metadata;
-		metadata.blocksize = 64;
-		metadata.blocks = 5192;
-		metadata.magic = "TALL_GRASS";
-		int tam = tamanio_de_metadata(metadata);
-		fwrite(&metadata,tam,1,file);
-
-		log_info(logger,"se creo el archivo metadata.bin de tamaño: %d",tam);
-
-		fclose(file);
-
 	}
 
 }
 
+void crearMetadata(char* path){
+	char* realPath = concatenar(path,"Montaje/Metadata/Metadata.bin");
+
+	FILE* file = fopen(realPath,"wb"); //write-binary
+
+	if (file==NULL){
+
+		FILE* file = fopen(realPath,"wb");
+
+		log_info(logger,"Se creo el archivo Metadata.bin VACIO");
+
+		} else {
+
+			t_metadata metadata;
+			metadata.blocksize = 64;
+			metadata.blocks = 10; // es 5192 pero no voy a crear miles
+			metadata.magic = "TALL_GRASS";
+			int tam = tamanio_de_metadata(metadata);
+			fwrite(&metadata,tam,1,file);
+			fclose(file);
+		}
+
+
+
+
+	log_info(logger,"Se creo Metadata.bin en: %s",realPath);
+
+		//	if (file==NULL){
+		//		FILE* file = fopen(path,"wb");
+		//		fclose(file);
+		//		log_info(logger,"se creo el archivo metadata.bin VACIO");
+		//
+		//	}else{
+
+}
+
 void crearMetadataFile(char* path,t_new_pokemon* newPoke){
-	FILE* file = fopen(path,"wb");
+
+	char* realPath = concatenar(path,"/Montaje/Files/");
+	char* trulyRealPath = concatenar(realPath,newPoke->pokemon);
+	char* reallyTrulyRealPath = concatenar(trulyRealPath,"/Metadata.bin");
+
+	FILE* file = fopen(reallyTrulyRealPath,"wb");
 
 	t_file_metadata meta;
 	meta.directory = 'Y';
-	meta.size = 62; //TODO preguntar que es esto?
+	meta.size = 0; //TODO preguntar que es esto?
 	meta.blocks[0] = newPoke->posicion[0];
 	meta.blocks[1] = newPoke->posicion[1];// recontra TODO ni idea
 	meta.open = 'N';
@@ -142,31 +207,35 @@ void crearMetadataFile(char* path,t_new_pokemon* newPoke){
 
 }
 int tamanio_de_metadata(t_metadata metadata){
-	int stringLong = strlen(metadata.magic)+1 ;
+	int stringLong = sizeof("TALL_GRASS") + 1 ;
 	return stringLong + (sizeof(int) *2) ;
+
 }
 
 int tamanio_file_metadata(t_file_metadata fileMeta){
 	return sizeof(char) + sizeof(fileMeta.blocks) + sizeof(int) + sizeof(char); // TODO BLOCKS?
 }
 
-void leerMetadata(char* path){
+t_metadata leerMetadata(char* path){
 	FILE* file = fopen(path,"rb"); //read-binary
 
 	if (!isFile(path)){
 		log_warning(logger,"no existe el archivo a leer");
 	}
 
-	t_metadata metadataLeido; //despues vemos como se usa esta verga
+	t_metadata metadata; //despues vemos como se usa esta verga
 
-	fread(&(metadataLeido.blocksize),sizeof(int),1,file);
-	fread(&(metadataLeido.blocks),sizeof(int),1,file);
-	fread(&(metadataLeido.magic),13,1,file);
-
-	log_info(logger, "se leyo el metadata con tamaño %d",tamanio_de_metadata(metadataLeido));
+	fread(&(metadata.blocksize),sizeof(int),1,file);
+	fread(&(metadata.blocks),sizeof(int),1,file);
+	fread(&(metadata.magic),13,1,file);
+	log_info(logger, "se leyo el metadata con tamaño %d",tamanio_de_metadata(metadata));
 
 	fclose(file);
+
+	return metadata;
 }
+
+
 
 int fileSize(char* path){
 	FILE* f = fopen(path,"r");
@@ -183,12 +252,12 @@ bool isFile(char* path){
 }
 
 void crearBitmap(char* path){
-	FILE* file = fopen(path,"wb");
-	int status;
-	status=0; //arranca en 0
+	char* realPath = concatenar(path,"/Montaje/Metadata/Bitmap.bin");
+	int status = 0;
+	FILE* file = fopen(realPath,"wb");
 	fwrite(&status,sizeof(int),1,file);
-	log_info(logger,"se creo el bitmap.bin con status: %d",status);
 	fclose(file);
+	log_info(logger,"Se creo el bitmap.bin con status: %d",status);
 }
 
 int estadoBitmap(char* path){
