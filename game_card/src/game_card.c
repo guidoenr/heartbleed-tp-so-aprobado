@@ -15,7 +15,6 @@ int main(void) {
 
 	//conectarse(socket_br);
 
-	char* puntoMontaje = config->punto_montaje_tallgrass;
 	iniciarTallGrass();
 
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
@@ -146,11 +145,12 @@ void crearBlocks(char* path){
 
 
 	while(i <= cantidadBloques){
-		char c = (char) i;
-		char* block = concatenar(blocksPath,c);
+		char* c = (char) i + '\0';
+		char* block = concatenar(blocksPath,i); //TODO UY AMIGO POR DIOS.........
 		char* bloque = concatenar(block,".bin");
 		FILE* file = fopen(bloque,"wb");
 		fclose(file);
+		i++;
 	}
 
 }
