@@ -10,13 +10,14 @@
 int main(void) {
 	config = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
-	//iniciarTallGrass();
+
 	int socket_br;
 
-	crearDirectorios(config->punto_montaje_tallgrass);
 	//conectarse(socket_br);
-	//iniciarTallGrass();
-	//crearMetadata();
+
+	char* puntoMontaje = config->punto_montaje_tallgrass;
+	iniciarTallGrass();
+
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
 	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
@@ -45,7 +46,9 @@ void conectarse(int socket){
 }
 
 void iniciarTallGrass(){
+
 	punto_montaje = config->punto_montaje_tallgrass;
+
 	crearDirectorios(punto_montaje);
 	crearMetadata(punto_montaje);
 	crearBitmap(punto_montaje);
@@ -141,9 +144,11 @@ void crearBlocks(char* path){
 
 	char* blocksPath = concatenar(path,"/Montaje/Blocks/");
 
+
 	while(i <= cantidadBloques){
-		char* block = concatenar (blocksPath,(char*) i);
-		char* bloque = concatenar (block,".bin");
+		char c = (char) i;
+		char* block = concatenar(blocksPath,c);
+		char* bloque = concatenar(block,".bin");
 		FILE* file = fopen(bloque,"wb");
 		fclose(file);
 	}
@@ -151,38 +156,22 @@ void crearBlocks(char* path){
 }
 
 void crearMetadata(char* path){
-	char* realPath = concatenar(path,"Montaje/Metadata/Metadata.bin");
+	char* realPath = concatenar(path,"/Montaje/Metadata/Metadata.bin");
 
 	FILE* file = fopen(realPath,"wb"); //write-binary
 
-	if (file==NULL){
+	t_metadata metadata;
+	metadata.blocksize = 64;
+	metadata.blocks = 10; // es 5192 pero no voy a crear miles de bin
+	metadata.magic = "TALL_GRASS";
 
-		FILE* file = fopen(realPath,"wb");
+	int tam = tamanio_de_metadata(metadata);
 
-		log_info(logger,"Se creo el archivo Metadata.bin VACIO");
+	fwrite(&metadata,tam,1,file);
 
-		} else {
-
-			t_metadata metadata;
-			metadata.blocksize = 64;
-			metadata.blocks = 10; // es 5192 pero no voy a crear miles
-			metadata.magic = "TALL_GRASS";
-			int tam = tamanio_de_metadata(metadata);
-			fwrite(&metadata,tam,1,file);
-			fclose(file);
-		}
-
-
-
+	fclose(file);
 
 	log_info(logger,"Se creo Metadata.bin en: %s",realPath);
-
-		//	if (file==NULL){
-		//		FILE* file = fopen(path,"wb");
-		//		fclose(file);
-		//		log_info(logger,"se creo el archivo metadata.bin VACIO");
-		//
-		//	}else{
 
 }
 
