@@ -4,7 +4,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 
 int main(void) {
@@ -16,6 +18,7 @@ int main(void) {
 	//conectarse(socket_br);
 
 	iniciarTallGrass();
+
 
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
@@ -145,8 +148,8 @@ void crearBlocks(char* path){
 
 
 	while(i <= cantidadBloques){
-		char* c = (char) i + '\0';
-		char* block = concatenar(blocksPath,i); //TODO UY AMIGO POR DIOS.........
+		char* c = string_itoa(i);
+		char* block = concatenar(blocksPath,c);
 		char* bloque = concatenar(block,".bin");
 		FILE* file = fopen(bloque,"wb");
 		fclose(file);
@@ -503,7 +506,4 @@ uint32_t sizeNewPokemon(t_new_pokemon* pokemon){
 uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 }
-
-
-
 
