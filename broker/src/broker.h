@@ -20,25 +20,6 @@ typedef struct {
 	char* log_file;
 } t_config_broker;
 
-typedef enum{
-	EN_ESPERA = 0, //NO LO ENVIAMOS
-	ENVIADO = 1,/// SE LO ENVIA A UN PROCESO
-	CONFIRMADO = 2, /// ME CONFIRMO EL PROCESO
-} status_mensaje;
-
-typedef struct {
-	t_paquete* mensaje;
-	uint32_t id;
-	uint32_t id_correlativo;///AConfirmar
-	status_mensaje estado_mensaje;
-	t_list* t_mensaje_suscriptores; //char[20] suscriptor; //Esto esta horrible, lo tenemos que pensar.
-}t_mensaje;
-
-typedef struct {
-	status_mensaje estado_mensaje;
-	uint32_t suscriptor;
-} t_mensaje_suscriptores;
-
 typedef struct {
 	t_list* cola_catch;
 	t_list* cola_caught;
@@ -53,14 +34,14 @@ typedef struct{
   uint32_t socket;
 }t_ack;
 
-typedef struct {
-	t_list* lista_suscriptores_catch;
-	t_list* lista_suscriptores_caught;
-	t_list* lista_suscriptores_get;
-	t_list* lista_suscriptores_localized;
-	t_list* lista_suscriptores_new;
-	t_list* lista_suscriptores_appeared;
-} t_listas_suscriptores;
+t_list* lista_suscriptores_catch;
+t_list* lista_suscriptores_caught;
+t_list* lista_suscriptores_get;
+t_list* lista_suscriptores_localized;
+t_list* lista_suscriptores_new;
+t_list* lista_suscriptores_appeared;
+
+
 
 //Preguntar por estructuras auxiliares que se mencionan en el enunciado
 typedef struct {
@@ -71,7 +52,6 @@ t_memoria_cache* memoria_cache;
 t_config_broker* config;
 t_config_broker* config_broker;
 t_log* logger;
-t_listas_suscriptores* listas_de_suscriptos;
 t_colas_mensajes* colas_de_mensajes;
 
 sem_t semaforo;
@@ -112,3 +92,4 @@ void descargar_historial_mensajes(t_list*, uint32_t);
 void ubicar_particion_de_memoria(void);
 void eliminar_particion_de_memoria(void);
 void compactar_memoria(void);
+void guardar_en_memoria1(t_paquete*);

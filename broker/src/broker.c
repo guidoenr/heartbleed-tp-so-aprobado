@@ -40,13 +40,12 @@ void crear_colas_de_mensajes(){
 
 void crear_listas_de_suscriptores(){
 
-	listas_de_suscriptos = malloc(sizeof(t_listas_suscriptores));
-	listas_de_suscriptos -> lista_suscriptores_new = list_create();
-	listas_de_suscriptos -> lista_suscriptores_appeared = list_create();
-	listas_de_suscriptos -> lista_suscriptores_get = list_create();
-	listas_de_suscriptos -> lista_suscriptores_localized = list_create();
-	listas_de_suscriptos -> lista_suscriptores_catch = list_create();
-	listas_de_suscriptos -> lista_suscriptores_caught = list_create();
+	 lista_suscriptores_new = list_create();
+	 lista_suscriptores_appeared = list_create();
+	 lista_suscriptores_get = list_create();
+	 lista_suscriptores_localized = list_create();
+	 lista_suscriptores_catch = list_create();
+	 lista_suscriptores_caught = list_create();
 }
 
 void leer_config() {
@@ -104,12 +103,12 @@ void liberar_listas(){
 	list_destroy(colas_de_mensajes -> cola_localized);
 	list_destroy(colas_de_mensajes -> cola_catch);
 	list_destroy(colas_de_mensajes -> cola_caught);
-	list_destroy(listas_de_suscriptos -> lista_suscriptores_new);
-	list_destroy(listas_de_suscriptos -> lista_suscriptores_appeared);
-	list_destroy(listas_de_suscriptos -> lista_suscriptores_get);
-	list_destroy(listas_de_suscriptos -> lista_suscriptores_localized);
-	list_destroy(listas_de_suscriptos -> lista_suscriptores_catch);
-	list_destroy(listas_de_suscriptos -> lista_suscriptores_caught);
+	list_destroy( lista_suscriptores_new);
+	list_destroy( lista_suscriptores_appeared);
+	list_destroy( lista_suscriptores_get);
+	list_destroy( lista_suscriptores_localized);
+	list_destroy( lista_suscriptores_catch);
+	list_destroy( lista_suscriptores_caught);
 }
 
 
@@ -204,32 +203,24 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* payload, uint32_t soc
 	log_info(logger, "Payload: %s", (char*) payload);
 	t_paquete* paquete = malloc(sizeof(t_paquete));
 
-	if(paquete -> id_mensaje != 0){
-		paquete -> id_mensaje_correlativo = generar_id_univoco();
-	} else {
-		paquete -> id_mensaje = generar_id_univoco();
-	}
-
+    paquete -> id_mensaje = generar_id_univoco();
 	paquete -> codigo_operacion = cod_op;
 	paquete -> buffer = malloc(sizeof(t_buffer));
 	paquete -> buffer -> size = size;
 	paquete -> buffer -> stream = malloc(paquete -> buffer -> size);
 	memcpy(paquete -> buffer -> stream, payload, paquete -> buffer -> size);
 
+
 	send(socket_cliente, &(paquete -> id_mensaje) , sizeof(uint32_t), 0);
 
 	uint32_t bytes = paquete -> buffer -> size + 2 * sizeof(uint32_t);
-	void* a_agregar = serializar_paquete(paquete, &bytes);
 
-	send(socket_cliente, a_agregar, bytes, 0); // a donde se envía este paquete?
-
+	guardar_en_memoria(paquete);
 
 	sem_wait(&semaforo);
 	encolar_mensaje(paquete, paquete -> codigo_operacion);
 	sem_post(&semaforo);
 
-
-	free(a_agregar);
 	free(paquete -> buffer -> stream);
 	free(paquete -> buffer);
 	free(paquete);
@@ -250,39 +241,33 @@ uint32_t generar_id_univoco(){
 
 void encolar_mensaje(t_paquete* paquete, op_code codigo_operacion){
 
-	t_mensaje *mensaje = malloc(sizeof(t_mensaje));
-	mensaje -> estado_mensaje = EN_ESPERA;
-	mensaje -> id = paquete->id_mensaje;
-	mensaje -> mensaje = paquete->buffer;
-	//mensaje ->
-
 	switch (codigo_operacion) {
 			case GET_POKEMON:
-				list_add(colas_de_mensajes -> cola_get, mensaje);
+				list_add(colas_de_mensajes -> cola_get, "");
 				log_info(logger, "Mensaje agregado a cola de mensajes get.");
 				break;
 			case CATCH_POKEMON:
-				list_add(colas_de_mensajes -> cola_catch, mensaje);
+				list_add(colas_de_mensajes -> cola_catch, "");
 				log_info(logger, "Mensaje agregado a cola de mensajes catch.");
 				break;
 			case LOCALIZED_POKEMON:
-				list_add(colas_de_mensajes -> cola_localized, mensaje);
+				list_add(colas_de_mensajes -> cola_localized, "");
 				log_info(logger, "Mensaje agregado a cola de mensajes localized.");
 				break;
 			case CAUGHT_POKEMON:
-				list_add(colas_de_mensajes -> cola_caught, mensaje);
+				list_add(colas_de_mensajes -> cola_caught, "");
 				log_info(logger, "Mensaje agregado a cola de mensajes caught.");
 				break;
 			case APPEARED_POKEMON:
-				list_add(colas_de_mensajes -> cola_appeared, mensaje);
+				list_add(colas_de_mensajes -> cola_appeared, "");
 				log_info(logger, "Mensaje agregado a cola de mensajes appeared.");
 				break;
 			case NEW_POKEMON:
-				list_add(colas_de_mensajes -> cola_new, mensaje);
+				list_add(colas_de_mensajes -> cola_new, "");
 				log_info(logger, "Mensaje agregado a cola de mensajes new.");
 				break;
 			case SUBSCRIPTION:
-				recibir_suscripcion(mensaje);
+				recibir_suscripcion("");
 				break;
 			default:
 				log_info(logger, "El codigo de operacion es invalido");
@@ -299,22 +284,22 @@ void recibir_suscripcion(t_paquete* paquete){
 	log_info(logger, "Se recibe una suscripción.");
 		switch (mensaje_suscripcion->cola_a_suscribir) {
 			 case GET_POKEMON:
-				suscribir_a_cola(listas_de_suscriptos -> lista_suscriptores_get, mensaje_suscripcion);
+				suscribir_a_cola( lista_suscriptores_get, mensaje_suscripcion);
 				break;
 			 case CATCH_POKEMON:
-				suscribir_a_cola(listas_de_suscriptos -> lista_suscriptores_catch, mensaje_suscripcion);
+				suscribir_a_cola( lista_suscriptores_catch, mensaje_suscripcion);
 				break;
 			 case LOCALIZED_POKEMON:
-				suscribir_a_cola(listas_de_suscriptos -> lista_suscriptores_localized, mensaje_suscripcion);
+				suscribir_a_cola( lista_suscriptores_localized, mensaje_suscripcion);
 				break;
 			 case CAUGHT_POKEMON:
-				suscribir_a_cola(listas_de_suscriptos -> lista_suscriptores_caught, mensaje_suscripcion);
+				suscribir_a_cola( lista_suscriptores_caught, mensaje_suscripcion);
 				break;
 			 case APPEARED_POKEMON:
-				suscribir_a_cola(listas_de_suscriptos -> lista_suscriptores_appeared, mensaje_suscripcion);
+				suscribir_a_cola( lista_suscriptores_appeared, mensaje_suscripcion);
 				break;
 			 case NEW_POKEMON:
-				suscribir_a_cola(listas_de_suscriptos -> lista_suscriptores_new, mensaje_suscripcion);
+				suscribir_a_cola( lista_suscriptores_new, mensaje_suscripcion);
 				break;
 			 default:
 				log_info(logger, "Ingrese un codigo de operacion valido");
@@ -329,7 +314,7 @@ void recibir_suscripcion(t_paquete* paquete){
 //Ver de agregar threads.
 void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion){
 
-	list_add(lista_suscriptores, &suscripcion -> socket);
+
 	log_info(logger, "EL cliente fue suscripto a la cola de mensajes:%s.", (char*)(suscripcion -> cola_a_suscribir));
 	uint32_t socket_suscripto = suscripcion -> socket;
 
@@ -353,27 +338,27 @@ void informar_mensajes_previos(t_suscripcion* una_suscripcion){
 
 	switch(una_suscripcion -> cola_a_suscribir){
 		case GET_POKEMON: //GAME_CARD SUSCRIPTO
-			descargar_historial_mensajes(listas_de_suscriptos -> lista_suscriptores_get, una_suscripcion -> socket);
+			descargar_historial_mensajes( lista_suscriptores_get, una_suscripcion -> socket);
 			log_info(logger, "El proceso suscripto recibe los mensajes get del historial");
 			break;
 		case CATCH_POKEMON: //GAME_CARD SUSCRIPTO
-			descargar_historial_mensajes(listas_de_suscriptos -> lista_suscriptores_catch, una_suscripcion -> socket);
+			descargar_historial_mensajes( lista_suscriptores_catch, una_suscripcion -> socket);
 			log_info(logger, "El proceso suscripto recibe los mensajes catch del historial");
 			break;
 		case LOCALIZED_POKEMON: //TEAM SUSCRIPTO
-			descargar_historial_mensajes(listas_de_suscriptos -> lista_suscriptores_localized, una_suscripcion -> socket);
+			descargar_historial_mensajes( lista_suscriptores_localized, una_suscripcion -> socket);
 			log_info(logger, "El proceso suscripto recibe los mensajes localized del historial");
 			break;
 		case CAUGHT_POKEMON: //TEAM SUSCRIPTO
-			descargar_historial_mensajes(listas_de_suscriptos -> lista_suscriptores_caught, una_suscripcion -> socket);
+			descargar_historial_mensajes( lista_suscriptores_caught, una_suscripcion -> socket);
 			log_info(logger, "El proceso suscripto recibe los mensajes caught del historial");
 			break;
 		case NEW_POKEMON: //GAME_CARD SUSCRIPTO
-			descargar_historial_mensajes(listas_de_suscriptos -> lista_suscriptores_new, una_suscripcion -> socket);
+			descargar_historial_mensajes( lista_suscriptores_new, una_suscripcion -> socket);
 			log_info(logger, "El proceso suscripto recibe los mensajes new del historial");
 			break;
 		case APPEARED_POKEMON: //TEAM SUSCRIPTO
-			descargar_historial_mensajes(listas_de_suscriptos -> lista_suscriptores_appeared, una_suscripcion -> socket);
+			descargar_historial_mensajes( lista_suscriptores_appeared, una_suscripcion -> socket);
 			log_info(logger, "El proceso suscripto recibe los mensajes appeared del historial");
 			break;
 		default:
@@ -411,7 +396,7 @@ op_code recibir_confirmacion_de_recepcion(uint32_t socket_cliente, uint32_t id_m
 //---------------------------MENSAJES---------------------------//
 
 void desencolar_mensaje(uint32_t id_mensaje, op_code codigo_operacion){
-
+/*
  switch (codigo_operacion) {
 			case GET_POKEMON:
 				list_remove_and_destroy_element(colas_de_mensajes -> cola_get, id_mensaje, sizeof(t_mensaje));
@@ -439,25 +424,25 @@ void desencolar_mensaje(uint32_t id_mensaje, op_code codigo_operacion){
 				break;
 			/*case SUBSCRIPTION:
 				recibir_suscripcion(mensaje);
-				break;*/
+				break;
 			default:
 				log_info(logger, "El codigo de operacion es invalido");
 				exit(-6);
-	}
+	}*/
 }
 
 void enviar_mensajes_get(){
-	void enviar_mensaje_get(void* mensaje){
+	/*void enviar_mensaje_get(void* mensaje){
 		t_mensaje* mensaje_a_enviar = malloc(sizeof(t_mensaje));
 	    mensaje_a_enviar = mensaje;
 	    if(mensaje_a_enviar == EN_ESPERA) {
 		enviar_mensaje(GET_POKEMON, mensaje_a_enviar-> mensaje, socket, sizeof(t_paquete)); //REVISAR SIZEOF
 		free(mensaje_a_enviar);
-	    }
+	    }*/
 
-	}
+	//}
 	//Habría que ver como iterar on la lista de mensajes, porque estamos usando la lista de suscriptores
-	list_iterate(listas_de_suscriptos -> lista_suscriptores_get, enviar_mensaje_get); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
+	//list_iterate( lista_suscriptores_get, enviar_mensaje_get); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
 
 
 
@@ -553,6 +538,22 @@ void compactar_memoria(){
 }
 
 
+void guardar_en_memoria(t_paquete* payload){
+
+	if(string_equals_ignore_case(config->algoritmo_memoria,"BS"))
+	{
+       /*
+        *buscarparticionlibre
+        ubicarla
+        */
+	}
+	if(string_equals_ignore_case(config->algoritmo_memoria,"PARTICIONES"))
+	{
+		/*       *chequear_algoritmo_particion -> buscarparticionlibre
+		 *        *chequear_algoritmo_reemplazo -> ubicarla   */
+	}
+
+}
 
 
 
