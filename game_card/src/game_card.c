@@ -508,3 +508,15 @@ uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 }
 
+
+void createFileWithSize(int size) {
+
+		t_metadata sizE = leerMetadata("/Montaje/Metadata/Metadata.bin");
+		int x = sizE.blocksize;
+        FILE *fp = fopen("myfile", "w");
+        fseek(fp, x , SEEK_SET);
+        fputc('\0', fp);
+        fclose(fp);
+
+}
+
