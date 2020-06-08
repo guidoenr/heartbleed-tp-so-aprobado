@@ -25,8 +25,17 @@ int main(void) {
 	luken->posicion[1] = 1;
 	luken->cantidad = 10;
 
-	verificarExistenciaPokemon(luken);
-	verificarAperturaPokemon(luken,socket_br);
+	t_new_pokemon* meyern = malloc(sizeof(t_new_pokemon));
+	meyern->cantidad = 12;
+	meyern->id_mensaje = 051;
+	meyern->pokemon = "Meyern";
+	meyern->posicion[0]= 0;
+	meyern->posicion[1] = 1;
+
+	crearPokemon(meyern, sizeNewPokemon(meyern));
+
+	verificarExistenciaPokemon(meyern);
+	verificarAperturaPokemon(meyern,socket_br);
 
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
@@ -334,7 +343,7 @@ void cerrarArchivo(char* path){
 void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende del que toque ese modulo.
 	uint32_t* size;
 	void* msg;
-	verificarAperturaPokemon
+
 	log_info(logger,"Codigo de operacion %d",cod_op);
 
 	switch (cod_op) {
