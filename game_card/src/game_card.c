@@ -15,7 +15,7 @@ int main(void) {
 
 	int socket_br;
 
-	//conectarse(socket_br);
+	//conectarse(int main(void) socket_br);
 
 	iniciarTallGrass();
 
@@ -34,6 +34,10 @@ int main(void) {
 
 	terminar_programa(socket,config);
 }
+
+//punto_montaje = /home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje
+
+
 void conectarse(int socket){
 	socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
 	int time = config->tiempo_reintento_conexion;
@@ -56,7 +60,7 @@ void iniciarTallGrass(){
 	crearBitmap(punto_montaje);
 	crearBlocks(punto_montaje);
 
-	//luken es el poke de prueba
+
 	luken = malloc(sizeof(t_new_pokemon));
 	luken->cantidad = 11;
 	luken->id_mensaje= 0420;
@@ -64,7 +68,7 @@ void iniciarTallGrass(){
 	luken->posicion[1]= 2;
 	luken->pokemon = "Luken";
 
-	crearMetadataFile(punto_montaje,luken);
+	crearMetadataFile(luken);
 }
 
 void suscribirme_a_colas() {
@@ -121,15 +125,14 @@ void terminar_programa(int conexion,t_config_game_card* config) {
 
 void crearDirectorios(char* path){
 
-	char* tallgrass = concatenar(path,"/Montaje");
-	char* blocks = concatenar(tallgrass,"/Blocks");
-	char* metadata = concatenar(tallgrass,"/Metadata");
-	char* files = concatenar(tallgrass,"/Files");
+	char* blocks = concatenar(path,"/Blocks");
+	char* metadata = concatenar(path,"/Metadata");
+	char* files = concatenar(path,"/Files");
 
 	//podria verificar si existen los directorios pero ni idea TODO
 	//aclaro que esta terrible negrada es porque el fopen(w+b) no te crea directorios, python si obvio porque es mejor
 
-	mkdir(tallgrass,0777);
+	mkdir(path,0777);
 	mkdir(metadata,0777);
 	mkdir(files,0777);
 	mkdir(blocks,0777);
@@ -137,30 +140,41 @@ void crearDirectorios(char* path){
 }
 void crearBlocks(char* path){
 
-	char* realPath = concatenar(path,"/Montaje/Metadata/Metadata.bin");
+	char* realPath = concatenar(path,"/Metadata/Metadata.bin");
 	t_metadata metadata = leerMetadata(realPath);
 
 	int cantidadBloques = metadata.blocks;
 	int sizeBlock = metadata.blocksize;
 	int i = 1;
 
-	char* blocksPath = concatenar(path,"/Montaje/Blocks/");
+	char* blocksPath = concatenar(path,"/Blocks/");
 
 
 	while(i <= cantidadBloques){
 		char* c = string_itoa(i);
 		char* block = concatenar(blocksPath,c);
 		char* bloque = concatenar(block,".bin");
-		FILE* file = fopen(bloque,"wb");
-		fclose(file);
+		createFileWithSize(bloque,sizeBlock);
 		i++;
 	}
 	log_info(logger,"Se crearon %d blocks",cantidadBloques);
 
 }
 
+void createFileWithSize(char* path,int size) {
+
+        int X = size - 1 ;
+
+        FILE *fp = fopen(path, "wb");
+        fseek(fp, X , SEEK_SET);
+        fputc('\0', fp);
+
+        fclose(fp);
+
+}
+
 void crearMetadata(char* path){
-	char* realPath = concatenar(path,"/Montaje/Metadata/Metadata.bin");
+	char* realPath = concatenar(path,"/Metadata/Metadata.bin");
 
 	FILE* file = fopen(realPath,"wb"); //write-binary
 
@@ -179,13 +193,19 @@ void crearMetadata(char* path){
 
 }
 
-void crearMetadataFile(char* path,t_new_pokemon* newPoke){
+void crearMetadataFile(t_new_pokemon* newPoke){
 
-	char* realPath = concatenar(path,"/Montaje/Files/");
-	char* trulyRealPath = concatenar(realPath,newPoke->pokemon);
-	char* reallyTrulyRealPath = concatenar(trulyRealPath,"/Metadata.bin");
+	char* metaPath = obtenerPathMetaFile(newPoke);
+	char* dirPokemon = obtenerPathDirPokemon(newPoke);
 
-	FILE* file = fopen(reallyTrulyRealPath,"wb");
+	if (existeDirectorio(dirPokemon)){
+		log_info(logger,"Existe el directorio de: %s",dirPokemon);
+	} else {
+		mkdir(dirPokemon,0777);
+		log_info(logger,"Se creo el directorio del pokemon: %s en: %s",newPoke->pokemon,dirPokemon);
+	}
+
+	FILE* file = fopen(metaPath,"wb");
 
 	t_file_metadata meta;
 	meta.directory = 'Y';
@@ -245,7 +265,8 @@ bool isFile(char* path){
 }
 
 void crearBitmap(char* path){
-	char* realPath = concatenar(path,"/Montaje/Metadata/Bitmap.bin");
+
+	char* realPath = concatenar(path,"/Metadata/Bitmap.bin");
 	int status = 0;
 	FILE* file = fopen(realPath,"wb");
 	fwrite(&status,sizeof(int),1,file);
@@ -376,7 +397,9 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 
 
 void verificarExistenciaPokemon(t_new_pokemon* newpoke){
-	char* montaje = "montaje/Pokemon/";		  			  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
+	punto_montaje = config->punto_montaje_tallgrass;
+
+	char* montaje = concatenar(punto_montaje,"/");		  			  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
 	char* path = concatenar(montaje,newpoke->pokemon); 	  // DE TODAS FORMAS DEJO UNA ALGORITMIA FANTASTATICA
 
 	if (existeDirectorio(path)){
@@ -389,7 +412,7 @@ void verificarExistenciaPokemon(t_new_pokemon* newpoke){
 		log_info(logger,"se creo el directorio: %s",path);
 		char* metaPath = concatenar(path,"/Metadata.bin");
 
-		crearMetadataFile(metaPath,newpoke);
+		crearMetadataFile(newpoke);
 		log_info(logger,"se creo el file_metadata: %s",metaPath);
 	}
 
@@ -403,8 +426,7 @@ int existeDirectorio(char* path){
 }
 
 void verificarAperturaPokemon(t_new_pokemon* msg,int socket){
-//	char* path = concatenar ("montaje/Pokemon/",msg->pokemon);
-//	char* path2 = concatenar (path,"/Metadata.bin"); //terrible negrada esto, pero anda o no anda?
+
 	char* path = obtenerPathMetaFile(msg);
 	if (isOpen(path)){
 		int secs = config->tiempo_retardo_operacion;
@@ -418,9 +440,17 @@ void verificarAperturaPokemon(t_new_pokemon* msg,int socket){
 	}
 
 char* obtenerPathMetaFile(t_new_pokemon* pokemon){
-	char* path = concatenar ("montaje/Pokemon/",pokemon->pokemon);
-	char* path2 = concatenar (path,"/Metadata.bin"); //terrible negrada esto, pero anda o no anda?
+	punto_montaje = config->punto_montaje_tallgrass;
+	char* path  = concatenar (punto_montaje,"/Files/");
+	char* path2 = concatenar (path,pokemon->pokemon); //terrible negrada esto, pero anda o no anda?
+	char* path3 = concatenar(path2,"/Metadata.bin");
+	return path3;
+}
 
+char* obtenerPathDirPokemon(t_new_pokemon* pokemon){
+	punto_montaje = config->punto_montaje_tallgrass;
+	char* path = concatenar(punto_montaje,"/Files/");
+	char* path2 = concatenar(path,pokemon->pokemon);
 	return path2;
 }
 
@@ -509,14 +539,4 @@ uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon){
 }
 
 
-void createFileWithSize(int size) {
-
-		t_metadata sizE = leerMetadata("/Montaje/Metadata/Metadata.bin");
-		int x = sizE.blocksize;
-        FILE *fp = fopen("myfile", "w");
-        fseek(fp, x , SEEK_SET);
-        fputc('\0', fp);
-        fclose(fp);
-
-}
 
