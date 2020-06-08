@@ -22,8 +22,8 @@ int main(void) {
 
 	t_pokemon_mapa* pikachu1 = malloc(sizeof(t_pokemon_mapa));
 	pikachu1 -> nombre = "Pikachu";
-	pikachu1 -> posicion[0] = 0;
-	pikachu1 -> posicion[1] = 0;
+	pikachu1 -> posicion[0] = 6;
+	pikachu1 -> posicion[1] = 6;
 	pikachu1 -> cantidad = 1;
 	list_add(mapa_pokemons, pikachu1);
 	sem_post(&sem_cont_mapa);
@@ -36,8 +36,8 @@ int main(void) {
 	sem_post(&sem_cont_mapa);
 	t_pokemon_mapa* charmander = malloc(sizeof(t_pokemon_mapa));
 	charmander -> nombre = "Charmander";
-	charmander -> posicion[0] = 6;
-	charmander -> posicion[1] = 6;
+	charmander -> posicion[0] = 0;
+	charmander -> posicion[1] = 0;
 	charmander -> cantidad = 1;
 	list_add(mapa_pokemons, charmander);
 	sem_post(&sem_cont_mapa);
@@ -46,7 +46,7 @@ int main(void) {
 	//pthread_join(hilo_entrenadores, NULL);
 	sleep(15);
 	sem_post(&sem_cont_mapa); // ESTE CUANDO HAY QUE RESOLVER DEADLOCKS
-	sleep(20);
+	sleep(30);
 	terminar_programa(/*socket*/);
 	return 0;
 }
@@ -319,34 +319,26 @@ void* operar_entrenador(void* un_entrenador) {
 			manejar_desalojo_captura(pedido_captura);
 
 		} else {
-			log_info(logger, "BUSCO PEDIDO INTERCAMBIO");
 			t_pedido_intercambio* pedido_intercambio = buscar_pedido_intercambio(entrenador);
 
 			if(pedido_intercambio) {
-				log_info(logger, "ENCONTRE PEDIDO INTERCAMBIO");
 				while(entrenador -> pasos_a_moverse > 0) {
 
 					tradear_pokemon(pedido_intercambio);
 				}
 				if(!(entrenador -> tire_accion)) { // RR
-					log_info(logger, "NO TIRE ACCION, ESTOY EN RR");
 					sem_wait(&mx_estado_ready);
 					cambiar_a_estado(estado_ready, entrenador);
 					log_info(logger, "el entrenador que estaba resolviendo deadlock fue desalojado por fin de quantum");
 					sem_post(&mx_estado_ready);
 					sem_post(&entrenadores_ready);
 				} else {
-					log_info(logger, "TIRE ACCION, NO ESTOY EN RR");
 					asignar_estado_luego_de_trade(entrenador);
-					log_info(logger, "YA COMPLETE EL TRADE Y CAMBIE DE ESTADO");
 				}
-				sem_post(&mx_estado_exec);
 			} else {
-				log_info(logger, "NO ENCONTRE PEDIDO INTERCAMBIO");
-				log_info(logger, "YA ME TRADEARON POR");
 				asignar_estado_luego_de_trade(entrenador);
-				log_info(logger, "YA ME TRADEARON Y CAMBIE DE ESTADO");
 			}
+			sem_post(&mx_estado_exec);
 		}
 	}
 	//while(1);
@@ -355,17 +347,17 @@ void* operar_entrenador(void* un_entrenador) {
 
 void asignar_estado_luego_de_trade(t_entrenador* entrenador) {
 	if(cumplio_objetivo_personal(entrenador)) {
-		log_info(logger, "luego de ejecutar el trade, el entrenador cumplio su objetivo personal");
 		sem_wait(&mx_estado_exit);
 		cambiar_a_estado(estado_exit, entrenador);
 		log_info(logger, "luego de ejecutar el trade, el entrenador cumplio su objetivo personal y se mueve a exit");
 		sem_post(&mx_estado_exit);
 	} else {
-		log_info(logger, "luego de ejecutar el trade, el entrenador NO cumplio su objetivo personal");
-		sem_wait(&mx_estado_block);
-		cambiar_a_estado(estado_block, entrenador);
-		log_info(logger, "luego de ejecutar el trade, el entrenador no cumplio su objetivo personal y vuelve a block");
-		sem_post(&mx_estado_block);
+		if(!esta_en_estado(estado_block, entrenador)) {
+			sem_wait(&mx_estado_block);
+			cambiar_a_estado(estado_block, entrenador);
+			log_info(logger, "luego de ejecutar el trade, el entrenador no cumplio su objetivo personal y vuelve a block");
+			sem_post(&mx_estado_block);
+		}
 	}
 }
 
@@ -377,7 +369,7 @@ void manejar_desalojo_captura(t_pedido_captura* pedido){
 		sem_post(&entrenadores_ready);
 		log_info(logger, "el entrenador termino su quantum y vuelve a ready");
 		pedido -> entrenador -> pasos_a_moverse = config -> quantum;
-		sem_post(&mx_estado_exec);
+
 
 	} else if(!(pedido -> entrenador -> tire_accion)) { // SJF Con Desalojo DESALOJADO
 
@@ -387,6 +379,7 @@ void manejar_desalojo_captura(t_pedido_captura* pedido){
 		procesar_caught(pedido);
 
 	}
+	sem_post(&mx_estado_exec);
 }
 
 bool cumplio_objetivo_personal(t_entrenador* entrenador) {
@@ -427,8 +420,9 @@ void procesar_caught(t_pedido_captura* pedido){
 				cambiar_a_estado(estado_exit, pedido -> entrenador);
 				sem_post(&mx_estado_exit);
 				log_info(logger, "El entrenador completo su objetivo personal y se mueve a exit");
+			} else {
+				sem_post(&sem_cont_entrenadores_a_replanif);
 			}
-
 
 		} else{
 			sem_post(&sem_cont_entrenadores_a_replanif);
@@ -472,20 +466,15 @@ bool estoy_en_deadlock(t_entrenador* entrenador){
 	return 0;
 }
 
-bool comparar_pokemon(void* another_pokemon, void* otro_pokemon){
+bool comparar_pokemon(void* another_pokemon, void* otro_pokemon) {
 	char* pokemon = another_pokemon;
 	char* un_pokemon = otro_pokemon;
 
-	for(int i = 0; strlen(pokemon); i++){
-		if(pokemon[i] > un_pokemon[i]){
-
-			return 1;
-		} else if(pokemon[i] < un_pokemon[i]){
-
-			return 0;
-		}
+	if(strcmp(pokemon, un_pokemon) > 0) {
+		return 1;
 	}
 	return 0;
+
 }
 
 void eliminar_pedido(t_pedido_captura* pedido) {
@@ -536,7 +525,6 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 		log_info(logger, "mande el catch para un %s en la posicion [%d,%d] y se mueve a block",
 				pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 		pedido -> entrenador -> tire_accion = 1;
-		sem_post(&mx_estado_exec);
 	}
 	sleep(config -> retardo_cpu);// RETARDO_CICLO_CPU
 	pedido -> entrenador -> pasos_a_moverse --;
@@ -622,8 +610,8 @@ void* planificar_entrenadores() {
 	int deadlocks = 1;
 	while(deadlocks){
 		sem_wait(&sem_cont_mapa); //hace el signal cuando llega un mensaje de broker/gameboy
-		//sem_wait(&sem_cont_entrenadores_a_replanif);
-		if(mapa_pokemons -> elements_count && (estado_new -> head || estado_block_replanificable_no_interbloqueado())) {
+		sem_wait(&sem_cont_entrenadores_a_replanif);
+		if(mapa_pokemons -> elements_count) {
 
 			t_pedido_captura* pedido = malloc(sizeof(t_pedido_captura));
 			armar_pedido_captura(pedido);
@@ -635,7 +623,9 @@ void* planificar_entrenadores() {
 
 
 		} else {
-			resolver_deadlocks();
+			//matar hilo gameboy
+			//matar suscripciones broker
+			resolver_deadlocks_fifo_o_sjf();
 			deadlocks = 0;
 		}
 	}
@@ -644,16 +634,28 @@ void* planificar_entrenadores() {
 }
 
 
-void resolver_deadlocks(){
-	//while(estado_exit -> elements_count < config -> entrenadores -> elements_count) {
-		// SOLUCIONAR EL WAIT ACA
-		//sleep(1);
+void resolver_deadlocks_fifo_o_sjf() {
+	while(estado_exit -> elements_count < config -> entrenadores -> elements_count) {
+
+		if(config -> entrenadores -> elements_count - estado_exit -> elements_count < 2) {
+			log_error(logger, "Tengo poca gente para resolver deadlocks!");
+		}
+
 		t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
+
+		cambiar_a_estado(estado_exec, pedido -> entrenador_buscando);
 		sem_post(&(pedido -> entrenador_buscando -> sem_binario));
+
 		sem_wait(&mx_estado_exec);
-		log_info(logger, "LE DOY VERDE AL SEGUNDO");
 		sem_post(&(pedido -> entrenador_esperando -> sem_binario));
-	//}
+		sem_wait(&mx_estado_exec);
+	}
+}
+
+void resolver_deadlocks_rr() {
+
+
+
 }
 
 t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
@@ -722,7 +724,8 @@ bool le_sobra_pokemon(t_entrenador* entrenador, char* pokemon_original){
 	}
 
 	list_iterate(pokemons, remover_del_objetivo);
-
+	list_destroy(pokemons); // capaz falta destruir los elementos
+	list_destroy(objetivos); // capaz falta destruir los elementos
 	return pokemon_sobrante;
 
 }
@@ -783,12 +786,6 @@ char* encontrar_pokemon_faltante(t_entrenador* entrenador){
 	list_iterate(objetivos, remover_del_objetivo);
 
 	return pokemon_faltante;
-}
-
-void resolver_deadlock_segun_rr(){
-
-
-
 }
 
 bool tengo_la_mochila_llena(t_entrenador* entrenador) {
@@ -1048,20 +1045,25 @@ void cambiar_a_estado(t_list* estado, t_entrenador* entrenador) {
 
 		if(esta_en_estado(estado_ready, entrenador)) {
 			estado_actual = estado_ready;
+		} else {
+			log_error(logger, "ESTOY TRATANDO DE CAMBIAR A EXEC DESDE UN ESTADO QUE NO DEBERIA.");
 		}
 	} else if(estado == estado_block) {
 
 		if(esta_en_estado(estado_exec, entrenador)) {
 			estado_actual = estado_exec;
+		} else {
+			log_error(logger, "ESTOY TRATANDO DE CAMBIAR A BLOCK DESDE UN ESTADO QUE NO DEBERIA.");
 		}
 	} else if(estado == estado_exit) {
 
 		list_add(estados_a_buscar, estado_exec);
 		list_add(estados_a_buscar, estado_block);
 		estado_actual = buscar_en_estados(estados_a_buscar, entrenador);
-
+		if(!estado_actual) {
+			log_error(logger, "ESTOY TRATANDO DE CAMBIAR A EXIT DESDE UN ESTADO QUE NO DEBERIA.");
+		}
 	} else {
-
 		log_error(logger, "ESTOY TRATANDO DE CAMBIAR A UN ESTADO QUE NO DEBERIA.");
 	}
 
@@ -1095,13 +1097,9 @@ bool esta_en_estado(t_list* estado, t_entrenador* entrenador) {
 	}
 
 	if(list_find(estado, es_el_entrenador)) {
-
 		return 1;
-
-	} else{
-
-		return 0;
 	}
+	return 0;
 }
 
 //TODO

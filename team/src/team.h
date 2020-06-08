@@ -108,9 +108,8 @@ void planificar_sjf_cd();
 void* ejecutar_fifo_o_rr_o_sjf_sd();
 void* ejecutar_sjf_cd();
 void crear_hilo_planificar_entrenadores();
-void resolver_deadlocks();
-void resolver_deadlock_segun_rr();
-void resolver_deadlock_fifo_o_sjf();
+void resolver_deadlocks_fifo_o_sjf();
+void resolver_deadlocks_rr();
 
 // ejecucion
 pthread_t hilo_algoritmo;
