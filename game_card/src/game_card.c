@@ -17,8 +17,25 @@ int main(void) {
 
 	//conectarse(int main(void) socket_br);
 
-	iniciarTallGrass();
+	//iniciarTallGrass();
+	luken = malloc(sizeof(t_new_pokemon));
+	luken->pokemon = "Luken";
+	luken->id_mensaje = 123;
+	luken->posicion[0]= 16;
+	luken->posicion[1] = 1;
+	luken->cantidad = 10;
 
+	t_new_pokemon* meyern = malloc(sizeof(t_new_pokemon));
+	meyern->cantidad = 12;
+	meyern->id_mensaje = 051;
+	meyern->pokemon = "Meyern";
+	meyern->posicion[0]= 0;
+	meyern->posicion[1] = 1;
+
+	crearPokemon(meyern, sizeNewPokemon(meyern));
+
+	verificarExistenciaPokemon(meyern);
+	verificarAperturaPokemon(meyern,socket_br);
 
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
@@ -54,7 +71,7 @@ void conectarse(int socket){
 void iniciarTallGrass(){
 
 	punto_montaje = config->punto_montaje_tallgrass;
-
+	log_info(logger,"Iniciando tallgrass en: %s",punto_montaje);
 	crearDirectorios(punto_montaje);
 	crearMetadata(punto_montaje);
 	crearBitmap(punto_montaje);
@@ -68,7 +85,7 @@ void iniciarTallGrass(){
 	luken->posicion[1]= 2;
 	luken->pokemon = "Luken";
 
-	crearMetadataFile(luken);
+	crearPokemon(luken,20); //hardcodeo size ORIGINAL? todo
 }
 
 void suscribirme_a_colas() {
@@ -138,6 +155,7 @@ void crearDirectorios(char* path){
 	mkdir(blocks,0777);
 
 }
+
 void crearBlocks(char* path){
 
 	char* realPath = concatenar(path,"/Metadata/Metadata.bin");
@@ -157,7 +175,7 @@ void crearBlocks(char* path){
 		createFileWithSize(bloque,sizeBlock);
 		i++;
 	}
-	log_info(logger,"Se crearon %d blocks",cantidadBloques);
+	log_info(logger,"Se crearon %d blocks de tamaño: %d bytes",cantidadBloques,sizeBlock);
 
 }
 
@@ -193,23 +211,27 @@ void crearMetadata(char* path){
 
 }
 
-void crearMetadataFile(t_new_pokemon* newPoke){
+void crearPokemon(t_new_pokemon* newPoke,int size){
 
 	char* metaPath = obtenerPathMetaFile(newPoke);
 	char* dirPokemon = obtenerPathDirPokemon(newPoke);
 
 	if (existeDirectorio(dirPokemon)){
 		log_info(logger,"Existe el directorio de: %s",dirPokemon);
+
 	} else {
 		mkdir(dirPokemon,0777);
-		log_info(logger,"Se creo el directorio del pokemon: %s en: %s",newPoke->pokemon,dirPokemon);
+
+		//TODO el enunciado no se entiende nada.
+
+		log_info(logger,"Se creo el directorio del pokemon %s en: %s",newPoke->pokemon,dirPokemon);
 	}
 
 	FILE* file = fopen(metaPath,"wb");
 
 	t_file_metadata meta;
 	meta.directory = 'Y';
-	meta.size = 0; //TODO preguntar que es esto?
+	meta.size = size;
 	meta.blocks[0] = newPoke->posicion[0];
 	meta.blocks[1] = newPoke->posicion[1];// TODO pero con idea ahora, hay que buscar blocks libres
 	meta.open = 'N';
@@ -222,7 +244,6 @@ void crearMetadataFile(t_new_pokemon* newPoke){
 int tamanio_de_metadata(t_metadata metadata){
 	int stringLong = sizeof("TALL_GRASS") + 1 ;
 	return stringLong + (sizeof(int) *2) ;
-
 }
 
 int tamanio_file_metadata(t_file_metadata fileMeta){
@@ -258,6 +279,10 @@ int fileSize(char* path){
 	return i;
 }
 
+bool archivoVacio(char* path){
+	return fileSize(path) == 0;
+}
+
 bool isFile(char* path){
 	FILE* f = fopen(path,"rb");
 	fclose(f);
@@ -271,7 +296,7 @@ void crearBitmap(char* path){
 	FILE* file = fopen(realPath,"wb");
 	fwrite(&status,sizeof(int),1,file);
 	fclose(file);
-	log_info(logger,"Se creo el bitmap.bin con status: %d",status);
+	log_info(logger,"Se creo el Bitmap.bin con status: %d",status);
 }
 
 int estadoBitmap(char* path){
@@ -399,21 +424,21 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 void verificarExistenciaPokemon(t_new_pokemon* newpoke){
 	punto_montaje = config->punto_montaje_tallgrass;
 
-	char* montaje = concatenar(punto_montaje,"/");		  			  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
+	char* montaje = concatenar(punto_montaje,"/Files/");		  			  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
 	char* path = concatenar(montaje,newpoke->pokemon); 	  // DE TODAS FORMAS DEJO UNA ALGORITMIA FANTASTATICA
 
 	if (existeDirectorio(path)){
 
-		log_info(logger,"existe el dir: %s",path);
+		log_info(logger,"Existe el pokemon %s en : %s",newpoke->pokemon,path);
 
 	} else{
 
 		mkdir(path, 0777);
-		log_info(logger,"se creo el directorio: %s",path);
+		log_info(logger,"Se creo el directorio %s en %s",newpoke->pokemon,path);
 		char* metaPath = concatenar(path,"/Metadata.bin");
 
-		crearMetadataFile(newpoke);
-		log_info(logger,"se creo el file_metadata: %s",metaPath);
+		crearPokemon(newpoke,sizeNewPokemon(newpoke));
+		log_info(logger,"Se creo el file_metadata de %s",newpoke->pokemon);
 	}
 
 }
@@ -425,17 +450,22 @@ int existeDirectorio(char* path){
 	return x;
 }
 
-void verificarAperturaPokemon(t_new_pokemon* msg,int socket){
+void verificarAperturaPokemon(t_new_pokemon* newpoke,int socket){
 
-	char* path = obtenerPathMetaFile(msg);
+	char* path = obtenerPathMetaFile(newpoke);
+
 	if (isOpen(path)){
+
 		int secs = config->tiempo_retardo_operacion;
-		log_info(logger,"no se puede acceder a este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
+		log_info(logger,"No se puede acceder a este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
 		sleep(secs);
-		funcionHiloNewPokemon(msg,socket);
+		funcionHiloNewPokemon(newpoke,socket);
+
 	} else {
+
 		log_info(logger,"se puede acceder /n");
 		abrirArchivo(path);
+
 		}
 	}
 
