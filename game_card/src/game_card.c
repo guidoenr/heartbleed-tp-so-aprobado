@@ -18,24 +18,17 @@ int main(void) {
 	//conectarse(int main(void) socket_br);
 
 	//iniciarTallGrass();
-	luken = malloc(sizeof(t_new_pokemon));
-	luken->pokemon = "Luken";
-	luken->id_mensaje = 123;
-	luken->posicion[0]= 16;
-	luken->posicion[1] = 1;
-	luken->cantidad = 10;
 
-	t_new_pokemon* meyern = malloc(sizeof(t_new_pokemon));
-	meyern->cantidad = 12;
-	meyern->id_mensaje = 051;
-	meyern->pokemon = "Meyern";
-	meyern->posicion[0]= 0;
-	meyern->posicion[1] = 1;
+	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
+	device->cantidad= 1;
+	device->id_mensaje= 124;
+	device->pokemon= "device";
+	device->posicion[0]= 16;
+	device->posicion[1] = 51;
 
-	crearPokemon(meyern, sizeNewPokemon(meyern));
+	crearPokemon(device, sizeNewPokemon(device));
 
-	verificarExistenciaPokemon(meyern);
-	verificarAperturaPokemon(meyern,socket_br);
+	funcionHiloNewPokemon(device, socket_br);
 
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
@@ -316,11 +309,12 @@ int isDirectory(char* path){
 	return fileMeta.directory == 'Y';
 }
 
-int isOpen(char* path){
+bool isOpen(char* path){
 	t_file_metadata fileMeta;
 	FILE* file = fopen(path,"rb");
+
 	fread(&fileMeta.open,sizeof(char),1,file);
-		fclose(file);
+	fclose(file);
 		return fileMeta.open == 'Y';
 }
 
@@ -463,7 +457,7 @@ void verificarAperturaPokemon(t_new_pokemon* newpoke,int socket){
 
 	} else {
 
-		log_info(logger,"se puede acceder /n");
+		log_info(logger,"Se puede acceder al pokemon %s",newpoke->pokemon);
 		abrirArchivo(path);
 
 		}
