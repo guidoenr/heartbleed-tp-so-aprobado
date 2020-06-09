@@ -50,7 +50,7 @@ typedef struct {
 	uint32_t retardo_cpu;
 	char* algoritmo_planificacion;
 	uint32_t quantum;
-	uint32_t alpha;
+	float alpha;
 	char* ip_broker;
 	char* puerto_broker;
 	uint32_t estimacion_inicial;
@@ -76,7 +76,6 @@ void iniciar_hilos_ejecucion();
 
 // entrenadores
 void iniciar_entrenadores();
-void settear_estimacion_inicial();
 void* operar_entrenador(void*);
 void obtener_entrenadores(void*);
 t_list* load_entrenadores(t_list*, t_list*, t_list*);
@@ -92,6 +91,7 @@ void capturar_pokemon(t_pedido_captura*);
 void tradear_pokemon(t_pedido_intercambio*);
 void ejecutar_trade(t_pedido_intercambio*);
 void asignar_estado_luego_de_trade(t_entrenador*);
+void calcular_estimaciones();
 
 // mensajes
 

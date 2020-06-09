@@ -60,7 +60,6 @@ void iniciar_programa() {
 	inicializar_semaforos();
 	determinar_objetivo_global();
 
-	settear_estimacion_inicial();
 	iniciar_entrenadores();
 	mapa_pokemons = list_create();
 	pedidos_captura = list_create();
@@ -119,7 +118,7 @@ void leer_config(void) {
 	config -> algoritmo_planificacion = strdup(config_get_string_value(config_team, "ALGORITMO_PLANIFICACION"));
 	config -> ip_broker = strdup(config_get_string_value(config_team, "IP_BROKER"));
 	config -> quantum = config_get_int_value(config_team, "QUANTUM");
-	config -> alpha = config_get_int_value(config_team, "ALPHA");
+	config -> alpha = atof(config_get_string_value(config_team, "ALPHA"));
 	config -> puerto_broker = strdup(config_get_string_value(config_team, "PUERTO_BROKER"));
 	config -> estimacion_inicial = config_get_int_value(config_team, "ESTIMACION_INICIAL");
 	config -> log_file = strdup(config_get_string_value(config_team, "LOG_FILE"));
@@ -275,20 +274,6 @@ void conectarse(int socket) {
 
 // ------------------------------- ENTRENADORES -------------------------------//
 
-void settear_estimacion_inicial() {
-
-	void* settear_estimacion(void* un_entrenador) {
-
-		t_entrenador* entrenador = un_entrenador;
-
-		entrenador -> estimacion = config -> estimacion_inicial;
-
-		return entrenador;
-	}
-
-	config -> entrenadores = list_map(config -> entrenadores, settear_estimacion);
-}
-
 void iniciar_entrenadores() {
 
 	void crear_hilo_entrenador(void* un_entrenador) {
@@ -298,6 +283,8 @@ void iniciar_entrenadores() {
 
 		entrenador -> pasos_a_moverse = 0;
 		entrenador -> tire_accion = 0;
+		entrenador -> estimacion = config -> estimacion_inicial;
+		entrenador -> rafaga = 0;
 		sem_init(&(entrenador -> sem_binario), 0, 0);
 		sem_init(&(entrenador -> esperar_caught), 0, 0);
 
@@ -316,6 +303,7 @@ void iniciar_entrenadores() {
 
 void* operar_entrenador(void* un_entrenador) {
 	t_entrenador* entrenador = un_entrenador;
+
 
 	while(buscar_en_estados(estados, entrenador) != estado_exit) {
 
@@ -859,7 +847,9 @@ void planificar_segun_algoritmo(t_pedido_captura* pedido) {
 
 	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-CD")) {
 
-		planificar_sjf_cd();
+		planificar_sjf_cd(pedido);
+	} else {
+		log_error(logger, "Tengo un algoritmo de mierda, qué rompimo?");
 	}
 }
 
@@ -885,20 +875,16 @@ void planificar_sjf_sd(t_pedido_captura* pedido){
 
 void calcular_estimaciones() {
 
-	void* calcular_estimacion(void* un_entrenador){
+	void calcular_estimacion(void* un_entrenador) {
 
 		t_entrenador* entrenador = un_entrenador;
 
 		uint32_t estimacion_anterior = entrenador -> estimacion;
 
-		uint32_t alpha = config -> alpha;
-
-		entrenador -> estimacion = alpha * entrenador -> rafaga + (1 - alpha) * estimacion_anterior;
-
-		return entrenador;
+		entrenador -> estimacion = config -> alpha * entrenador -> rafaga + (1 - config -> alpha) * estimacion_anterior;
 	}
 
-	estado_ready = list_map(estado_ready, calcular_estimacion);
+	list_iterate(estado_ready, calcular_estimacion);
 }
 
 void ordenar_ready_segun_estimacion() {
