@@ -682,7 +682,7 @@ void resolver_deadlocks_rr() {
 
 t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 	if(estado_block -> elements_count > 1) { // SE VA CON EL COMM DE ABAJO
-	log_info(logger, "somos %d en block, armo pedido", estado_block -> elements_count);
+	log_info(logger, "somos %d en deadlock, armo pedido", estado_block -> elements_count);
 	t_pedido_intercambio* pedido = malloc(sizeof(t_pedido_intercambio));
 	pedido -> entrenador_buscando = estado_block -> head -> data; // CHEQUEAR QUE ESTE NO ESTE ESPERANDO
 
@@ -866,14 +866,13 @@ void planificar_sjf_sd(t_pedido_captura* pedido){
 	sem_wait(&mx_estado_ready);
 	cambiar_a_estado(estado_ready, pedido -> entrenador);
 	log_info(logger, "entrenador cambiado a estado ready con su pedido de captura");
-	sem_post(&mx_estado_ready);
-
-	calcular_estimaciones();
+	calcular_estimaciones_ready();
 	ordenar_ready_segun_estimacion();
-	sem_post(&entrenadores_ready); // chequear si va aca (creo q si)
+	sem_post(&mx_estado_ready);
+	sem_post(&entrenadores_ready);
 }
 
-void calcular_estimaciones() {
+void calcular_estimaciones_ready() {
 
 	void calcular_estimacion(void* un_entrenador) {
 
@@ -902,8 +901,8 @@ void ordenar_ready_segun_estimacion() {
 	}
 }
 
-void planificar_sjf_cd(){
-
+void planificar_sjf_cd(t_pedido_captura* pedido) {
+	log_error(logger, "No estoy codeado, soy un tibio");
 }
 
 int distancia_segun_algoritmo(t_pedido_captura* pedido) {
@@ -971,6 +970,8 @@ void* ejecutar_fifo_o_rr_o_sjf_sd() {
 			cambiar_a_estado(estado_exec, entrenador);
 			log_info(logger, "entrenador cambiado a estado exec");
 			sem_post(&(entrenador -> sem_binario));
+		} else {
+			log_error(logger, "me mandaste a correr pero no tengo ningun pibe pa");
 		}
 	}
 	return 0;
