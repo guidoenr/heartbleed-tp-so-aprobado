@@ -60,7 +60,7 @@ void iniciar_programa() {
 	inicializar_semaforos();
 	determinar_objetivo_global();
 
-
+	settear_estimacion_inicial();
 	iniciar_entrenadores();
 	mapa_pokemons = list_create();
 	pedidos_captura = list_create();
@@ -275,6 +275,20 @@ void conectarse(int socket) {
 
 // ------------------------------- ENTRENADORES -------------------------------//
 
+void settear_estimacion_inicial() {
+
+	void* settear_estimacion(void* un_entrenador) {
+
+		t_entrenador* entrenador = un_entrenador;
+
+		entrenador -> estimacion = config -> estimacion_inicial;
+
+		return entrenador;
+	}
+
+	config -> entrenadores = list_map(config -> entrenadores, settear_estimacion);
+}
+
 void iniciar_entrenadores() {
 
 	void crear_hilo_entrenador(void* un_entrenador) {
@@ -341,7 +355,6 @@ void* operar_entrenador(void* un_entrenador) {
 			sem_post(&mx_estado_exec);
 		}
 	}
-	//while(1);
 	return NULL;
 }
 
@@ -814,7 +827,7 @@ bool tengo_la_mochila_llena(t_entrenador* entrenador) {
 	return entrenador -> pokemons -> elements_count >= entrenador -> objetivos -> elements_count;
 }
 
-int estado_block_replanificable_no_interbloqueado() {
+int estado_block_replanificable_no_interbloqueado() { // no se esta usando, era la condicion del if antes
 	bool encontrar_replanificable_no_interbloqueado(void* un_entrenador) {
 		t_entrenador* entrenador = un_entrenador;
 		if(!(entrenador -> tire_accion) && !tengo_la_mochila_llena(entrenador)) {
@@ -842,7 +855,7 @@ void planificar_segun_algoritmo(t_pedido_captura* pedido) {
 
 	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-SD")) {
 
-		planificar_sjf_sd();
+		planificar_sjf_sd(pedido);
 
 	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-CD")) {
 
@@ -858,8 +871,49 @@ void planificar_fifo_o_rr(t_pedido_captura* pedido){
 	sem_post(&entrenadores_ready);
 }
 
-void planificar_sjf_sd(){
+void planificar_sjf_sd(t_pedido_captura* pedido){
 
+	sem_wait(&mx_estado_ready);
+	cambiar_a_estado(estado_ready, pedido -> entrenador);
+	log_info(logger, "entrenador cambiado a estado ready con su pedido de captura");
+	sem_post(&mx_estado_ready);
+
+	calcular_estimaciones();
+	ordenar_ready_segun_estimacion();
+	sem_post(&entrenadores_ready); // chequear si va aca (creo q si)
+}
+
+void calcular_estimaciones() {
+
+	void* calcular_estimacion(void* un_entrenador){
+
+		t_entrenador* entrenador = un_entrenador;
+
+		uint32_t estimacion_anterior = entrenador -> estimacion;
+
+		uint32_t alpha = config -> alpha;
+
+		entrenador -> estimacion = alpha * entrenador -> rafaga + (1 - alpha) * estimacion_anterior;
+
+		return entrenador;
+	}
+
+	estado_ready = list_map(estado_ready, calcular_estimacion);
+}
+
+void ordenar_ready_segun_estimacion() {
+
+	if(estado_ready -> elements_count >= 2){
+		bool estimacion_menor(void* primer_entrenador, void* segundo_entrenador){
+
+			t_entrenador* un_entrenador = primer_entrenador;
+			t_entrenador* otro_entrenador = segundo_entrenador;
+
+			return un_entrenador -> estimacion < otro_entrenador -> estimacion;
+		}
+
+		list_sort(estado_ready, estimacion_menor);
+	}
 }
 
 void planificar_sjf_cd(){

@@ -20,6 +20,8 @@ typedef struct {
 	uint32_t tire_accion;
 	uint32_t resultado_caught;
 	sem_t esperar_caught;
+	uint32_t estimacion;
+	uint32_t rafaga;
 } t_entrenador;
 
 typedef struct {
@@ -74,6 +76,7 @@ void iniciar_hilos_ejecucion();
 
 // entrenadores
 void iniciar_entrenadores();
+void settear_estimacion_inicial();
 void* operar_entrenador(void*);
 void obtener_entrenadores(void*);
 t_list* load_entrenadores(t_list*, t_list*, t_list*);
@@ -102,8 +105,9 @@ void procesar_caught(t_pedido_captura*);
 
 // planificacion
 void* planificar_entrenadores();
-void planificar_fifo_o_rr();
-void planificar_sjf_sd();
+void planificar_fifo_o_rr(t_pedido_captura*);
+void planificar_sjf_sd(t_pedido_captura*);
+void ordenar_ready_segun_estimacion();
 void planificar_sjf_cd();
 void* ejecutar_fifo_o_rr_o_sjf_sd();
 void* ejecutar_sjf_cd();
