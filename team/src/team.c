@@ -509,8 +509,8 @@ bool es_el_mismo_pedido_intercambio(t_pedido_intercambio* pedido, t_pedido_inter
 
 	return pedido -> entrenador_buscando == un_pedido -> entrenador_buscando &&
 			pedido -> entrenador_esperando == un_pedido -> entrenador_esperando &&
-			string_equals_ignore_case(pedido -> pokemon_a_dar, pedido -> pokemon_a_dar) &&
-			string_equals_ignore_case(pedido -> pokemon_a_dar, pedido -> pokemon_a_recibir);
+			string_equals_ignore_case(pedido -> pokemon_a_dar, un_pedido -> pokemon_a_dar) &&
+			string_equals_ignore_case(pedido -> pokemon_a_recibir, un_pedido -> pokemon_a_recibir);
 }
 
 void destruir_pokemon(t_pokemon_mapa* pokemon) {
