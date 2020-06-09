@@ -435,7 +435,7 @@ void procesar_caught(t_pedido_captura* pedido){
 	}
 	pedido -> entrenador -> tire_accion = 0;
 	// sacar el pedido de los pedidos
-	eliminar_pedido(pedido);
+	eliminar_pedido_captura(pedido);
 
 }
 
@@ -477,27 +477,46 @@ bool comparar_pokemon(void* another_pokemon, void* otro_pokemon) {
 
 }
 
-void eliminar_pedido(t_pedido_captura* pedido) {
+void eliminar_pedido_captura(t_pedido_captura* pedido) {
 
 	bool es_el_pedido(void* un_pedido) {
 		t_pedido_captura* otro_pedido = un_pedido;
 		return otro_pedido -> entrenador == pedido -> entrenador && otro_pedido -> pokemon == pedido -> pokemon;
 	}
 
-	list_remove_and_destroy_by_condition(pedidos_captura, es_el_pedido, destruir_pedido);
+	list_remove_and_destroy_by_condition(pedidos_captura, es_el_pedido, destruir_pedido_captura);
 }
 
-void destruir_pedido(void* one_pedido) {
+void destruir_pedido_captura(void* one_pedido) {
 	t_pedido_captura* another_pedido = one_pedido;
 	destruir_pokemon(another_pedido -> pokemon);
 	free((t_pedido_captura*) one_pedido); // aca capaz flasheamo
+}
+
+void eliminar_pedido_intercambio(t_pedido_intercambio* pedido) {
+
+	bool es_el_pedido(void* otro_pedido) {
+
+		t_pedido_intercambio* un_pedido = otro_pedido;
+
+		return es_el_mismo_pedido_intercambio(pedido, un_pedido);
+	}
+
+	list_remove_by_condition(pedidos_intercambio, es_el_pedido);
+}
+
+bool es_el_mismo_pedido_intercambio(t_pedido_intercambio* pedido, t_pedido_intercambio* un_pedido) {
+
+	return pedido -> entrenador_buscando == un_pedido -> entrenador_buscando &&
+			pedido -> entrenador_esperando == un_pedido -> entrenador_esperando &&
+			string_equals_ignore_case(pedido -> pokemon_a_dar, pedido -> pokemon_a_dar) &&
+			string_equals_ignore_case(pedido -> pokemon_a_dar, pedido -> pokemon_a_recibir);
 }
 
 void destruir_pokemon(t_pokemon_mapa* pokemon) {
 	//free(pokemon -> nombre); FALTA MALLOC AL AGREGAR
 	free(pokemon);
 }
-
 
 void capturar_pokemon(t_pedido_captura* pedido) {
 
@@ -522,6 +541,7 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 		sem_wait(&mx_estado_block);
 		cambiar_a_estado(estado_block, pedido -> entrenador);
 		sem_post(&mx_estado_block);
+
 		log_info(logger, "mande el catch para un %s en la posicion [%d,%d] y se mueve a block",
 				pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 		pedido -> entrenador -> tire_accion = 1;
@@ -552,14 +572,12 @@ void tradear_pokemon(t_pedido_intercambio* pedido){
 		pedido -> entrenador_buscando -> tire_accion = 1;
 		ejecutar_trade(pedido);
 
-		log_info(logger, "intercambio %s por %s", pedido -> pokemon_a_dar, pedido -> pokemon_a_recibir);
 	}
 	pedido -> entrenador_buscando -> pasos_a_moverse --;
 	sleep(config -> retardo_cpu);
 }
 
 void ejecutar_trade(t_pedido_intercambio* pedido) {
-
 
 	bool es_el_pokemon_a_dar(void* un_pokemon){
 
@@ -581,6 +599,10 @@ void ejecutar_trade(t_pedido_intercambio* pedido) {
 
 	list_add(pedido -> entrenador_buscando -> pokemons, pedido -> pokemon_a_recibir);
 	list_add(pedido -> entrenador_esperando -> pokemons, pedido -> pokemon_a_dar);
+
+	log_info(logger, "intercambio %s por %s", pedido -> pokemon_a_dar, pedido -> pokemon_a_recibir);
+
+	eliminar_pedido_intercambio(pedido);
 }
 
 t_pedido_intercambio* buscar_pedido_intercambio(t_entrenador* entrenador){
@@ -632,7 +654,6 @@ void* planificar_entrenadores() {
 
 	return 0;
 }
-
 
 void resolver_deadlocks_fifo_o_sjf() {
 	while(estado_exit -> elements_count < config -> entrenadores -> elements_count) {
@@ -724,8 +745,9 @@ bool le_sobra_pokemon(t_entrenador* entrenador, char* pokemon_original){
 	}
 
 	list_iterate(pokemons, remover_del_objetivo);
-	list_destroy(pokemons); // capaz falta destruir los elementos
-	list_destroy(objetivos); // capaz falta destruir los elementos
+
+	list_destroy(objetivos);
+	list_destroy(pokemons);
 	return pokemon_sobrante;
 
 }
@@ -965,7 +987,6 @@ uint32_t distancia(uint32_t pos1[2], uint32_t pos2[2]) {
 
 	return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1]);
 }
-
 
 void matchear_pokemon_con_entrenador(t_pedido_captura* pedido) {
 

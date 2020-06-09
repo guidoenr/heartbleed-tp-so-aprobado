@@ -118,7 +118,6 @@ void crear_hilo_segun_algoritmo();
 
 
 // estados
-
 t_list* estado_new;
 t_list* estado_ready;
 t_list* estado_exec;
@@ -152,8 +151,9 @@ t_list* mapa_pokemons;
 t_list* pedidos_captura;
 t_list* pedidos_intercambio;
 
-void eliminar_pedido(t_pedido_captura*);
-void destruir_pedido(void*);
+void eliminar_pedido_captura(t_pedido_captura*);
+void destruir_pedido_captura(void*);
+void eliminar_pedido_intercambio(t_pedido_intercambio*);
 void armar_pedido_captura(t_pedido_captura*);
 void destruir_pokemon(t_pokemon_mapa*);
 
@@ -164,6 +164,7 @@ void destruir_pokemon_mapa(void*);
 void matchear_pokemon_con_entrenador(t_pedido_captura*);
 void eliminar_pokemon_de_mapa(t_pokemon_mapa*);
 t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo();
+bool es_el_mismo_pedido_intercambio(t_pedido_intercambio*, t_pedido_intercambio*);
 
 // objetivo
 t_list* objetivo_global;
@@ -173,6 +174,7 @@ bool no_esta_en_objetivo(void*);
 void eliminar_los_que_ya_tengo();
 bool cumplio_objetivo_personal(t_entrenador*);
 bool comparar_pokemon(void*, void*);
+
 
 // terminar
 void liberar_config();
