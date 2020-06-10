@@ -17,18 +17,16 @@ int main(void) {
 
 	//conectarse(int main(void) socket_br);
 
-	//iniciarTallGrass();
+	iniciarTallGrass();
 
-	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
-	device->cantidad= 1;
-	device->id_mensaje= 124;
-	device->pokemon= "device";
-	device->posicion[0]= 16;
-	device->posicion[1] = 51;
+//	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
+//	device->cantidad= 1;
+//	device->id_mensaje= 124;
+//	device->pokemon= "device";
+//	device->posicion[0]= 16;
+//	device->posicion[1] = 51;
 
-	crearPokemon(device, sizeNewPokemon(device));
 
-	funcionHiloNewPokemon(device, socket_br);
 
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
@@ -255,7 +253,7 @@ t_metadata leerMetadata(char* path){
 	fread(&(metadata.blocksize),sizeof(int),1,file);
 	fread(&(metadata.blocks),sizeof(int),1,file);
 	fread(&(metadata.magic),13,1,file);
-	log_info(logger, "Se leyo el metadata con tamaño %d",tamanio_de_metadata(metadata));
+
 
 	fclose(file);
 
@@ -285,11 +283,23 @@ bool isFile(char* path){
 void crearBitmap(char* path){
 
 	char* realPath = concatenar(path,"/Metadata/Bitmap.bin");
-	int status = 0;
+	t_metadata fileSystemMetadata = leerMetadata(concatenar(path,"/Metadata/Metadata.bin"));
+
+	int blocks = fileSystemMetadata.blocks;
+	int bitarraySize = blocks/8; //porque es en bits, no bytes 5192/8 = 649.
+								 // el array quedaria de 5192 posiciones , pero de tamaño 649
+
+	t_bitarray* bitarray = bitarray_create_with_mode(bitarray, bitarraySize , LSB_FIRST);
+
+
+	log_info(logger,"Se creo el bitarray de %d posiciones, con un tamaño de %d bytes",blocks,bitarraySize);
+
 	FILE* file = fopen(realPath,"wb");
-	fwrite(&status,sizeof(int),1,file);
+
+	fwrite(&bitarray,sizeof(t_bitarray),1,file);
+
 	fclose(file);
-	log_info(logger,"Se creo el Bitmap.bin con status: %d",status);
+
 }
 
 int estadoBitmap(char* path){

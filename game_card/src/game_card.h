@@ -3,6 +3,7 @@
 #include<commons/log.h>
 #include<commons/string.h>
 #include<commons/config.h>
+#include<commons/bitarray.h>
 #include<readline/readline.h>
 #include <semaphore.h>
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.h"
