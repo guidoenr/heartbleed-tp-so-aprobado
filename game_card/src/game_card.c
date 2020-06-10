@@ -17,16 +17,18 @@ int main(void) {
 
 	//conectarse(int main(void) socket_br);
 
-	iniciarTallGrass();
+	//iniciarTallGrass();
 
-//	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
-//	device->cantidad= 1;
-//	device->id_mensaje= 124;
-//	device->pokemon= "device";
-//	device->posicion[0]= 16;
-//	device->posicion[1] = 51;
+	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
+	device->cantidad= 1;
+	device->id_mensaje= 124;
+	device->pokemon= "device";
+	device->posicion[0]= 16;
+	device->posicion[1] = 51;
 
-
+	crearPokemon(device, sizeNewPokemon(device));
+	verificarAperturaPokemon(device, socket_br);
+	verificarAperturaPokemon(device, socket_br);
 
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
@@ -230,6 +232,8 @@ void crearPokemon(t_new_pokemon* newPoke,int size){
 	fwrite(&meta,sizeof(tamanio_de_file_metadata(meta)),1,file);
 
 	fclose(file);
+
+	cerrarArchivo(metaPath);
 
 }
 int tamanio_de_metadata(t_metadata metadata){
