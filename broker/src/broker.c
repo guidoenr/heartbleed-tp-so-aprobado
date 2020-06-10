@@ -1,9 +1,16 @@
 #include "broker.h"
 
-
 int main(void) {
 	iniciar_programa();
-	terminar_programa(logger, config_broker);
+
+	/*enviar_mensajes(cola_get, lista_suscriptores_get);
+	enviar_mensajes(cola_catch, lista_suscriptores_catch);
+	enviar_mensajes(cola_localized, lista_suscriptores_localized);
+	enviar_mensajes(cola_caught, lista_suscriptores_caught);
+	enviar_mensajes(cola_appeared, lista_suscriptores_appeared);
+	enviar_mensajes(cola_new, lista_suscriptores_new);*/
+
+	terminar_programa(logger);
 	return 0;
 }
 
@@ -36,22 +43,22 @@ void destruir_semaforos(){
 
 void crear_colas_de_mensajes(){
 
-	 cola_new = list_create();
-	 cola_appeared = list_create();
-	 cola_get = list_create();
+	 cola_new 		= list_create();
+	 cola_appeared  = list_create();
+	 cola_get 		= list_create();
 	 cola_localized = list_create();
-	 cola_catch = list_create();
-	 cola_caught = list_create();
+	 cola_catch 	= list_create();
+	 cola_caught 	= list_create();
 }
 
 void crear_listas_de_suscriptores(){
 
-	 lista_suscriptores_new = list_create();
-	 lista_suscriptores_appeared = list_create();
-	 lista_suscriptores_get = list_create();
+	 lista_suscriptores_new 	  = list_create();
+	 lista_suscriptores_appeared  = list_create();
+	 lista_suscriptores_get 	  = list_create();
 	 lista_suscriptores_localized = list_create();
-	 lista_suscriptores_catch = list_create();
-	 lista_suscriptores_caught = list_create();
+	 lista_suscriptores_catch 	  = list_create();
+	 lista_suscriptores_caught 	  = list_create();
 }
 
 void leer_config() {
@@ -66,15 +73,15 @@ void leer_config() {
 		    	printf("No se pudo encontrar el path del config.");
 		    	exit(-2);
 	}
-	config_broker -> size_memoria = config_get_int_value(config, "TAMANO_MEMORIA");
-	config_broker -> size_min_memoria = config_get_int_value(config, "TAMANO_MEMORIA");
-	config_broker -> algoritmo_memoria = strdup(config_get_string_value(config, "ALGORITMO_MEMORIA"));
-	config_broker -> algoritmo_reemplazo = strdup(config_get_string_value(config, "ALGORITMO_REEMPLAZO"));
-	config_broker -> algoritmo_particion_libre = strdup(config_get_string_value(config, "ALGORITMO_PARTICION_LIBRE"));
-	config_broker -> ip_broker = strdup(config_get_string_value(config, "IP_BROKER"));
-	config_broker -> puerto = strdup(config_get_string_value(config, "PUERTO_BROKER"));
-	config_broker -> frecuencia_compactacion = config_get_int_value(config, "FRECUENCIA_COMPACTACION");
-	config_broker -> log_file = strdup(config_get_string_value(config, "LOG_FILE"));
+	config_broker -> size_memoria 			   = config_get_int_value(config, "TAMANO_MEMORIA");
+	config_broker -> size_min_memoria 		   = config_get_int_value(config, "TAMANO_MEMORIA");
+	config_broker -> algoritmo_memoria 		   = config_get_string_value(config, "ALGORITMO_MEMORIA");
+	config_broker -> algoritmo_reemplazo 	   = config_get_string_value(config, "ALGORITMO_REEMPLAZO");
+	config_broker -> algoritmo_particion_libre = config_get_string_value(config, "ALGORITMO_PARTICION_LIBRE");
+	config_broker -> ip_broker 				   = config_get_string_value(config, "IP_BROKER");
+	config_broker -> puerto 				   = config_get_string_value(config, "PUERTO_BROKER");
+	config_broker -> frecuencia_compactacion   = config_get_int_value(config, "FRECUENCIA_COMPACTACION");
+	config_broker -> log_file 				   = config_get_string_value(config, "LOG_FILE");
 
 	config_destroy(config);
 }
@@ -85,16 +92,18 @@ void liberar_config(t_config_broker* config) {
 	free(config -> algoritmo_particion_libre);
 	free(config -> ip_broker);
 	free(config -> puerto);
-	free(config->log_file);
+	free(config -> log_file);
 	free(config);
 }
 
-void terminar_programa(t_log* logger, t_config_broker* config) {
+void terminar_programa(t_log* logger){
 	liberar_listas();
-	liberar_config(config);
+	liberar_config(config_broker);
 	liberar_logger(logger);
 	liberar_memoria_cache();
 	destruir_semaforos();
+	//free(config);
+	config_destroy(config);
 }
 
 void liberar_memoria_cache(){
@@ -122,65 +131,61 @@ void liberar_listas(){
 /*EL SERVICE DEL BROKER*/
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	uint32_t size;
-	void* msg;
+	t_paquete* msg = malloc(sizeof(t_paquete));
+	t_ack* confirmacion_mensaje = malloc(sizeof(t_ack));
 
 	log_info(logger,"Codigo de operacion %d",cod_op);
+	msg = recibir_mensaje(cliente_fd, &size);
 
 	switch (cod_op) {
 		case GET_POKEMON:
-			msg = malloc(sizeof(t_get_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
+			//msg = malloc(sizeof(t_get_pokemon));
+			//msg = recibir_mensaje(cliente_fd, &size);
 			agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case CATCH_POKEMON:
-			msg = malloc(sizeof(t_catch_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
+			//msg = malloc(sizeof(t_catch_pokemon));
+			//msg = recibir_mensaje(cliente_fd, &size);
 			agregar_mensaje(CATCH_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case LOCALIZED_POKEMON:
-			msg = malloc(sizeof(t_localized_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
+			//msg = malloc(sizeof(t_localized_pokemon));
+			//msg = recibir_mensaje(cliente_fd, &size);
 			agregar_mensaje(LOCALIZED_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case CAUGHT_POKEMON:
-			msg = malloc(sizeof(t_caught_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
+			//msg = malloc(sizeof(t_caught_pokemon));
+			//msg = recibir_mensaje(cliente_fd, &size);
 			agregar_mensaje(CAUGHT_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case APPEARED_POKEMON:
-			msg = malloc(sizeof(t_caught_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
+			//msg = malloc(sizeof(t_caught_pokemon));
+			//msg = recibir_mensaje(cliente_fd, &size);
 			agregar_mensaje(APPEARED_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case NEW_POKEMON:
-			msg = malloc(sizeof(t_new_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
+			//msg = malloc(sizeof(t_new_pokemon));
+			//msg = recibir_mensaje(cliente_fd, &size);
 			agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case SUBSCRIPTION:
-			msg = malloc(sizeof(t_suscripcion));
-			msg = recibir_mensaje(cliente_fd, &size);
+			//msg = malloc(sizeof(t_suscripcion));
+			//msg = recibir_mensaje(cliente_fd, &size);
 			agregar_mensaje(SUBSCRIPTION, size, msg, cliente_fd);
 			free(msg);
 			break;
 		case ACK:
-			msg = malloc(sizeof(t_ack));
-			uint32_t id_mensaje;
-			msg = recibir_confirmacion_de_recepcion(&cliente_fd, &id_mensaje); // -> tenemos que saber quien es
-			//En realidad el mensaje se desencola cuando TODOS ya lo recibieron.
-			//Habría que revisar.
-			//Se itera sobre la lista de mensajes -> matchea el mensaje que se confirma y se agrega a la lista de suscriptores recibido.
-			actualizar_mensaje_confirmado(msg);
-
-			/*t_mensaje* mensaje;
-			t_list* suscriptores = encontrar_suscriptores();//-> encontrar tu mensaje con sus sucripptores_ok
-			actualizar_suscriptores(mensaje, suscriptores);//-> actualizas la lista con el suscriptor nuevo y ademas chequeas si podes eliminar el mensaje*/
+			//msg = malloc(sizeof(t_ack));
+			//msg = recibir_mensaje(cliente_fd, &size);
+			confirmacion_mensaje        = 	deserealizar_ack(msg); //REVISAR LO QUE RECIBE EL DESEREALIZAR
+			actualizar_mensajes_confirmados(confirmacion_mensaje);
+			free(confirmacion_mensaje);
 			free(msg);
 			break;
 		case 0:
@@ -190,51 +195,6 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			pthread_exit(NULL);
 	}
 
-}
-//REVISAR
-void actualizar_mensaje_confirmado(t_ack* mensaje){
-	op_code cola_de_mensaje_confirmado = mensaje -> tipo_mensaje;
-
-	void actualizar_suscripto(void* mensaje){
-		//Se busca dentro del mensaje en la lista de los susriptores enviados.
-		//Se saca de esa lista.
-		//Se pasa a la lista de suscriptores recibidos.
-	}
-
-	switch(cola_de_mensaje_confirmado){
-		case GET_POKEMON:
-			list_iterate(cola_get, actualizar_suscripto);
-			break;
-		case CATCH_POKEMON:
-			list_iterate(cola_catch, actualizar_suscripto);
-			break;
-		case LOCALIZED_POKEMON:
-			list_iterate(cola_localized, actualizar_suscripto);
-			break;
-		case CAUGHT_POKEMON:
-			list_iterate(cola_caught, actualizar_suscripto);
-			break;
-		case APPEARED_POKEMON:
-			list_iterate(cola_appeared, actualizar_suscripto);
-			break;
-		case NEW_POKEMON:
-			list_iterate(cola_new, actualizar_suscripto);
-			break;
-		default:
-			log_info(logger, "El mensaje no se encuentra disponible");
-			break;
-	}
-
-}
-
-t_list* encontrar_suscriptores(){
-	t_list* suscriptores;
-	return suscriptores;
-}
-
-void actualizar_suscriptores(t_mensaje* mensaje){
-	//validas que una vez que esten todos ok, bye bye mensaje
-	desencolar_mensaje(mensaje);
 }
 
 void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size) {
@@ -344,7 +304,7 @@ void recibir_suscripcion(t_mensaje* mensaje){
 	t_suscripcion* mensaje_suscripcion = malloc(sizeof(t_suscripcion));
 
 	mensaje_suscripcion 			   = deserealizar_suscripcion(mensaje -> payload);
-	t_suscriptor* suscripcion    				       = armar_suscripcion_a_guardar(mensaje_suscripcion);
+	t_suscriptor* suscripcion    	   = armar_suscripcion_a_guardar(mensaje_suscripcion);
 
 	log_info(logger, "Se recibe una suscripción.");
 		switch (mensaje_suscripcion -> cola_a_suscribir) {
@@ -378,12 +338,11 @@ void recibir_suscripcion(t_mensaje* mensaje){
 
 t_suscriptor* armar_suscripcion_a_guardar(t_suscripcion* mensaje_suscripcion){
 	t_suscriptor* nueva_suscripcion = malloc(sizeof(t_suscriptor));
-	nueva_suscripcion -> emisor   = mensaje_suscripcion -> id_proceso;
-	nueva_suscripcion -> socket   = mensaje_suscripcion -> socket;
-	nueva_suscripcion -> temporal = mensaje_suscripcion -> tiempo_suscripcion;
+	nueva_suscripcion -> emisor     = mensaje_suscripcion -> id_proceso;
+	nueva_suscripcion -> socket     = mensaje_suscripcion -> socket;
+	nueva_suscripcion -> temporal   = mensaje_suscripcion -> tiempo_suscripcion;
 	return nueva_suscripcion;
 }
-
 
 //Ver de agregar threads.
 void suscribir_a_cola(t_list* lista_suscriptores, t_suscriptor* suscripcion, op_code cola_a_suscribir){
@@ -393,10 +352,12 @@ void suscribir_a_cola(t_list* lista_suscriptores, t_suscriptor* suscripcion, op_
 	//Nombre malisimo, hay que revisar.
 	informar_mensajes_previos(suscripcion,cola_a_suscribir);
 
+
 	bool es_la_misma_suscripcion(void* una_suscripcion){
 		t_suscriptor* otra_suscripcion = una_suscripcion;
 		return otra_suscripcion -> emisor == suscripcion -> emisor;
 	}
+
 
 	if(suscripcion -> temporal != 0){
 		sleep(suscripcion -> temporal);
@@ -469,81 +430,190 @@ t_suscripcion* deserealizar_suscripcion(void* stream){
 	return suscripcion;
 }
 
-t_ack* recibir_confirmacion_de_recepcion(uint32_t socket_cliente, uint32_t id_mensaje){
-	t_ack* acknowledgment;
-	//REVISAR EL RECV --> recibe el paquete en si o el stream?
-	//Una vez recibido me fijo si hay que deserializar y después hago las demás
-	//O sea despues actualizo las listas de suscriptores dentro de cada mensaje.
-
-	/*recv(socket_cliente, &acknowledgment, sizeof(op_code), MSG_WAITALL);
-	recv(socket_cliente, id_mensaje, sizeof(uint32_t), MSG_WAITALL);*/
+t_ack* deserealizar_ack(void* stream){
+	t_ack* acknowledgment = malloc(sizeof(t_ack));
+	memcpy(&(acknowledgment -> id_mensaje), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
+	memcpy(&(acknowledgment -> tipo_mensaje), stream, sizeof(op_code));
+	stream += sizeof(op_code);
+	memcpy(&(acknowledgment -> id_proceso), stream, sizeof(char*));
+	stream += sizeof(char*);
+	memcpy(&(acknowledgment -> socket), stream, sizeof(uint32_t));
+	stream += sizeof(uint32_t);
 	return acknowledgment;
-
 }
 
 //---------------------------MENSAJES---------------------------//
 
-//REViSAR
-void desencolar_mensaje(t_mensaje* mensaje){
+//REVISAR
+void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
+	op_code cola_de_mensaje_confirmado = mensaje_confirmado -> tipo_mensaje;
 
- switch (mensaje->codigo_operacion) {
-			case GET_POKEMON:
-				list_remove_and_destroy_element(cola_get, mensaje->id_correlativo, sizeof(t_mensaje));
-				log_info(logger, "Mensaje eliminado a cola de mensajes get.");
-
-				break;
-			case CATCH_POKEMON:
-				list_remove_and_destroy_element(cola_catch, mensaje->id_correlativo,sizeof(t_mensaje));
-				log_info(logger, "Mensaje eliminado a cola de mensajes catch.");
-				break;
-			case LOCALIZED_POKEMON:
-				list_remove_and_destroy_element(cola_localized, mensaje->id_correlativo,sizeof(t_mensaje));
-				log_info(logger, "Mensaje eliminado a cola de mensajes localized.");
-				break;
-			case CAUGHT_POKEMON:
-				list_remove_and_destroy_element(cola_caught, mensaje->id_correlativo,sizeof(t_mensaje));
-				log_info(logger, "Mensaje eliminado a cola de mensajes caught.");
-				break;
-			case APPEARED_POKEMON:
-				list_remove_and_destroy_element(cola_appeared, mensaje->id_correlativo,sizeof(t_mensaje));
-				log_info(logger, "Mensaje eliminado a cola de mensajes appeared.");
-				break;
-			case NEW_POKEMON:
-				list_remove_and_destroy_element(cola_new, mensaje->id_correlativo,sizeof(t_mensaje));
-				log_info(logger, "Mensaje eliminado a cola de mensajes new.");
-				break;
-			default:
-				log_info(logger, "El codigo de operacion es invalido");
-				exit(-6);
-
-}
-}
-
-void enviar_mensajes_get(){
-	void mensajear_suscriptor(void* suscriptor){
-		//list_iterate(cola_get, enviar_mensaje_get);
+	void actualizar_suscripto(void* mensaje){
+		t_mensaje* mensaje_ok = mensaje;
+		if(mensaje_ok -> id_mensaje == mensaje_confirmado -> id_mensaje){
+			eliminar_suscriptor_de_enviados_sin_confirmar(mensaje_ok, mensaje_confirmado -> id_proceso);
+			agregar_suscriptor_a_enviados_confirmados(mensaje_ok, mensaje_confirmado -> id_proceso);
+		}
 	}
 
-	void enviar_mensaje_get(void* mensaje){
-		void* suscriptor;
-		t_mensaje* mensaje_a_enviar = malloc(sizeof(t_mensaje));
-	    mensaje_a_enviar = mensaje;
-	    if(list_find(mensaje_a_enviar->suscriptor_enviado,suscriptor)) {
-		enviar_mensaje(GET_POKEMON, mensaje_a_enviar-> payload, socket, sizeof(t_paquete)); //REVISAR SIZEOF
-		free(mensaje_a_enviar);
-		agregar_suscriptor(mensaje_a_enviar, suscriptor);///agregamos el suscrptor a mensaje_> suscriptor_>enviado
-	    }
-
+	switch(cola_de_mensaje_confirmado){
+		case GET_POKEMON:
+			list_iterate(cola_get, actualizar_suscripto);
+			break;
+		case CATCH_POKEMON:
+			list_iterate(cola_catch, actualizar_suscripto);
+			break;
+		case LOCALIZED_POKEMON:
+			list_iterate(cola_localized, actualizar_suscripto);
+			break;
+		case CAUGHT_POKEMON:
+			list_iterate(cola_caught, actualizar_suscripto);
+			break;
+		case APPEARED_POKEMON:
+			list_iterate(cola_appeared, actualizar_suscripto);
+			break;
+		case NEW_POKEMON:
+			list_iterate(cola_new, actualizar_suscripto);
+			break;
+		default:
+			log_info(logger, "El mensaje no se encuentra disponible");
+			break;
 	}
-	//Habría que ver como iterar on la lista de mensajes, porque estamos usando la lista de suscriptores
-    list_iterate( lista_suscriptores_get, mensajear_suscriptor); //El segundo parámetro es una operación que hace enviar a los sockets un paquete?
-
-
+	//Se chequea si un mensaje fue recibido por todos los suscriptores.
+	//Si es así, se elimina el mensaje.
+	eliminar_mensajes_confirmados();
 
 }
+//REVISAR SI ESTÁ BIEN UBICADA CUANDO SE INVOCA
+void eliminar_mensajes_confirmados(){
 
-void agregar_suscriptor(t_mensaje* mensaje, void* suscriptor){
-	list_add(mensaje -> suscriptor_enviado, suscriptor);
+	borrar_mensajes_confirmados(GET_POKEMON, cola_get, lista_suscriptores_get);
+	borrar_mensajes_confirmados(CATCH_POKEMON, cola_catch, lista_suscriptores_catch);
+	borrar_mensajes_confirmados(LOCALIZED_POKEMON, cola_localized, lista_suscriptores_localized);
+	borrar_mensajes_confirmados(CAUGHT_POKEMON, cola_caught, lista_suscriptores_caught);
+	borrar_mensajes_confirmados(APPEARED_POKEMON, cola_appeared, lista_suscriptores_appeared);
+	borrar_mensajes_confirmados(NEW_POKEMON, cola_new, lista_suscriptores_new);
+
+}
+// HAY QUE REVISARLO PERO MINIMO 5 VECES O_o
+void borrar_mensajes_confirmados(op_code tipo_lista, t_list* cola_mensajes, t_list* suscriptores){
+
+	t_list* lista_id_suscriptores = list_create();
+
+	void* id_suscriptor(void* un_suscriptor){
+		t_suscriptor* suscripto = un_suscriptor;
+		return suscripto -> emisor;
+	}
+
+	lista_id_suscriptores = list_map(suscriptores, id_suscriptor);
+
+	bool mensaje_recibido_por_todos(void* mensaje){
+		t_mensaje* un_mensaje = mensaje;
+
+		bool suscriptor_recibio_mensaje(void* suscripto){
+			char* un_suscripto = suscripto;
+
+			bool es_el_mismo_suscripto(void* id_suscripto){
+				char* alguna_suscripcion = id_suscripto;
+				return string_equals_ignore_case(alguna_suscripcion, un_suscripto);
+			}
+
+			return list_any_satisfy(un_mensaje -> suscriptor_recibido, es_el_mismo_suscripto);
+		}
+
+		return list_all_satisfy(lista_id_suscriptores, suscriptor_recibio_mensaje);
+	}
+
+	switch(tipo_lista){
+	case GET_POKEMON:
+		list_remove_and_destroy_by_condition(cola_get, mensaje_recibido_por_todos, eliminar_mensaje);
+		break;
+	case CATCH_POKEMON:
+		list_remove_and_destroy_by_condition(cola_catch, mensaje_recibido_por_todos, eliminar_mensaje);
+		break;
+	case LOCALIZED_POKEMON:
+		list_remove_and_destroy_by_condition(cola_localized, mensaje_recibido_por_todos, eliminar_mensaje);
+		break;
+	case CAUGHT_POKEMON:
+		list_remove_and_destroy_by_condition(cola_caught, mensaje_recibido_por_todos, eliminar_mensaje);
+		break;
+	case APPEARED_POKEMON:
+		list_remove_and_destroy_by_condition(cola_appeared, mensaje_recibido_por_todos, eliminar_mensaje);
+		break;
+	case NEW_POKEMON:
+		list_remove_and_destroy_by_condition(cola_new, mensaje_recibido_por_todos, eliminar_mensaje);
+		break;
+	default:
+		log_error(logger, "El mensaje no fue eliminado correctamente");
+		break;
+	}
+	log_info(logger, "Los mensajes confirmados por todos los suscriptores fueron eliminados.");
+	list_destroy(lista_id_suscriptores);
+
+}
+// REVISAR TAMBIÉN
+void eliminar_mensaje(void* mensaje){
+	t_mensaje* un_mensaje = mensaje;
+	//HAY QUE DESTRUIR LOS ELEMENTOS TAMBIEN? Son char*
+	list_destroy(un_mensaje -> suscriptor_enviado);
+	list_destroy(un_mensaje -> suscriptor_recibido);
+	free(un_mensaje -> payload);
+	free(un_mensaje);
+	free((t_mensaje*) mensaje);
+}
+
+void eliminar_suscriptor_de_enviados_sin_confirmar(t_mensaje* mensaje, char* suscriptor){
+
+	bool es_el_mismo_suscriptor(void* un_suscripto){
+		char* suscripto = un_suscripto;
+		return string_equals_ignore_case(suscripto, suscriptor);
+	}
+
+	list_remove_by_condition(mensaje -> suscriptor_enviado, es_el_mismo_suscriptor);
+}
+
+void agregar_suscriptor_a_enviados_confirmados(t_mensaje* mensaje, char* confirmacion){
+	list_add(mensaje -> suscriptor_recibido, confirmacion);
+}
+//Se le pasa por parametro la cola y la lista de sus suscriptores segun se necesite.
+//Por ejemplo:
+//enviar_mensajes(cola_get, lista_suscriptores_get);
+void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){
+
+	void mensajear_suscriptores(void* mensaje){
+			t_mensaje* un_mensaje = mensaje;
+
+			void mandar_mensaje(void* suscriptor){
+				t_suscriptor* un_suscriptor = suscriptor;
+
+				if(no_tiene_el_mensaje(un_mensaje, un_suscriptor -> emisor)){
+					enviar_mensaje(un_mensaje -> codigo_operacion, un_mensaje -> payload, un_suscriptor -> socket, 24);// HAy que sacar el 24 por el size real
+					agregar_suscriptor_a_enviados_sin_confirmar(un_mensaje, un_suscriptor -> emisor);
+				}
+			}
+			list_iterate(lista_suscriptores, mandar_mensaje);
+		}
+	list_iterate(cola_de_mensajes, mensajear_suscriptores);
+}
+
+bool no_tiene_el_mensaje(t_mensaje* mensaje, char* un_suscripto){
+	bool mensaje_enviado;
+	bool mensaje_recibido;
+
+	bool es_el_mismo_suscripto(void* suscripto){
+		char* id_suscripcion = suscripto;
+		return id_suscripcion == un_suscripto;
+	}
+
+	mensaje_enviado  = list_any_satisfy(mensaje -> suscriptor_enviado, es_el_mismo_suscripto);
+	mensaje_recibido = list_any_satisfy(mensaje -> suscriptor_recibido, es_el_mismo_suscripto);
+
+	return !mensaje_enviado && !mensaje_recibido;
+}
+
+void agregar_suscriptor_a_enviados_sin_confirmar(t_mensaje* mensaje_enviado, char* un_suscriptor){
+	list_add(mensaje_enviado -> suscriptor_enviado, un_suscriptor);
 }
 
 //--------------MEMORIA-------------//
@@ -574,15 +644,14 @@ void compactar_memoria(){
 
 void guardar_en_memoria(t_mensaje* mensaje){
 
-	if(string_equals_ignore_case(config->algoritmo_memoria,"BS"))
-	{
+	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
        /*
         *buscarparticionlibre
         ubicarla
         */
 	}
-	if(string_equals_ignore_case(config->algoritmo_memoria,"PARTICIONES"))
-	{
+
+	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
 		/*       *chequear_algoritmo_particion -> buscarparticionlibre
 		 *        *chequear_algoritmo_reemplazo -> ubicarla   */
 	}
