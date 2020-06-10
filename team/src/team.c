@@ -602,6 +602,10 @@ void ejecutar_trade(t_pedido_intercambio* pedido) {
 
 	log_info(logger, "intercambio %s por %s", pedido -> pokemon_a_dar, pedido -> pokemon_a_recibir);
 
+	if(string_equals_ignore_case(config -> algoritmo_planificacion, "RR")){
+		sem_post(&(pedido -> entrenador_esperando -> sem_binario));
+	}
+
 	eliminar_pedido_intercambio(pedido);
 }
 
@@ -664,31 +668,78 @@ void resolver_deadlocks_fifo_o_sjf() {
 			log_error(logger, "Tengo poca gente para resolver deadlocks!");
 		}
 
-		t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
+		if(estado_block -> elements_count > 1){
+			t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
+			list_add(pedidos_intercambio, pedido);
 
-		sem_wait(&mx_estados);
-		cambiar_a_estado(estado_exec, pedido -> entrenador_buscando);
-		log_info(logger, "El entrenador se mueve a exec para el trade");
-		sem_post(&mx_estados);
-		sem_post(&(pedido -> entrenador_buscando -> sem_binario));
+			sem_wait(&mx_estados);
+			cambiar_a_estado(estado_ready, pedido -> entrenador_buscando);
+			log_info(logger, "el entrenador se mueve a ready para resolver deadlock");
 
-		sem_wait(&mx_estado_exec);
-		sem_post(&(pedido -> entrenador_esperando -> sem_binario));
-		sem_wait(&mx_estado_exec);
+			cambiar_a_estado(estado_exec, pedido -> entrenador_buscando);
+			log_info(logger, "El entrenador se mueve a exec para el trade");
+			sem_post(&mx_estados);
+			sem_post(&(pedido -> entrenador_buscando -> sem_binario));
+
+			sem_wait(&mx_estado_exec);
+			sem_post(&(pedido -> entrenador_esperando -> sem_binario));
+			sem_wait(&mx_estado_exec);
+		}
 	}
 }
 
 void resolver_deadlocks_rr() {
 
+	//sem_wait(&mx_estado_exec); ?
+	while(estado_exit -> elements_count < config -> entrenadores -> elements_count) {
 
+		sem_wait(&mx_estado_exec);
+		if(config -> entrenadores -> elements_count - estado_exit -> elements_count < 2) {
+			log_error(logger, "Tengo poca gente para resolver deadlocks!");
+		}
 
+		if(estado_block -> elements_count > 1){
+			t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
+
+			if(pedido){
+
+				list_add(pedidos_intercambio, pedido);
+
+				sem_wait(&mx_estados);
+				cambiar_a_estado(estado_ready, pedido -> entrenador_buscando);
+				log_info(logger, "el entrenador se mueve a ready para resolver deadlock");
+				sem_post(&mx_estados);
+			}
+		}
+
+		sem_wait(&entrenadores_ready);
+		sem_wait(&mx_estados);
+		cambiar_a_estado(estado_exec, (t_entrenador*)estado_ready -> head -> data);
+		log_info(logger, "El entrenador se mueve a exec para el trade");
+		sem_post(&mx_estados);
+
+		sem_post(&(((t_entrenador*)estado_exec -> head -> data) -> sem_binario));
+	}
 }
 
 t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
-	if(estado_block -> elements_count > 1) { // SE VA CON EL COMM DE ABAJO
+
 	log_info(logger, "somos %d en deadlock, armo pedido", estado_block -> elements_count);
 	t_pedido_intercambio* pedido = malloc(sizeof(t_pedido_intercambio));
-	pedido -> entrenador_buscando = estado_block -> head -> data; // CHEQUEAR QUE ESTE NO ESTE ESPERANDO
+
+	t_link_element* cabeza_block = estado_block -> head;
+
+	while(estoy_esperando_trade(cabeza_block -> data)) {
+
+		cabeza_block = cabeza_block -> next;
+
+		if(!cabeza_block){
+
+			log_error(logger, "NO HAY NADIE DESOCUPADO EN BLOCK");
+		}
+	}
+
+	pedido -> entrenador_buscando = cabeza_block -> data;
 
 	pedido -> pokemon_a_recibir = encontrar_pokemon_faltante(pedido -> entrenador_buscando);
 
@@ -701,8 +752,11 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 
 	pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon);
 
-	if(!(pedido -> entrenador_esperando)){
+	if(!(pedido -> entrenador_esperando) && !string_equals_ignore_case(config -> algoritmo_planificacion, "RR")){
 		log_error(logger, "a nadie le sobra mi pokemon");
+
+	} else if(!(pedido -> entrenador_esperando)){
+		return NULL;
 	}
 
 	pedido -> distancia = distancia(pedido -> entrenador_buscando -> posicion, pedido -> entrenador_esperando -> posicion) + 1;
@@ -716,14 +770,25 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 
 	pedido -> pokemon_a_dar = encontrar_pokemon_sobrante(pedido -> entrenador_buscando);
 
-	list_add(pedidos_intercambio, pedido);
-	sem_wait(&mx_estados);
-	cambiar_a_estado(estado_ready, pedido -> entrenador_buscando);
-	log_info(logger, "el entrenador se mueve a ready para resolver deadlock");
-	sem_post(&mx_estados);
 	return pedido;
+}
+
+bool estoy_esperando_trade(t_entrenador* entrenador) {
+
+	bool esta_esperando(void* otro_pedido){
+
+		t_pedido_intercambio* un_pedido = otro_pedido;
+
+		return un_pedido -> entrenador_esperando == entrenador;
 	}
-	return NULL;
+
+	void* resultado = list_find(pedidos_intercambio, esta_esperando);
+
+	if(!resultado){
+		return 0;
+	}
+
+	return 1;
 }
 
 bool le_sobra_pokemon(t_entrenador* entrenador, char* pokemon_original){
@@ -988,7 +1053,6 @@ void* ejecutar_algoritmo() {
 		sem_wait(&mx_estados);
 		if(!estado_exec -> head && estado_ready -> head) {
 			t_entrenador* entrenador = estado_ready -> head -> data;
-			log_info(logger, "mi estimacion es %d", entrenador -> estimacion);
 			cambiar_a_estado(estado_exec, entrenador);
 			log_info(logger, "entrenador cambiado a estado exec");
 			sem_post(&(entrenador -> sem_binario));

@@ -91,6 +91,7 @@ void tradear_pokemon(t_pedido_intercambio*);
 void ejecutar_trade(t_pedido_intercambio*);
 void asignar_estado_luego_de_trade(t_entrenador*);
 void calcular_estimaciones_ready();
+bool estoy_esperando_trade(t_entrenador*);
 
 // mensajes
 
