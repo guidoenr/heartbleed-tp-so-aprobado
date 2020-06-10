@@ -574,12 +574,12 @@ t_appeared_pokemon* recibir_appeared_pokemon(uint32_t socket_cliente, uint32_t* 
 		t_new_pokemon* pokemon = deserealizar_appeared_pokemon(buffer);
 		return pokemon;
 	}
-//
+
 uint32_t sizeNewPokemon(t_new_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 }
 
-// son la misma pero chupala
+
 uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 }
