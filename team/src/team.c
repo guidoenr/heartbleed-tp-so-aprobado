@@ -22,11 +22,12 @@ int main(void) {
 
 	t_pokemon_mapa* pikachu1 = malloc(sizeof(t_pokemon_mapa));
 	pikachu1 -> nombre = "Pikachu";
-	pikachu1 -> posicion[0] = 6;
+	pikachu1 -> posicion[0] = 20;
 	pikachu1 -> posicion[1] = 6;
 	pikachu1 -> cantidad = 1;
 	list_add(mapa_pokemons, pikachu1);
 	sem_post(&sem_cont_mapa);
+	sleep(5);
 	t_pokemon_mapa* pikachu2 = malloc(sizeof(t_pokemon_mapa));
 	pikachu2 -> nombre = "Pikachu";
 	pikachu2 -> posicion[0] = 2;
@@ -36,17 +37,17 @@ int main(void) {
 	sem_post(&sem_cont_mapa);
 	t_pokemon_mapa* charmander = malloc(sizeof(t_pokemon_mapa));
 	charmander -> nombre = "Charmander";
-	charmander -> posicion[0] = 0;
-	charmander -> posicion[1] = 0;
+	charmander -> posicion[0] = 6;
+	charmander -> posicion[1] = 6;
 	charmander -> cantidad = 1;
 	list_add(mapa_pokemons, charmander);
 	sem_post(&sem_cont_mapa);
 
 	//pthread_join(hilo_algoritmo, NULL);
 	//pthread_join(hilo_entrenadores, NULL);
-	sleep(15);
+	sleep(65);
 	sem_post(&sem_cont_mapa); // ESTE CUANDO HAY QUE RESOLVER DEADLOCKS
-	sleep(30);
+	sleep(50);
 	terminar_programa(/*socket*/);
 	return 0;
 }
@@ -90,11 +91,9 @@ void inicializar_estados() {
 }
 
 void inicializar_semaforos() {
-	sem_init(&mx_estado_new, 0, 1);
-	sem_init(&mx_estado_ready, 0, 1);
+	sem_init(&mx_estados, 0, 1);
 	sem_init(&mx_estado_exec, 0, 1);
-	sem_init(&mx_estado_block, 0, 1);
-	sem_init(&mx_estado_exit, 0, 1);
+	sem_init(&mx_desalojo_exec, 0, 0);
 	sem_init(&entrenadores_ready, 0, 0);
 	sem_init(&sem_cont_mapa, 0, 0);
 	sem_init(&sem_cont_entrenadores_a_replanif, 0, 0);
@@ -284,7 +283,6 @@ void iniciar_entrenadores() {
 		entrenador -> pasos_a_moverse = 0;
 		entrenador -> tire_accion = 0;
 		entrenador -> estimacion = config -> estimacion_inicial;
-		entrenador -> rafaga = 0;
 		sem_init(&(entrenador -> sem_binario), 0, 0);
 		sem_init(&(entrenador -> esperar_caught), 0, 0);
 
@@ -329,10 +327,10 @@ void* operar_entrenador(void* un_entrenador) {
 					tradear_pokemon(pedido_intercambio);
 				}
 				if(!(entrenador -> tire_accion)) { // RR
-					sem_wait(&mx_estado_ready);
+					sem_wait(&mx_estados);
 					cambiar_a_estado(estado_ready, entrenador);
 					log_info(logger, "el entrenador que estaba resolviendo deadlock fue desalojado por fin de quantum");
-					sem_post(&mx_estado_ready);
+					sem_post(&mx_estados);
 					sem_post(&entrenadores_ready);
 				} else {
 					asignar_estado_luego_de_trade(entrenador);
@@ -348,32 +346,34 @@ void* operar_entrenador(void* un_entrenador) {
 
 void asignar_estado_luego_de_trade(t_entrenador* entrenador) {
 	if(cumplio_objetivo_personal(entrenador)) {
-		sem_wait(&mx_estado_exit);
+		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_exit, entrenador);
 		log_info(logger, "luego de ejecutar el trade, el entrenador cumplio su objetivo personal y se mueve a exit");
-		sem_post(&mx_estado_exit);
+		sem_post(&mx_estados);
 	} else {
 		if(!esta_en_estado(estado_block, entrenador)) {
-			sem_wait(&mx_estado_block);
+			sem_wait(&mx_estados);
 			cambiar_a_estado(estado_block, entrenador);
 			log_info(logger, "luego de ejecutar el trade, el entrenador no cumplio su objetivo personal y vuelve a block");
-			sem_post(&mx_estado_block);
+			sem_post(&mx_estados);
 		}
 	}
 }
 
 void manejar_desalojo_captura(t_pedido_captura* pedido){
 	if(!(pedido -> entrenador -> tire_accion) && pedido -> entrenador -> pasos_a_moverse <= 0) { // RR DESALOJADO
-		sem_wait(&mx_estado_ready);
+		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_ready, pedido -> entrenador);
-		sem_post(&mx_estado_ready);
-		sem_post(&entrenadores_ready);
 		log_info(logger, "el entrenador termino su quantum y vuelve a ready");
+		sem_post(&mx_estados);
+		sem_post(&entrenadores_ready);
 		pedido -> entrenador -> pasos_a_moverse = config -> quantum;
 
 
 	} else if(!(pedido -> entrenador -> tire_accion)) { // SJF Con Desalojo DESALOJADO
 
+		log_info(logger, "El entrenador fue desalojado ante un nuevo entrenador en ready");
+		sem_post(&mx_desalojo_exec);
 
 	} else { // FIFO o SJF Sin Desalojo // RR/SJF NO DESALOJADO
 		//sem_wait(&(pedido -> entrenador -> esperar_caught)); // darle verde en el process request
@@ -417,10 +417,10 @@ void procesar_caught(t_pedido_captura* pedido){
 		if(tengo_la_mochila_llena(pedido -> entrenador)){
 
 			if(!estoy_en_deadlock(pedido -> entrenador)){
-				sem_wait(&mx_estado_exit);
+				sem_wait(&mx_estados);
 				cambiar_a_estado(estado_exit, pedido -> entrenador);
-				sem_post(&mx_estado_exit);
 				log_info(logger, "El entrenador completo su objetivo personal y se mueve a exit");
+				sem_post(&mx_estados);
 			} else {
 				sem_post(&sem_cont_entrenadores_a_replanif);
 			}
@@ -539,12 +539,11 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 		log_info(logger, "me movi a [%d,%d]", pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 	} else { // misma posicion
 		// tirar el catch (agarrar)
-		sem_wait(&mx_estado_block);
+		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_block, pedido -> entrenador);
-		sem_post(&mx_estado_block);
-
 		log_info(logger, "mande el catch para un %s en la posicion [%d,%d] y se mueve a block",
 				pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
+		sem_post(&mx_estados);
 		pedido -> entrenador -> tire_accion = 1;
 	}
 	sleep(config -> retardo_cpu);// RETARDO_CICLO_CPU
@@ -657,6 +656,8 @@ void* planificar_entrenadores() {
 }
 
 void resolver_deadlocks_fifo_o_sjf() {
+
+	//sem_wait(&mx_estado_exec); ?
 	while(estado_exit -> elements_count < config -> entrenadores -> elements_count) {
 
 		if(config -> entrenadores -> elements_count - estado_exit -> elements_count < 2) {
@@ -665,7 +666,10 @@ void resolver_deadlocks_fifo_o_sjf() {
 
 		t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
 
+		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_exec, pedido -> entrenador_buscando);
+		log_info(logger, "El entrenador se mueve a exec para el trade");
+		sem_post(&mx_estados);
 		sem_post(&(pedido -> entrenador_buscando -> sem_binario));
 
 		sem_wait(&mx_estado_exec);
@@ -713,9 +717,10 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 	pedido -> pokemon_a_dar = encontrar_pokemon_sobrante(pedido -> entrenador_buscando);
 
 	list_add(pedidos_intercambio, pedido);
-	sem_wait(&mx_estado_ready);
+	sem_wait(&mx_estados);
 	cambiar_a_estado(estado_ready, pedido -> entrenador_buscando);
-	sem_post(&mx_estado_ready);
+	log_info(logger, "el entrenador se mueve a ready para resolver deadlock");
+	sem_post(&mx_estados);
 	return pedido;
 	}
 	return NULL;
@@ -854,21 +859,21 @@ void planificar_segun_algoritmo(t_pedido_captura* pedido) {
 }
 
 void planificar_fifo_o_rr(t_pedido_captura* pedido){
-	sem_wait(&mx_estado_ready);
+	sem_wait(&mx_estados);
 	cambiar_a_estado(estado_ready, pedido -> entrenador);
 	log_info(logger, "entrenador cambiado a estado ready con su pedido de captura");
-	sem_post(&mx_estado_ready);
+	sem_post(&mx_estados);
 	sem_post(&entrenadores_ready);
 }
 
 void planificar_sjf_sd(t_pedido_captura* pedido){
 
-	sem_wait(&mx_estado_ready);
+	sem_wait(&mx_estados);
 	cambiar_a_estado(estado_ready, pedido -> entrenador);
 	log_info(logger, "entrenador cambiado a estado ready con su pedido de captura");
 	calcular_estimaciones_ready();
 	ordenar_ready_segun_estimacion();
-	sem_post(&mx_estado_ready);
+	sem_post(&mx_estados);
 	sem_post(&entrenadores_ready);
 }
 
@@ -880,7 +885,7 @@ void calcular_estimaciones_ready() {
 
 		uint32_t estimacion_anterior = entrenador -> estimacion;
 
-		entrenador -> estimacion = config -> alpha * entrenador -> rafaga + (1 - config -> alpha) * estimacion_anterior;
+		entrenador -> estimacion = config -> alpha * entrenador -> pasos_a_moverse + (1 - config -> alpha) * estimacion_anterior;
 	}
 
 	list_iterate(estado_ready, calcular_estimacion);
@@ -902,7 +907,25 @@ void ordenar_ready_segun_estimacion() {
 }
 
 void planificar_sjf_cd(t_pedido_captura* pedido) {
-	log_error(logger, "No estoy codeado, soy un tibio");
+
+	sem_wait(&mx_estados);
+	cambiar_a_estado(estado_ready, pedido -> entrenador);
+	log_info(logger, "entrenador cambiado a estado ready con su pedido de captura");
+
+	desalojar_ejecucion();
+	calcular_estimaciones_ready();
+	ordenar_ready_segun_estimacion();
+	sem_post(&mx_estados);
+	sem_post(&entrenadores_ready);
+}
+
+void desalojar_ejecucion() {
+
+	if(estado_exec -> elements_count > 0){
+		cambiar_a_estado(estado_ready, estado_exec -> head -> data);
+		sem_wait(&mx_desalojo_exec);
+		sem_post(&entrenadores_ready);
+	}
 }
 
 int distancia_segun_algoritmo(t_pedido_captura* pedido) {
@@ -934,16 +957,13 @@ void crear_hilo_segun_algoritmo() {
 
 	if(string_equals_ignore_case(config -> algoritmo_planificacion, "FIFO") ||
 			string_equals_ignore_case(config -> algoritmo_planificacion, "RR") ||
-			string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-SD")) {
-		uint32_t err = pthread_create(&hilo_algoritmo, NULL, ejecutar_fifo_o_rr_o_sjf_sd, NULL);
+			string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-SD") ||
+			string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-CD")) {
+
+		uint32_t err = pthread_create(&hilo_algoritmo, NULL, ejecutar_algoritmo, NULL);
+
 		if(err != 0) {
 			log_error(logger, "el hilo no pudo ser creado"); // preguntar si estos logs se pueden hacer
-		}
-	} else if(string_equals_ignore_case(config -> algoritmo_planificacion, "SJF-CD")) {
-		log_error(logger, "NO ESTA CODEADO SJF-CD");
-		uint32_t err = pthread_create(&hilo_algoritmo, NULL, ejecutar_sjf_cd, NULL);
-		if(err != 0) {
-			log_error(logger, "el hilo no pudo ser creado");
 		}
 
 	} else {
@@ -959,30 +979,26 @@ void crear_hilo_planificar_entrenadores() {
 	}
 }
 
-void* ejecutar_fifo_o_rr_o_sjf_sd() {
+void* ejecutar_algoritmo() {
 
 	while(config -> entrenadores -> elements_count > estado_exit -> elements_count) { // matamos este hilo o muere con el programa?
 
 		sem_wait(&mx_estado_exec);
 		sem_wait(&entrenadores_ready);
+		sem_wait(&mx_estados);
 		if(!estado_exec -> head && estado_ready -> head) {
 			t_entrenador* entrenador = estado_ready -> head -> data;
+			log_info(logger, "mi estimacion es %d", entrenador -> estimacion);
 			cambiar_a_estado(estado_exec, entrenador);
 			log_info(logger, "entrenador cambiado a estado exec");
 			sem_post(&(entrenador -> sem_binario));
 		} else {
 			log_error(logger, "me mandaste a correr pero no tengo ningun pibe pa");
 		}
+		sem_post(&mx_estados);
 	}
-	return 0;
-}
-
-void* ejecutar_sjf_cd() {
-	// VER QUE AGARRE LA CABEZA EN DEADLOCK
-
 
 	return 0;
-
 }
 
 void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
@@ -1255,11 +1271,9 @@ void liberar_estados() {
 }
 
 void liberar_semaforos() {
-	sem_destroy(&mx_estado_new);
+	sem_destroy(&mx_estados);
 	sem_destroy(&mx_estado_exec);
-	sem_destroy(&mx_estado_block);
-	sem_destroy(&mx_estado_exit);
-	sem_destroy(&mx_estado_ready);
+	sem_destroy(&mx_desalojo_exec);
 	sem_destroy(&entrenadores_ready);
 	sem_destroy(&sem_cont_mapa);
 	sem_destroy(&sem_cont_entrenadores_a_replanif);

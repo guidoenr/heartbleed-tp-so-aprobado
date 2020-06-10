@@ -21,7 +21,6 @@ typedef struct {
 	uint32_t resultado_caught;
 	sem_t esperar_caught;
 	uint32_t estimacion;
-	uint32_t rafaga;
 } t_entrenador;
 
 typedef struct {
@@ -108,9 +107,9 @@ void* planificar_entrenadores();
 void planificar_fifo_o_rr(t_pedido_captura*);
 void planificar_sjf_sd(t_pedido_captura*);
 void planificar_sjf_cd(t_pedido_captura*);
+void desalojar_ejecucion();
 void ordenar_ready_segun_estimacion();
-void* ejecutar_fifo_o_rr_o_sjf_sd();
-void* ejecutar_sjf_cd();
+void* ejecutar_algoritmo();
 void crear_hilo_planificar_entrenadores();
 void resolver_deadlocks_fifo_o_sjf();
 void resolver_deadlocks_rr();
@@ -137,11 +136,9 @@ bool esta_en_estado(t_list*, t_entrenador*);
 int estado_block_replanificable_no_interbloqueado();
 
 //semaforos
-sem_t mx_estado_new;
-sem_t mx_estado_ready;
+sem_t mx_estados;
 sem_t mx_estado_exec;
-sem_t mx_estado_block;
-sem_t mx_estado_exit;
+sem_t mx_desalojo_exec;
 sem_t entrenadores_ready;
 sem_t sem_cont_mapa;
 sem_t sem_cont_entrenadores_a_replanif;
