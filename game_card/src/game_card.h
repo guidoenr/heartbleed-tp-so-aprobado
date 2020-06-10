@@ -92,3 +92,5 @@ char* obtenerPathMetaFile(t_new_pokemon* pokemon);
 char* obtenerPathDirPokemon(t_new_pokemon* pokemon);
 void conectarse(int socket);
 bool isOpen(char* path);
+bool isDir(const char* name);
+bool existeElFileSystem(char* puntoMontaje);

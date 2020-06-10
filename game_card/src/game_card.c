@@ -17,7 +17,7 @@ int main(void) {
 
 	//conectarse(int main(void) socket_br);
 
-	//iniciarTallGrass();
+	iniciarTallGrass();
 
 	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
 	device->cantidad= 1;
@@ -26,9 +26,7 @@ int main(void) {
 	device->posicion[0]= 16;
 	device->posicion[1] = 51;
 
-	crearPokemon(device, sizeNewPokemon(device));
-	verificarAperturaPokemon(device, socket_br);
-	verificarAperturaPokemon(device, socket_br);
+
 
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
@@ -65,21 +63,19 @@ void iniciarTallGrass(){
 
 	punto_montaje = config->punto_montaje_tallgrass;
 	log_info(logger,"Iniciando tallgrass en: %s",punto_montaje);
-	crearDirectorios(punto_montaje);
-	crearMetadata(punto_montaje);
-	crearBitmap(punto_montaje);
-	crearBlocks(punto_montaje);
 
+	if (!isDir(punto_montaje)){
 
-	luken = malloc(sizeof(t_new_pokemon));
-	luken->cantidad = 11;
-	luken->id_mensaje= 0420;
-	luken->posicion[0]= 2;
-	luken->posicion[1]= 2;
-	luken->pokemon = "Luken";
+		crearDirectorios(punto_montaje);
+		crearMetadata(punto_montaje);
+		crearBitmap(punto_montaje);
+		crearBlocks(punto_montaje);
 
-	crearPokemon(luken,20); //hardcodeo size ORIGINAL? todo
+	} else {
+		log_info(logger, "Tallgrass ya existente en %s",punto_montaje);
+	}
 }
+
 
 void suscribirme_a_colas() {
 	suscribirse_a(NEW_POKEMON);
@@ -284,6 +280,18 @@ bool isFile(char* path){
 	return f != NULL;
 }
 
+bool isDir(const char* name){
+    DIR* directory = opendir(name);
+
+    if(directory != NULL)
+    {
+     closedir(directory);
+     return true;
+    } else {
+    	return false;
+    }
+}
+
 void crearBitmap(char* path){
 
 	char* realPath = concatenar(path,"/Metadata/Bitmap.bin");
@@ -314,7 +322,7 @@ int estadoBitmap(char* path){
 	return status;
 }
 
-int isDirectory(char* path){
+bool isDirectory(char* path){
 	t_file_metadata fileMeta;
 	FILE* file = fopen(path,"rb");
 	fread(&fileMeta.directory,sizeof(char),1,file);
