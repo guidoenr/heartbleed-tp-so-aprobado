@@ -83,7 +83,6 @@ void leer_config() {
 	config_broker -> frecuencia_compactacion   = config_get_int_value(config, "FRECUENCIA_COMPACTACION");
 	config_broker -> log_file 				   = config_get_string_value(config, "LOG_FILE");
 
-	config_destroy(config);
 }
 
 void liberar_config(t_config_broker* config) {
@@ -102,7 +101,6 @@ void terminar_programa(t_log* logger){
 	liberar_logger(logger);
 	liberar_memoria_cache();
 	destruir_semaforos();
-	//free(config);
 	config_destroy(config);
 }
 
@@ -233,8 +231,10 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, t_paquete* paquete, uint32_
 
 	//Este id habría que ver como pasarlo al id de un t_get por ejemplo.
 
-	mensaje -> payload 		    = paquete;
-	mensaje -> codigo_operacion = cod_op;
+	mensaje -> payload 		       = paquete;
+	mensaje -> codigo_operacion    = cod_op;
+	mensaje -> suscriptor_enviado  = list_create();
+	mensaje -> suscriptor_recibido = list_create();
 	//mensaje -> id_correlativo = generar_id_univoco();
 
 	sem_post(&mutex_id_correlativo);
@@ -302,35 +302,40 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 void recibir_suscripcion(t_mensaje* mensaje){
 
 	t_suscripcion* mensaje_suscripcion = malloc(sizeof(t_suscripcion));
+	mensaje_suscripcion -> id_proceso  = malloc(sizeof(char*));
 
 	mensaje_suscripcion 			   = deserealizar_suscripcion(mensaje -> payload);
+	op_code cola_a_suscribir		   = mensaje_suscripcion -> cola_a_suscribir;
 	t_suscriptor* suscripcion    	   = armar_suscripcion_a_guardar(mensaje_suscripcion);
 
 	log_info(logger, "Se recibe una suscripción.");
-		switch (mensaje_suscripcion -> cola_a_suscribir) {
+
+		switch (cola_a_suscribir) {
 			 case GET_POKEMON:
-				suscribir_a_cola(lista_suscriptores_get, suscripcion, mensaje_suscripcion -> cola_a_suscribir);
+				suscribir_a_cola(lista_suscriptores_get, suscripcion, cola_a_suscribir);
 				break;
 			 case CATCH_POKEMON:
-				suscribir_a_cola(lista_suscriptores_catch, suscripcion, mensaje_suscripcion -> cola_a_suscribir);
+				suscribir_a_cola(lista_suscriptores_catch, suscripcion, cola_a_suscribir);
 				break;
 			 case LOCALIZED_POKEMON:
-				suscribir_a_cola(lista_suscriptores_localized, suscripcion, mensaje_suscripcion -> cola_a_suscribir);
+				suscribir_a_cola(lista_suscriptores_localized, suscripcion, cola_a_suscribir);
 				break;
 			 case CAUGHT_POKEMON:
-				suscribir_a_cola(lista_suscriptores_caught, suscripcion, mensaje_suscripcion -> cola_a_suscribir);
+				suscribir_a_cola(lista_suscriptores_caught, suscripcion, cola_a_suscribir);
 				break;
 			 case APPEARED_POKEMON:
-				suscribir_a_cola(lista_suscriptores_appeared,suscripcion, mensaje_suscripcion -> cola_a_suscribir);
+				suscribir_a_cola(lista_suscriptores_appeared,suscripcion, cola_a_suscribir);
 				break;
 			 case NEW_POKEMON:
-				suscribir_a_cola(lista_suscriptores_new, suscripcion, mensaje_suscripcion -> cola_a_suscribir);
+				suscribir_a_cola(lista_suscriptores_new, suscripcion, cola_a_suscribir);
 				break;
 			 default:
 				log_info(logger, "Ingrese un codigo de operacion valido");
 				break;
 		 }
 
+	 free(suscripcion -> emisor);
+	 free(mensaje_suscripcion -> id_proceso);
 	 free(mensaje_suscripcion);
 	 free(suscripcion);
 
@@ -338,6 +343,7 @@ void recibir_suscripcion(t_mensaje* mensaje){
 
 t_suscriptor* armar_suscripcion_a_guardar(t_suscripcion* mensaje_suscripcion){
 	t_suscriptor* nueva_suscripcion = malloc(sizeof(t_suscriptor));
+	nueva_suscripcion -> emisor 	= malloc(sizeof(char*));
 	nueva_suscripcion -> emisor     = mensaje_suscripcion -> id_proceso;
 	nueva_suscripcion -> socket     = mensaje_suscripcion -> socket;
 	nueva_suscripcion -> temporal   = mensaje_suscripcion -> tiempo_suscripcion;
@@ -347,10 +353,36 @@ t_suscriptor* armar_suscripcion_a_guardar(t_suscripcion* mensaje_suscripcion){
 //Ver de agregar threads.
 void suscribir_a_cola(t_list* lista_suscriptores, t_suscriptor* suscripcion, op_code cola_a_suscribir){
 
-	log_info(logger, "EL cliente fue suscripto a la cola de mensajes:%s.", (char*)(cola_a_suscribir));
+	//esto es solo para probar, una vez que funciones se saca
+	char* cola;
+	switch(cola_a_suscribir){
+		case GET_POKEMON:
+			cola = "cola get";
+			break;
+		case CATCH_POKEMON:
+			cola = "cola catch";
+			break;
+		case LOCALIZED_POKEMON:
+			cola = "cola localized";
+			break;
+		case CAUGHT_POKEMON:
+			cola = "cola caught";
+			break;
+		case APPEARED_POKEMON:
+			cola = "cola appeared";
+			break;
+		case NEW_POKEMON:
+			cola = "cola new";
+			break;
+		default:
+			log_error(logger, "Se desconoce la cola a suscribir.");
+			break;
+	}
 
+	log_info(logger, "EL cliente fue suscripto a la cola de mensajes: %s.", cola);
+	list_add(lista_suscriptores, suscripcion);
 	//Nombre malisimo, hay que revisar.
-	informar_mensajes_previos(suscripcion,cola_a_suscribir);
+	//informar_mensajes_previos(suscripcion,cola_a_suscribir);
 
 
 	bool es_la_misma_suscripcion(void* una_suscripcion){

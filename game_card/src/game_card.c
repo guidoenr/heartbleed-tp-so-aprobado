@@ -525,14 +525,16 @@ void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
 	buffer -> stream = malloc(buffer -> size);
 	buffer -> stream = pokemon;
 	log_info(logger,"Armando paquete New_Pokemon");
-
+	//TAMBIEN HAY QUE LLENAR EL CAMPO DE ID DEL PAQUETE
 	t_paquete* paquete = malloc(sizeof(t_paquete));
 	paquete -> codigo_operacion = NEW_POKEMON;
 	paquete -> buffer = buffer;
-
+	//HABRIA QUE DARLE UN VALOR AL SIZE SERIALIZADO
 	uint32_t size_serializado;
 	void* stream = serializar_paquete(paquete, &size_serializado);
 	log_info(logger,"Paquete serializado con tamaño :%d",size_serializado);
+	//EN VEZ DE SERIALIZARLO ACA PODES USAR LA FUNCION ENVIAR_MENSAJE
+	//DEL UTILS QUE YA TE LO SERIALIZA ADENTRO.
 	send(socket_cliente, stream, size_serializado, 0);
 	log_info(logger,"Paquete enviado");
 	//free(buffer -> stream);

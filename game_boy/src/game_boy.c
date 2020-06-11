@@ -213,7 +213,7 @@ void armar_mensaje_suscripcion(char * parametros[], t_suscripcion * a_enviar) {
 
    //Esto esta setteado, hay que adaptarlo.
   a_enviar -> tiempo_suscripcion = (uint32_t)parametros[3];
-  //hay que pensar como agregar el tiempo de suscripcion para el caso de game_boy
+
 }
 
 
@@ -222,7 +222,7 @@ void armar_mensaje_get_pokemon(char * parametros[], t_get_pokemon * a_enviar) {
   if(parametros[4] != NULL ){
 	  a_enviar -> id_mensaje = (uint32_t) parametros[4];
   } else {
-	  a_enviar -> id_mensaje = (uint32_t)0;
+	  a_enviar -> id_mensaje = 0;
   }
 }
 
