@@ -35,6 +35,7 @@ void iniciar_semaforos(){
     sem_init(&semaforo, 0, 1);
     sem_init(&mutex_id_correlativo,0,1);
 }
+//
 
 void destruir_semaforos(){
 	sem_destroy(&semaforo);
@@ -132,7 +133,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	t_paquete* msg = malloc(sizeof(t_paquete));
 	t_ack* confirmacion_mensaje = malloc(sizeof(t_ack));
 
-	log_info(logger,"Codigo de operacion %d",cod_op);
+	log_info(logger,"Codigo de operacion %d",(op_code) cod_op);
 	msg = recibir_mensaje(cliente_fd, &size);
 
 	switch (cod_op) {
@@ -196,18 +197,29 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 }
 
 void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size) {
-	//t_paquete* paquete = malloc(sizeof(t_paquete));
-	//Se recibe un paquete enviado por otro modulo
+
 	void* buffer;
 	log_info(logger, "Recibiendo mensaje.");
 	sem_wait(&semaforo);
+
 	recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
-	log_info(logger, "Tamano de paquete recibido: %d", *size);
+
+	log_info(logger, "Tamano de paquete recibido: %s", size);
+
 	buffer = malloc(*size);
+
 	recv(socket_cliente, buffer, *size, MSG_WAITALL);
+
 	sem_post(&semaforo);
+
 	log_info(logger, "Mensaje recibido: %s", buffer);
-    return buffer;
+
+
+	t_paquete* paquete = malloc(sizeof(t_paquete));
+
+	paquete = deserealizar_paquete(buffer,size);
+
+    return paquete;
 }
 
 void agregar_mensaje(uint32_t cod_op, uint32_t size, t_paquete* paquete, uint32_t socket_cliente){

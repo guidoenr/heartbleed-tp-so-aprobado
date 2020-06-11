@@ -15,18 +15,24 @@ int main(void) {
 
 	int socket_br;
 
-	//conectarse(int main(void) socket_br);
-
-	iniciarTallGrass();
+	conectarse(socket_br);
+	//iniciarTallGrass();
 
 	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
 	device->cantidad= 1;
 	device->id_mensaje= 124;
-	device->pokemon= "device";
+	device->pokemon= "luken";
 	device->posicion[0]= 16;
 	device->posicion[1] = 51;
 
 
+	//void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
+
+	t_appeared_pokemon* deviceAP = armar_appeared(device);
+
+	enviar_mensaje(APPEARED_POKEMON,deviceAP,socket_br,sizeAppearedPokemon(deviceAP));
+
+	//char* punto_montaje = config->punto_montaje_tallgrass;
 
 	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
 	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
@@ -98,9 +104,7 @@ void suscribirse_a(op_code cola) {
 
 	free(suscripcion -> id_proceso);
 	free(suscripcion);
-	//recibir el mensaje del broker TODO
 
-	//duda serve_client? process_request? crear hilo para atender solicitud? ayuda plis TODO
 
 }
 
@@ -111,7 +115,7 @@ t_config_game_card* leer_config() {
 
 	t_config_game_card* config_game_card = malloc(sizeof(t_config_game_card));
 
-	t_config_game_card* config = config_create("Debug/game_card.config");
+	t_config_game_card* config = config_create("game_card.config");
 
 	config_game_card -> tiempo_reintento_conexion = config_get_int_value(config, "TIEMPO_DE_REINTENTO_CONEXION");
 	config_game_card -> tiempo_reintento_operacion = config_get_int_value(config, "TIEMPO_DE_REINTENTO_OPERACION");
@@ -242,7 +246,7 @@ void crearPokemon(t_new_pokemon* newPoke,int size){
 
 	fclose(file);
 
-	cerrarArchivo(metaPath);
+	unlock_file(metaPath);
 
 }
 int tamanio_de_metadata(t_metadata metadata){
@@ -311,13 +315,14 @@ void crearBitmap(char* path){
 	t_metadata fileSystemMetadata = leerMetadata(concatenar(path,"/Metadata/Metadata.bin"));
 
 	int blocks = fileSystemMetadata.blocks;
-	int bitarraySize = blocks/8; //porque es en bits, no bytes 5192/8 = 649.
-								 // el array quedaria de 5192 posiciones , pero de tamaño 649
 
-	t_bitarray* bitarray = bitarray_create_with_mode(bitarray, bitarraySize , LSB_FIRST);
+	int size_in_bytes = 8 / blocks;
 
+	char* bytes = calloc(size_in_bytes, sizeof(char));
 
-	log_info(logger,"Se creo el bitarray de %d posiciones, con un tamaño de %d bytes",blocks,bitarraySize);
+	t_bitarray* bitarray = bitarray_create_with_mode(bytes, size_in_bytes, LSB_FIRST);
+
+	log_info(logger,"Se creo el bitarray de %d posiciones, con un tamaño de %d bytes",blocks,size_in_bytes);
 
 	FILE* file = fopen(realPath,"wb");
 
@@ -353,7 +358,7 @@ bool isOpen(char* path){
 		return fileMeta.open == 'Y';
 }
 
-void abrirArchivo(char* path){
+void lock_file(char* path){
 	FILE* f = fopen(path,"wb");
 	t_file_metadata fileMeta;
 	fileMeta.open = 'Y';
@@ -361,7 +366,7 @@ void abrirArchivo(char* path){
 	fclose(f);
 }
 
-void cerrarArchivo(char* path){
+void unlock_file(char* path){
 	FILE* f = fopen(path,"wb");
 		t_file_metadata fileMeta;
 		fileMeta.open = 'N';
@@ -433,14 +438,20 @@ void funcionHiloNewPokemon(t_new_pokemon* new_pokemon,int socket){
 	t_appeared_pokemon* appeared_pokemon = armar_appeared(new_pokemon);
 
 	enviar_appeared_pokemon(appeared_pokemon,socket);
+	free(appeared_pokemon->id_mensaje);
+	free(appeared_pokemon->id_mensaje_correlativo);
+	free(appeared_pokemon->pokemon);
+	free(appeared_pokemon->posicion);
 
 	char* path = obtenerPathMetaFile(new_pokemon);
-	cerrarArchivo(path);
+	unlock_file(path);
 
 }
 
 t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
-		t_appeared_pokemon* appeared_pokemon;
+
+		t_appeared_pokemon* appeared_pokemon = malloc(sizeof(t_appeared_pokemon));
+
 		appeared_pokemon->posicion[0] = new_pokemon->posicion[0];
 		appeared_pokemon->posicion[1] = new_pokemon->posicion[1];
 		appeared_pokemon->pokemon = new_pokemon->pokemon;
@@ -493,7 +504,7 @@ void verificarAperturaPokemon(t_new_pokemon* newpoke,int socket){
 	} else {
 
 		log_info(logger,"Se puede acceder al pokemon %s",newpoke->pokemon);
-		abrirArchivo(path);
+		lock_file(path);
 
 		}
 	}

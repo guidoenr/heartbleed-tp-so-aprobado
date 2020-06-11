@@ -15,28 +15,83 @@ void iniciar_logger(char* file, char* program_name) {
 	}
 }
 
+//typedef struct {
+//	op_code codigo_operacion;
+//	t_buffer* buffer;
+//	uint32_t id_mensaje;
+//	uint32_t id_mensaje_correlativo;
+//}t_paquete;
+
+
 void* serializar_paquete(t_paquete* paquete, uint32_t* bytes) {
-	uint32_t malloc_size = paquete -> buffer -> size + sizeof(op_code) + sizeof(uint32_t);
+
+	uint32_t malloc_size = paquete -> buffer -> size + sizeof(op_code) + sizeof(uint32_t) + sizeof(uint32_t);
+	(*bytes) = malloc_size; //tamaño del paquete
+
+
 	void* stream = malloc(malloc_size);
 	uint32_t offset = 0;
+			//RECIBE 		//DE DONDE COPIAS
+
+	memcpy(stream+offset, bytes, sizeof(uint32_t));
+	offset += sizeof(uint32_t);
 
 	memcpy(stream+offset, &(paquete -> codigo_operacion), sizeof(paquete -> codigo_operacion));
 	offset += sizeof(paquete -> codigo_operacion);
+
+	memcpy(stream+offset, &(paquete -> codigo_operacion), sizeof(paquete -> codigo_operacion));
+	offset += sizeof(paquete -> codigo_operacion);
+
+
+	memcpy(stream+offset,&(paquete->id_mensaje),sizeof(uint32_t));
+	offset += sizeof(uint32_t);
+
+	memcpy(stream+offset,&(paquete->id_mensaje_correlativo),sizeof(uint32_t));
+	offset += sizeof(uint32_t);
+
 	memcpy(stream + offset, &(paquete -> buffer -> size), sizeof(paquete -> buffer -> size));
 	offset += sizeof(paquete -> buffer -> size);
+
 	memcpy(stream + offset, paquete -> buffer -> stream, paquete -> buffer -> size);
 	offset += paquete -> buffer -> size;
 
-	(*bytes) = malloc_size;
 
 
-    typeof(paquete->buffer->stream) typeof_paquete = paquete->buffer->stream; // we ni me lo muestra
 	log_info(logger, "bytes: %d", *bytes);
 	log_info(logger, "cod op a enviar %d", paquete -> codigo_operacion);
-	log_info(logger, "tam a enviar %d", paquete -> buffer -> size);
-	log_info(logger, "mensaje a enviar %s", (char*) typeof_paquete);
+	log_info(logger, "tam a enviar %d", malloc_size);
+
 
 	return stream;
+}
+
+
+t_paquete* deserealizar_paquete(void* stream_recibido, uint32_t* bytes){
+
+	t_paquete* paquete_deserializado = malloc(sizeof(t_paquete));
+
+	uint32_t offset=0;
+
+	memcpy( bytes ,stream_recibido+offset,sizeof(uint32_t));
+	offset+= sizeof(uint32_t);
+
+	memcpy(	&(paquete_deserializado->codigo_operacion),stream_recibido+offset,sizeof(op_code));
+	offset+= sizeof(op_code);
+
+	memcpy(&(paquete_deserializado->id_mensaje),stream_recibido+offset,sizeof(uint32_t));
+	offset+= sizeof(uint32_t);
+
+	memcpy(&(paquete_deserializado->id_mensaje_correlativo),stream_recibido+offset,sizeof(uint32_t));
+	offset+= sizeof(uint32_t);
+
+	memcpy( &(paquete_deserializado->buffer),stream_recibido+offset,sizeof(paquete_deserializado->buffer->size));
+	offset+= sizeof(paquete_deserializado->buffer->size);
+
+
+	log_info(logger,"Se recibio todo esto: %d %d %d",paquete_deserializado->codigo_operacion,paquete_deserializado->id_mensaje,paquete_deserializado->id_mensaje_correlativo);
+
+	return paquete_deserializado;
+
 }
 
 uint32_t crear_conexion(char *ip, char* puerto) {
@@ -62,27 +117,40 @@ uint32_t crear_conexion(char *ip, char* puerto) {
 	return socket_cliente;
 }
 
-void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
+void enviar_mensaje(op_code codigo_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
 	t_buffer* buffer = malloc(sizeof(t_buffer));
 
-	buffer -> size = size_mensaje;
+	buffer -> size 	 = size_mensaje;
 	buffer -> stream = malloc(buffer -> size);
 	buffer -> stream = mensaje;
 	log_info(logger,"Armando paquete");
 
 	t_paquete* paquete = malloc(sizeof(t_paquete));
-	paquete -> codigo_operacion = cod_op;
-	paquete -> buffer = buffer;
+	paquete -> buffer = malloc(size_mensaje);
 
-	uint32_t size_serializado;
-	void* stream = serializar_paquete(paquete, &size_serializado);
-	log_info(logger,"Paquete serializado con tamaño :%d",size_serializado);
-	send(socket_cliente, stream, size_serializado, 0);
+	paquete -> codigo_operacion = codigo_op;
+	paquete -> buffer -> size = buffer -> size;
+	paquete -> buffer -> stream = buffer -> stream;
+
+	uint32_t* size_serializado;
+	void* stream = serializar_paquete(paquete, size_serializado);
+	log_info(logger,"Paquete serializado con tamaño :%d",(*size_serializado));
+
+
+	send(socket_cliente, stream, (*size_serializado) , 0);
+
+
+
+
+
 	log_info(logger,"Paquete enviado");
 	free(buffer -> stream);
 	free(buffer);
 	free(paquete);
 	free(stream);
+	free(paquete->buffer->stream);
+	free(paquete->buffer);
+
 }
 
 /*void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size) {
