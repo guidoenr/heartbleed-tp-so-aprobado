@@ -252,12 +252,20 @@ void suscribirme_a_colas() {
 
 //TODO CHEQUEAR, robado de game_card :p
 void suscribirse_a(op_code cola) {
-	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
-	char* suscripcion = string_new(); // se necesita free?
-	string_append(&suscripcion, "Subscription from team to: ");
-	string_append(&suscripcion, (char*) cola);
-	uint32_t size = sizeof(suscripcion) + 1;
-	enviar_mensaje(SUBSCRIPTION, suscripcion, socket, size);
+	uint32_t socket 			      = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	t_suscripcion* suscripcion 		  = malloc(sizeof(t_suscripcion));
+	suscripcion -> id_proceso 		  = malloc(sizeof(char*));
+	uint32_t tamanio_suscripcion	  = sizeof(t_suscripcion);
+
+	suscripcion -> cola_a_suscribir   = cola;
+	suscripcion -> id_proceso		  = "1"; //ESTE VALOR SE SACA DE CONFIG
+	suscripcion -> socket 		      = socket;
+	suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
+
+	enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
+
+	free(suscripcion -> id_proceso);
+	free(suscripcion);
 }
 //TODO CHEQUEAR, robado de game_card :p
 void conectarse(int socket) {

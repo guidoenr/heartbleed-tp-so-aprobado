@@ -83,16 +83,29 @@ void suscribirme_a_colas() {
 	suscribirse_a(GET_POKEMON);
 }
 
-void suscribirse_a(op_code una_cola) {
-	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
-	char* msgSub = concatenar("Subscription FROM game_card to: ",(char*) una_cola);
-	uint32_t size = sizeof(msgSub) + 1;
-	enviar_mensaje(SUBSCRIPTION, msgSub ,socket,size);
+void suscribirse_a(op_code cola) {
+	uint32_t socket 			      = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	t_suscripcion* suscripcion 		  = malloc(sizeof(t_suscripcion));
+	suscripcion -> id_proceso 		  = malloc(sizeof(char*));
+	uint32_t tamanio_suscripcion	  = sizeof(t_suscripcion);
 
+	suscripcion -> cola_a_suscribir   = cola;
+	suscripcion -> id_proceso		  = "1"; //ESTE VALOR SE SACA DE CONFIG
+	suscripcion -> socket 		      = socket;
+	suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
+
+	enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
+
+	free(suscripcion -> id_proceso);
+	free(suscripcion);
 	//recibir el mensaje del broker TODO
 
 	//duda serve_client? process_request? crear hilo para atender solicitud? ayuda plis TODO
+
 }
+
+
+
 
 t_config_game_card* leer_config() {
 
