@@ -18,17 +18,18 @@ int main(void) {
 	//conectarse(socket_br);
 	iniciarTallGrass();
 
-	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
-	device->cantidad= 1;
-	device->id_mensaje= 124;
-	device->pokemon= "device";
-	device->posicion[0]= 16;
-	device->posicion[1] = 51;
+//	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
+//	device->cantidad= 1;
+//	device->id_mensaje= 124;
+//	device->pokemon= "device";
+//	device->posicion[0]= 16;
+//	device->posicion[1] = 51;
 
-	funcionHiloNewPokemon(device, socket_br);
+//	funcionHiloNewPokemon(device, socket_br);
+//
+//	free(device);
 
-	free(device);
-
+	printf(buscarBlockLibre());
 	//mostrarBitmap(10);
 
 	//void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
@@ -310,6 +311,7 @@ char* buscarBlockLibre(){ //TODO, EL BITARRAY EN UN FILE? PARA QUE
 
 	int blockLibre;
 
+	bitarray_set_bit(bitarray,0);
 	bitarray_set_bit(bitarray,1);
 	bitarray_set_bit(bitarray,2);
 	bitarray_set_bit(bitarray,3);
@@ -317,9 +319,10 @@ char* buscarBlockLibre(){ //TODO, EL BITARRAY EN UN FILE? PARA QUE
 	bitarray_set_bit(bitarray,5);
 
 	for(int i=0; i<= 5192 ; i++){
-		if (bitarray_test_bit(bitarray,i) != true){
-			blockLibre = i + 1;				//porque el array arranca en 0
 
+		if (bitarray_test_bit(bitarray,i) != true){
+
+			blockLibre = i + 1;				//porque el array arranca en 0
 			break;
 		} else {
 				log_info(logger,"No hay mas blocks libres ,kpo");
