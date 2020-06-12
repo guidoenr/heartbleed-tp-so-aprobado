@@ -95,5 +95,6 @@ bool isOpen(char* path);
 bool isDir(const char* name);
 bool existeElFileSystem(char* puntoMontaje);
 t_list* asignarBlocks(t_list* lista);
-t_file_metadata inicializarPokemon(t_new_pokemon* newPoke);
-char buscarBlockLibre();
+void inicializarPokemon(t_new_pokemon* newPoke);
+char* buscarBlockLibre();
+char* posicion_into_string(t_new_pokemon* newpoke);

@@ -17,17 +17,20 @@ int main(void) {
 
 	//conectarse(socket_br);
 	iniciarTallGrass();
-//
-//	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
-//	device->cantidad= 1;
-//	device->id_mensaje= 124;
-//	device->pokemon= "luken";
-//	device->posicion[0]= 16;
-//	device->posicion[1] = 51;
-//
-//	free(device);
 
-	mostrarBitmap(10);
+	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
+	device->cantidad= 1;
+	device->id_mensaje= 124;
+	device->pokemon= "device";
+	device->posicion[0]= 16;
+	device->posicion[1] = 51;
+
+	funcionHiloNewPokemon(device, socket_br);
+
+	free(device);
+
+	//mostrarBitmap(10);
+
 	//void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
 
 	//t_appeared_pokemon* deviceAP = armar_appeared(device);
@@ -225,10 +228,16 @@ void crearPokemon(t_new_pokemon* newPoke){
 	t_file_metadata metadata;
 	metadata.blocks = list_create();
 
-	metadata = inicializarPokemon(newPoke);
+	asignarBlocks(&metadata.blocks);
+
+	metadata.directory = 'N';
+	metadata.open = 'N';
+	metadata.size = 12; //TODO Y ESTO?
+
+	escribirEnBlocks(metadata,newPoke);
+
 
 	FILE* file = fopen(metaPath,"wb");
-
 
 	fwrite(&metadata,sizeof(tamanio_de_file_metadata(metadata)),1,file);
 
@@ -238,23 +247,50 @@ void crearPokemon(t_new_pokemon* newPoke){
 
 }
 
-t_file_metadata inicializarPokemon(t_new_pokemon* newPoke){
+void escribirEnBlocks(t_file_metadata metadata,t_new_pokemon* newPoke){
 
-	t_file_metadata metadata;
-	metadata.blocks = asignarBlocks(metadata.blocks);
-	metadata.directory = 'N';
-	metadata.open = 'N';
-	metadata.size = 12; //TODO Y ESTO?
+	char* path = concatenar(config->punto_montaje_tallgrass,"/Blocks/");
+	char* blockPath = concatenar(path,metadata.blocks->head->data);
+	char* finalPath = concatenar(blockPath,".bin");
 
-	return metadata;
+	FILE* block = fopen(finalPath,"wb");
+
+	char* a_escribir = posicion_into_string(newPoke);
+	int i = 0;
+
+	while (fileSize(finalPath) <= 64){
+
+		while (i <= string_length(a_escribir)){
+
+					fwrite(&a_escribir[i],1,1,block);
+		}
+
+	}
+
 
 }
-//tengo 64 bytes ara escribir en un block
+
+inicializarPokemon(t_new_pokemon* newPoke){
+
+
+
+}
+
+char* posicion_into_string(t_new_pokemon* newpoke){
+
+	char* a = concatenar(newpoke->posicion[0],"-");
+	char* b = concatenar(a,newpoke->posicion[1]);
+	char* c = concatenar(b,"=");
+	char* d = concatenar(c,newpoke->cantidad);
+	char* e = concatenar(d,"\n");
+	return e;
+}
+//tengo 64 bytes para escribir en un block
 //un char pesa 1 byte
 
 t_list* asignarBlocks(t_list* lista){
 
-	char block = buscarBlockLibre();
+	char* block = buscarBlockLibre();
 
 	list_add(lista,block);
 
@@ -262,7 +298,7 @@ t_list* asignarBlocks(t_list* lista){
 }
 
 
-char buscarBlockLibre(){ //TODO, EL BITARRAY EN UN FILE? PARA QUE
+char* buscarBlockLibre(){ //TODO, EL BITARRAY EN UN FILE? PARA QUE
 
 	//TODO ACA ESTA HARDCODEADO EL BITARRAY JUSTO POR ESO, NO LO PUEDO LEER DEL ARCHIVO
 	//TODO leer desde el Bitmap.bin.
@@ -274,19 +310,24 @@ char buscarBlockLibre(){ //TODO, EL BITARRAY EN UN FILE? PARA QUE
 
 	int blockLibre;
 
-	for(int i=0; i< 5192 ; i++){
-		if ( bitarray_test_bit(bitarray,i) != true){
+	bitarray_set_bit(bitarray,1);
+	bitarray_set_bit(bitarray,2);
+	bitarray_set_bit(bitarray,3);
+	bitarray_set_bit(bitarray,4);
+	bitarray_set_bit(bitarray,5);
 
-			blockLibre = i + 1;  //porque el array arranca en 0
+	for(int i=0; i<= 5192 ; i++){
+		if (bitarray_test_bit(bitarray,i) != true){
+			blockLibre = i + 1;				//porque el array arranca en 0
 
+			break;
 		} else {
-
+				log_info(logger,"No hay mas blocks libres ,kpo");
 		}
 	}
 
 	//TODO guardar y grabar el bitarray en el Bitmap.bin
-
-	return (char) blockLibre;
+	return string_itoa(blockLibre);
 
 }
 int tamanio_de_metadata(t_metadata metadata){
@@ -555,7 +596,6 @@ void verificarAperturaPokemon(t_new_pokemon* newpoke,int socket){
 	char* path = obtenerPathMetaFile(newpoke);
 
 	if (isOpen(path)){
-
 		int secs = config->tiempo_retardo_operacion;
 		log_info(logger,"No se puede acceder a este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
 		sleep(secs);
@@ -563,7 +603,7 @@ void verificarAperturaPokemon(t_new_pokemon* newpoke,int socket){
 
 	} else {
 
-		log_info(logger,"Se puede acceder al pokemon %s",newpoke->pokemon);
+		log_info(logger,"Se puede acceder al pokemon, lockeo el archivo %s",newpoke->pokemon);
 		lock_file(path);
 
 		}
