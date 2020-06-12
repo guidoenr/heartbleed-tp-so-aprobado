@@ -20,27 +20,27 @@ int main(void) {
 	*/
 
 
-	t_pokemon_mapa* pikachu1 = malloc(sizeof(t_pokemon_mapa));
-	pikachu1 -> nombre = "Pikachu";
-	pikachu1 -> posicion[0] = 20;
-	pikachu1 -> posicion[1] = 6;
-	pikachu1 -> cantidad = 1;
-	list_add(mapa_pokemons, pikachu1);
+	t_pokemon_mapa* pikachu = malloc(sizeof(t_pokemon_mapa));
+	pikachu -> nombre = "Pikachu";
+	pikachu -> posicion[0] = 1;
+	pikachu -> posicion[1] = 1;
+	pikachu -> cantidad = 1;
+	list_add(mapa_pokemons, pikachu);
 	sem_post(&sem_cont_mapa);
 	sleep(5);
-	t_pokemon_mapa* pikachu2 = malloc(sizeof(t_pokemon_mapa));
-	pikachu2 -> nombre = "Pikachu";
-	pikachu2 -> posicion[0] = 2;
-	pikachu2 -> posicion[1] = 8;
-	pikachu2 -> cantidad = 1;
-	list_add(mapa_pokemons, pikachu2);
+	t_pokemon_mapa* squirtle = malloc(sizeof(t_pokemon_mapa));
+	squirtle -> nombre = "Squirtle";
+	squirtle -> posicion[0] = 9;
+	squirtle -> posicion[1] = 7;
+	squirtle -> cantidad = 1;
+	list_add(mapa_pokemons, squirtle);
 	sem_post(&sem_cont_mapa);
-	t_pokemon_mapa* charmander = malloc(sizeof(t_pokemon_mapa));
-	charmander -> nombre = "Charmander";
-	charmander -> posicion[0] = 6;
-	charmander -> posicion[1] = 6;
-	charmander -> cantidad = 1;
-	list_add(mapa_pokemons, charmander);
+	t_pokemon_mapa* onix = malloc(sizeof(t_pokemon_mapa));
+	onix -> nombre = "Onix";
+	onix -> posicion[0] = 2;
+	onix -> posicion[1] = 2;
+	onix -> cantidad = 1;
+	list_add(mapa_pokemons, onix);
 	sem_post(&sem_cont_mapa);
 
 	//pthread_join(hilo_algoritmo, NULL);
