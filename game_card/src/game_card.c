@@ -15,22 +15,24 @@ int main(void) {
 
 	int socket_br;
 
-	conectarse(socket_br);
-	//iniciarTallGrass();
+	//conectarse(socket_br);
+	iniciarTallGrass();
+//
+//	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
+//	device->cantidad= 1;
+//	device->id_mensaje= 124;
+//	device->pokemon= "luken";
+//	device->posicion[0]= 16;
+//	device->posicion[1] = 51;
+//
+//	free(device);
 
-	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
-	device->cantidad= 1;
-	device->id_mensaje= 124;
-	device->pokemon= "luken";
-	device->posicion[0]= 16;
-	device->posicion[1] = 51;
-
-
+	mostrarBitmap(10);
 	//void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
 
-	t_appeared_pokemon* deviceAP = armar_appeared(device);
+	//t_appeared_pokemon* deviceAP = armar_appeared(device);
 
-	enviar_mensaje(APPEARED_POKEMON,deviceAP,socket_br,sizeAppearedPokemon(deviceAP));
+	//enviar_mensaje(APPEARED_POKEMON,deviceAP,socket_br,sizeAppearedPokemon(deviceAP));
 
 	//char* punto_montaje = config->punto_montaje_tallgrass;
 
@@ -109,13 +111,11 @@ void suscribirse_a(op_code cola) {
 }
 
 
-
-
 t_config_game_card* leer_config() {
 
 	t_config_game_card* config_game_card = malloc(sizeof(t_config_game_card));
 
-	t_config_game_card* config = config_create("game_card.config");
+	t_config_game_card* config = config_create("Debug/game_card.config");
 
 	config_game_card -> tiempo_reintento_conexion = config_get_int_value(config, "TIEMPO_DE_REINTENTO_CONEXION");
 	config_game_card -> tiempo_reintento_operacion = config_get_int_value(config, "TIEMPO_DE_REINTENTO_OPERACION");
@@ -204,7 +204,7 @@ void crearMetadata(char* path){
 
 	t_metadata metadata;
 	metadata.blocksize = 64;
-	metadata.blocks = 10; // es 5192 pero no voy a crear miles de bin
+	metadata.blocks = 5192; // es 5192 pero no voy a crear miles de bin
 	metadata.magic = "TALL_GRASS";
 
 	int tam = tamanio_de_metadata(metadata);
@@ -217,36 +217,76 @@ void crearMetadata(char* path){
 
 }
 
-void crearPokemon(t_new_pokemon* newPoke,int size){
+void crearPokemon(t_new_pokemon* newPoke){
 
 	char* metaPath = obtenerPathMetaFile(newPoke);
 	char* dirPokemon = obtenerPathDirPokemon(newPoke);
 
-	if (existeDirectorio(dirPokemon)){
-		log_info(logger,"Existe el directorio de: %s",dirPokemon);
+	t_file_metadata metadata;
+	metadata.blocks = list_create();
 
-	} else {
-		mkdir(dirPokemon,0777);
-
-		//TODO el enunciado no se entiende nada.
-
-		log_info(logger,"Se creo el directorio del pokemon %s en: %s",newPoke->pokemon,dirPokemon);
-	}
+	metadata = inicializarPokemon(newPoke);
 
 	FILE* file = fopen(metaPath,"wb");
 
-	t_file_metadata meta;
-	meta.directory = 'Y';
-	meta.size = size;
-	meta.blocks[0] = newPoke->posicion[0];
-	meta.blocks[1] = newPoke->posicion[1];// TODO pero con idea ahora, hay que buscar blocks libres
-	meta.open = 'N';
 
-	fwrite(&meta,sizeof(tamanio_de_file_metadata(meta)),1,file);
+	fwrite(&metadata,sizeof(tamanio_de_file_metadata(metadata)),1,file);
 
 	fclose(file);
 
 	unlock_file(metaPath);
+
+}
+
+t_file_metadata inicializarPokemon(t_new_pokemon* newPoke){
+
+	t_file_metadata metadata;
+	metadata.blocks = asignarBlocks(metadata.blocks);
+	metadata.directory = 'N';
+	metadata.open = 'N';
+	metadata.size = 12; //TODO Y ESTO?
+
+	return metadata;
+
+}
+//tengo 64 bytes ara escribir en un block
+//un char pesa 1 byte
+
+t_list* asignarBlocks(t_list* lista){
+
+	char block = buscarBlockLibre();
+
+	list_add(lista,block);
+
+	return lista;
+}
+
+
+char buscarBlockLibre(){ //TODO, EL BITARRAY EN UN FILE? PARA QUE
+
+	//TODO ACA ESTA HARDCODEADO EL BITARRAY JUSTO POR ESO, NO LO PUEDO LEER DEL ARCHIVO
+	//TODO leer desde el Bitmap.bin.
+
+	int blocks = 5192;
+	int size_in_bytes = 8 / blocks;
+	char* bytes = calloc(size_in_bytes, sizeof(char));
+	t_bitarray* bitarray = bitarray_create_with_mode(bytes, size_in_bytes, LSB_FIRST);
+
+	int blockLibre;
+
+	for(int i=0; i< 5192 ; i++){
+		if ( bitarray_test_bit(bitarray,i) != true){
+
+			blockLibre = i + 1;  //porque el array arranca en 0
+
+		} else {
+
+		}
+	}
+
+	//TODO guardar y grabar el bitarray en el Bitmap.bin
+
+	return (char) blockLibre;
 
 }
 int tamanio_de_metadata(t_metadata metadata){
@@ -255,7 +295,8 @@ int tamanio_de_metadata(t_metadata metadata){
 }
 
 int tamanio_file_metadata(t_file_metadata fileMeta){
-	return sizeof(char) + sizeof(fileMeta.blocks) + sizeof(int) + sizeof(char); // TODO BLOCKS?
+	int listSize = list_size(fileMeta.blocks);
+	return sizeof(char) + listSize + sizeof(int) + sizeof(char);
 }
 
 t_metadata leerMetadata(char* path){
@@ -328,16 +369,35 @@ void crearBitmap(char* path){
 
 	fwrite(&bitarray,sizeof(t_bitarray),1,file);
 
+	bitarray_destroy(bitarray);
+	free(bytes);
 	fclose(file);
 
 }
 
-int estadoBitmap(char* path){
-	FILE* file = fopen(path,"rb");
-	int status;
-	fread(&status,sizeof(int),1,file);
-	fclose(file);
-	return status;
+void mostrarBitmap(){
+
+	char* path = concatenar(config->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
+
+	t_bitarray* bitarray;
+
+	FILE* f = fopen(path,"wb");
+
+
+	fread(&bitarray,649,1,f);
+	fclose(f);
+
+	for (int i =0; i<10;i++){
+		bool x = bitarray_test_bit(bitarray,i);
+		printf("%d",x);
+	}
+
+	bitarray_destroy(bitarray);
+}
+
+int bitarray_default_size(){
+	t_metadata metadata = leerMetadata(concatenar(config->punto_montaje_tallgrass,"/Metadata/Metadata.bin"));
+	return 8 / metadata.blocks;
 }
 
 bool isDirectory(char* path){
@@ -437,6 +497,7 @@ void funcionHiloNewPokemon(t_new_pokemon* new_pokemon,int socket){
 
 	t_appeared_pokemon* appeared_pokemon = armar_appeared(new_pokemon);
 
+
 	enviar_appeared_pokemon(appeared_pokemon,socket);
 	free(appeared_pokemon->id_mensaje);
 	free(appeared_pokemon->id_mensaje_correlativo);
@@ -464,9 +525,8 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 void verificarExistenciaPokemon(t_new_pokemon* newpoke){
 	punto_montaje = config->punto_montaje_tallgrass;
 
-	char* montaje = concatenar(punto_montaje,"/Files/");		  			  // esto va a cambiar con el tallgras, pero es un TODO para la entrega 21 maso
-	char* path = concatenar(montaje,newpoke->pokemon); 	  // DE TODAS FORMAS DEJO UNA ALGORITMIA FANTASTATICA
-
+	char* montaje = concatenar(punto_montaje,"/Files/");
+	char* path = concatenar(montaje,newpoke->pokemon);
 	if (existeDirectorio(path)){
 
 		log_info(logger,"Existe el pokemon %s en : %s",newpoke->pokemon,path);
@@ -477,7 +537,7 @@ void verificarExistenciaPokemon(t_new_pokemon* newpoke){
 		log_info(logger,"Se creo el directorio %s en %s",newpoke->pokemon,path);
 		char* metaPath = concatenar(path,"/Metadata.bin");
 
-		crearPokemon(newpoke,sizeNewPokemon(newpoke));
+		crearPokemon(newpoke);
 		log_info(logger,"Se creo el file_metadata de %s",newpoke->pokemon);
 	}
 

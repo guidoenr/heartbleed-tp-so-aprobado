@@ -45,7 +45,7 @@ typedef struct {
 typedef struct{
 	char directory;
 	int size;
-	int blocks[2]; //TODO - array dinamico?
+	t_list* blocks; //TODO - array dinamico?
 	char open;
 }t_file_metadata;
 
@@ -94,3 +94,6 @@ void conectarse(int socket);
 bool isOpen(char* path);
 bool isDir(const char* name);
 bool existeElFileSystem(char* puntoMontaje);
+t_list* asignarBlocks(t_list* lista);
+t_file_metadata inicializarPokemon(t_new_pokemon* newPoke);
+char buscarBlockLibre();
