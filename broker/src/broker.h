@@ -48,6 +48,18 @@ typedef struct {
   uint32_t socket; //Este dato es necesario? En teoría está en la suscripcion para mandar rta.
 } t_ack;
 
+typedef struct{
+	uint32_t libre;
+	uint32_t tamanio;
+	void* payload;
+}t_memoria_buddy;
+
+struct t_node{
+	t_memoria_buddy* bloque;
+	struct t_node *izquierda;
+	struct t_node *derecha;
+};
+
 t_list* cola_catch;
 t_list* cola_caught;
 t_list* cola_get;
@@ -62,7 +74,7 @@ t_list* lista_suscriptores_localized;
 t_list* lista_suscriptores_new;
 t_list* lista_suscriptores_appeared;
 
-void* memoria_cache;
+t_list* memoria_cache;
 t_config* config;
 t_config_broker* config_broker;
 t_log* logger;
@@ -119,7 +131,12 @@ t_list*		   encontrar_suscriptores	   (void);
 void 		   actualizar_suscriptores     (t_mensaje*);
 
 //Memoria
-void ubicar_particion_de_memoria  (void);
 void eliminar_particion_de_memoria(void);
 void compactar_memoria 			  (void);
 void guardar_en_memoria			  (t_mensaje*);
+//void firstFit(int blockSize,int processSize);
+uint32_t obtenerPotenciaDe2(uint32_t);
+struct t_node* crear_nodo(uint32_t);
+void arrancar_buddy();
+void asignar_nodo(struct t_node*, void*);
+uint32_t recorrer(struct t_node*,uint32_t ,void*);

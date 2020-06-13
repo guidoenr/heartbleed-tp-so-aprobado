@@ -68,7 +68,7 @@ void leer_config() {
 
 	config_broker = malloc(sizeof(t_config_broker));
 
-	config = config_create("broker.config");
+	config = config_create("Debug/broker.config");
 
 	if(config == NULL){
 		    	printf("No se pudo encontrar el path del config.");
@@ -661,15 +661,6 @@ void agregar_suscriptor_a_enviados_sin_confirmar(t_mensaje* mensaje_enviado, cha
 }
 
 //--------------MEMORIA-------------//
-void ubicar_particion_de_memoria(){
-	char* algoritmo_de_memoria = config_broker -> algoritmo_memoria;
-	if(string_equals_ignore_case(algoritmo_de_memoria, "BS")){
-		//ubicar_con_particiones_dinamicas();
-	} else {
-		//ubicar_con_buddy_system();
-	}
-}
-
 void eliminar_particion_de_memoria(){
 	char* algoritmo_de_reemplazo = config_broker -> algoritmo_reemplazo;
 	if(string_equals_ignore_case(algoritmo_de_reemplazo, "FF")){
@@ -689,19 +680,131 @@ void compactar_memoria(){
 void guardar_en_memoria(t_mensaje* mensaje){
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
-       /*
-        *buscarparticionlibre
-        ubicarla
-        */
+       uint32_t exponente = obtenerPotenciaDe2(sizeof(mensaje->payload));
+
 	}
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
-		/*       *chequear_algoritmo_particion -> buscarparticionlibre
-		 *        *chequear_algoritmo_reemplazo -> ubicarla   */
+		 //i
+		 //
+		 //int m = sizeof(tamanio_bloque) / sizeof(tamanio_proceso);
+		 //int n =1;
+
 	}
+	  uint32_t tamanio_bloque =config_broker ->size_min_memoria;
+      uint32_t tamanio_proceso = sizeof(mensaje->payload) + sizeof(uint32_t);
+	  //firstFit(blockSize,processSize);
 
 }
 
+uint32_t obtenerPotenciaDe2(uint32_t tamanio_proceso)
+{
+	uint32_t contador = 0 ;
+	while((2^contador) < tamanio_proceso){
+      contador ++;
+	}
+	return (2^contador) ;
+}
+
+
+struct t_node* crear_nodo(uint32_t tamanio)
+{
+  // Allocate memory for new node
+  struct t_node* node = (struct t_node*)malloc(sizeof(struct t_node));
+
+  // Assign data to this node
+  node -> bloque = malloc(sizeof(t_memoria_buddy));
+  node->bloque->tamanio = tamanio;
+  node->bloque->payload = NULL;
+  node->bloque-> libre = 1;
+
+  // Initialize left and right children as NULL
+  node->izquierda = NULL;
+  node->derecha = NULL;
+  return(node);
+}
+
+
+void arrancar_buddy(){
+	struct node *root = crear_nodo(config_broker ->size_memoria);
+	list_add(memoria_cache, root);
+}
+
+
+
+void asignar_nodo(struct t_node* node,void* payload){
+    node->bloque ->payload = payload;
+    node-> bloque->libre = 0;
+    list_add(memoria_cache, node);
+}
+
+
+uint32_t recorrer(struct t_node* nodo, uint32_t exponente, void* payload){
+    if(nodo == NULL) {
+        return 0;
+    }
+
+    if (nodo->bloque->tamanio == exponente && nodo->bloque->libre == 1) {
+        asignar_nodo(nodo, payload);
+        return 1;
+    }
+
+    if (nodo->izquierda == NULL) {
+        nodo->izquierda = crear_nodo(nodo->bloque->tamanio / 2);
+    }
+
+    if (nodo->izquierda->bloque->tamanio > exponente) {
+        return 0;
+    }
+
+    int asignado = recorrer(nodo->izquierda, exponente, payload);
+    if(asignado == 0) {
+    	if (nodo->derecha == NULL) {
+    	        nodo->derecha = crear_nodo(nodo->bloque->tamanio / 2);
+    	    }
+        asignado = recorrer(nodo->derecha,exponente, payload);
+    }
+
+    return asignado;
+}
+
+/*
+void firstFit(int blockSize[], int m,
+              int processSize[], int n)
+{
+    // Stores block id of the
+    // block allocated to a process
+    int allocation[n];
+
+    // Initially no block is assigned to any process
+    memset(allocation, -1, sizeof(allocation));
+
+    // pick each process and find suitable blocks
+    // according to its size ad assign to it
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < m; j++)
+        {
+        	     //13               4
+            if (blockSize[j] >= processSize[i])
+            {
+                // allocate block j to p[i] process
+                allocation[i] = j;
+
+                // Reduce available memory in this block.
+               ///si tengo algo menor a4 asignar 4, si no el tam_del proceso
+                blockSize[j] -= processSize[i];
+
+                break;
+            }
+        }
+    }
+
+
+}
+
+
+*/
 
 
 
