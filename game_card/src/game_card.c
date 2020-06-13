@@ -26,9 +26,6 @@ int main(void) {
 	device->posicion[1] = 51;
 
 	//funcionHiloNewPokemon(device, socket_br);
-	int tam = crearBitmap(config->punto_montaje_tallgrass);
-	t_bitarray* bitarray = obtenerBitmap(tam);
-	//mostrarBitarray(tam);
 
 
 	free(device);
@@ -278,10 +275,10 @@ void escribirEnBlocks(t_file_metadata metadata,t_new_pokemon* newPoke){
 
 char* posicion_into_string(t_new_pokemon* newpoke){
 
-	char* a = concatenar(newpoke->posicion[0],"-");
-	char* b = concatenar(a,newpoke->posicion[1]);
+	char* a = concatenar(string_itoa(newpoke->posicion[0]),"-");
+	char* b = concatenar(a,string_itoa(newpoke->posicion[1]));
 	char* c = concatenar(b,"=");
-	char* d = concatenar(c,newpoke->cantidad);
+	char* d = concatenar(c,string_itoa(newpoke->cantidad));
 	char* e = concatenar(d,"\n");
 	return e;
 }
