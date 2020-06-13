@@ -29,6 +29,9 @@ void iniciar_programa(){
 
 void reservar_memoria(){
 	memoria_cache = malloc(config_broker ->  size_memoria);
+	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
+		arrancar_buddy();
+	}
 }
 
 void iniciar_semaforos(){
@@ -680,8 +683,12 @@ void compactar_memoria(){
 void guardar_en_memoria(t_mensaje* mensaje){
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
-       uint32_t exponente = obtenerPotenciaDe2(sizeof(mensaje->payload));
-
+		uint32_t exponente = 0;
+	   if(sizeof(mensaje->payload) > config_broker->size_min_memoria)
+		   exponente = obtenerPotenciaDe2(sizeof(mensaje->payload));
+	   else
+		   exponente = obtenerPotenciaDe2(config_broker->size_min_memoria);
+      recorrer(memoria_cache,exponente, mensaje->payload);
 	}
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
