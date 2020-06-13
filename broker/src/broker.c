@@ -10,6 +10,8 @@ int main(void) {
 	enviar_mensajes(cola_appeared, lista_suscriptores_appeared);
 	enviar_mensajes(cola_new, lista_suscriptores_new);*/
 
+	//uint32_t thread = pthread_create(&hilo_mensaje, NULL, gestionar_mensaje, NULL);
+
 	terminar_programa(logger);
 	return 0;
 }
@@ -28,6 +30,8 @@ void iniciar_programa(){
 }
 
 void reservar_memoria(){
+	//La memoria en sí tiene que ser un void*
+	//La memoria_cache sería la lista auxiliar para esa memoria?
 	memoria_cache = malloc(config_broker ->  size_memoria);
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
 		arrancar_buddy();
@@ -36,13 +40,13 @@ void reservar_memoria(){
 
 void iniciar_semaforos(){
     sem_init(&semaforo, 0, 1);
-    sem_init(&mutex_id_correlativo,0,1);
+    sem_init(&mutex_id, 0, 1);
 }
-//
+
 
 void destruir_semaforos(){
 	sem_destroy(&semaforo);
-	sem_destroy(&mutex_id_correlativo);
+	sem_destroy(&mutex_id);
 }
 
 void crear_colas_de_mensajes(){
@@ -71,7 +75,7 @@ void leer_config() {
 
 	config_broker = malloc(sizeof(t_config_broker));
 
-	config = config_create("Debug/broker.config");
+	config = config_create("broker.config");
 
 	if(config == NULL){
 		    	printf("No se pudo encontrar el path del config.");
@@ -231,33 +235,25 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, t_paquete* paquete, uint32_
 	log_info(logger, "Socket_cliente: %d", socket_cliente);
 	log_info(logger, "Payload: %s", (char*) paquete);
 
-	t_mensaje* mensaje = malloc(sizeof(t_mensaje));
-	uint32_t nuevo_id;
-
-	if(paquete -> id_mensaje != 0){
-		paquete -> id_mensaje_correlativo = paquete -> id_mensaje;
-		mensaje -> id_correlativo 		  = mensaje -> id_mensaje;
-		nuevo_id						  = generar_id_univoco();
-		paquete -> id_mensaje 			  = nuevo_id;
-	} else {
-		nuevo_id = generar_id_univoco();
-		paquete -> id_mensaje 			  = nuevo_id;
-	}
+	t_mensaje* mensaje    = malloc(sizeof(t_mensaje));
+	uint32_t nuevo_id     = generar_id_univoco();
+	paquete -> id_mensaje = nuevo_id;
+	mensaje -> id_mensaje = nuevo_id;
 
 	//Este id habría que ver como pasarlo al id de un t_get por ejemplo.
 
-	mensaje -> payload 		       = paquete;
+	mensaje -> payload 		       = paquete -> buffer -> stream;
 	mensaje -> codigo_operacion    = cod_op;
 	mensaje -> suscriptor_enviado  = list_create();
 	mensaje -> suscriptor_recibido = list_create();
-	//mensaje -> id_correlativo = generar_id_univoco();
 
-	sem_post(&mutex_id_correlativo);
+
+	sem_post(&mutex_id);
 	send(socket_cliente, &(paquete -> id_mensaje) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
-	sem_post(&mutex_id_correlativo);
+	sem_post(&mutex_id);
 
-	//mensaje->id_mensaje = generar_id_univoco();
-	// En memori deberia guardarse solo el contenido y algunos id o referencia, no todo el mensaje.
+
+	// En memori deberia guardarse solo el contenido, no todo el mensaje.
 	guardar_en_memoria(mensaje);
 
 	sem_wait(&semaforo);
@@ -490,6 +486,18 @@ t_ack* deserealizar_ack(void* stream){
 	return acknowledgment;
 }
 
+/*Para team y game_card
+t_ack* armar_confirmacion_de_recepcion(t_paquete* paquete){
+	t_ack* confirmacion_mensaje = malloc(sizeof(t_ack));
+	confirmacion_mensaje -> id_proceso = malloc(sizeof(char*));
+	confirmacion_mensaje -> id_proceso = "3";//Este valor en realidad viene por config (para gamecard siempre 1)
+	confirmacion_mensaje -> id_mensaje = paquete -> id_mensaje;
+	confirmacion_mensaje -> tipo_mensaje = paquete -> codigo_operacion;
+	//Esta confirmacion despues se envia con la funcion enviar_ensaje con op_code 8 (ACK)
+	return confirmacion_mensaje;
+}*/
+
+
 //---------------------------MENSAJES---------------------------//
 
 //REVISAR
@@ -602,12 +610,17 @@ void borrar_mensajes_confirmados(op_code tipo_lista, t_list* cola_mensajes, t_li
 // REVISAR TAMBIÉN
 void eliminar_mensaje(void* mensaje){
 	t_mensaje* un_mensaje = mensaje;
-	//HAY QUE DESTRUIR LOS ELEMENTOS TAMBIEN? Son char*
-	list_destroy(un_mensaje -> suscriptor_enviado);
-	list_destroy(un_mensaje -> suscriptor_recibido);
+	list_destroy_and_destroy_elements(un_mensaje -> suscriptor_enviado, eliminar_suscriptor);
+	list_destroy_and_destroy_elements(un_mensaje -> suscriptor_recibido, eliminar_suscriptor);
 	free(un_mensaje -> payload);
 	free(un_mensaje);
 	free((t_mensaje*) mensaje);
+}
+
+void eliminar_suscriptor(void* un_suscriptor){
+	char* id_suscripto = un_suscriptor;
+	free(id_suscripto);
+	free((char*)un_suscriptor);
 }
 
 void eliminar_suscriptor_de_enviados_sin_confirmar(t_mensaje* mensaje, char* suscriptor){
@@ -679,16 +692,17 @@ void compactar_memoria(){
 
 }
 
-
+//Una vez guardado habría que actualizar que el campó del payload del mensaje sea un puntero a
+// la posición de la memoria_cache donde se encuentra el contenido del mensaje y su tamanio.
 void guardar_en_memoria(t_mensaje* mensaje){
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
 		uint32_t exponente = 0;
-	   if(sizeof(mensaje->payload) > config_broker->size_min_memoria)
-		   exponente = obtenerPotenciaDe2(sizeof(mensaje->payload));
+	   if(sizeof(mensaje -> payload) > config_broker -> size_min_memoria)
+		   exponente = obtenerPotenciaDe2(sizeof(mensaje -> payload));
 	   else
-		   exponente = obtenerPotenciaDe2(config_broker->size_min_memoria);
-      recorrer(memoria_cache,exponente, mensaje->payload);
+		   exponente = obtenerPotenciaDe2(config_broker -> size_min_memoria);
+	       recorrer(memoria_cache, exponente, mensaje -> payload);
 	}
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
@@ -698,8 +712,8 @@ void guardar_en_memoria(t_mensaje* mensaje){
 		 //int n =1;
 
 	}
-	  uint32_t tamanio_bloque =config_broker ->size_min_memoria;
-      uint32_t tamanio_proceso = sizeof(mensaje->payload) + sizeof(uint32_t);
+	  uint32_t tamanio_bloque  = config_broker -> size_min_memoria;
+      uint32_t tamanio_proceso = sizeof(mensaje -> payload) + sizeof(uint32_t);
 	  //firstFit(blockSize,processSize);
 
 }
@@ -721,27 +735,27 @@ struct t_node* crear_nodo(uint32_t tamanio)
 
   // Assign data to this node
   node -> bloque = malloc(sizeof(t_memoria_buddy));
-  node->bloque->tamanio = tamanio;
-  node->bloque->payload = NULL;
-  node->bloque-> libre = 1;
+  node -> bloque -> tamanio = tamanio;
+  node -> bloque -> payload = NULL;
+  node -> bloque -> libre = 1;
 
   // Initialize left and right children as NULL
-  node->izquierda = NULL;
-  node->derecha = NULL;
+  node -> izquierda = NULL;
+  node -> derecha = NULL;
   return(node);
 }
 
 
 void arrancar_buddy(){
-	struct node *root = crear_nodo(config_broker ->size_memoria);
+	struct node *root = crear_nodo(config_broker -> size_memoria);
 	list_add(memoria_cache, root);
 }
 
 
 
 void asignar_nodo(struct t_node* node,void* payload){
-    node->bloque ->payload = payload;
-    node-> bloque->libre = 0;
+    node -> bloque -> payload = payload;
+    node ->  bloque -> libre = 0;
     list_add(memoria_cache, node);
 }
 
@@ -756,20 +770,20 @@ uint32_t recorrer(struct t_node* nodo, uint32_t exponente, void* payload){
         return 1;
     }
 
-    if (nodo->izquierda == NULL) {
-        nodo->izquierda = crear_nodo(nodo->bloque->tamanio / 2);
+    if (nodo -> izquierda == NULL) {
+        nodo -> izquierda = crear_nodo(nodo -> bloque -> tamanio / 2);
     }
 
-    if (nodo->izquierda->bloque->tamanio > exponente) {
+    if (nodo -> izquierda -> bloque -> tamanio > exponente) {
         return 0;
     }
 
-    int asignado = recorrer(nodo->izquierda, exponente, payload);
+    int asignado = recorrer(nodo -> izquierda, exponente, payload);
     if(asignado == 0) {
-    	if (nodo->derecha == NULL) {
-    	        nodo->derecha = crear_nodo(nodo->bloque->tamanio / 2);
+    	if (nodo -> derecha == NULL) {
+    	        nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio / 2);
     	    }
-        asignado = recorrer(nodo->derecha,exponente, payload);
+        asignado = recorrer(nodo -> derecha,exponente, payload);
     }
 
     return asignado;

@@ -33,6 +33,13 @@ typedef struct {
 } t_suscripcion;
 
 typedef struct {
+  uint32_t id_mensaje;
+  op_code  tipo_mensaje;
+  char*    id_proceso;
+  uint32_t socket; //Este dato es necesario? En teoría está en la suscripcion para mandar rta.
+} t_ack;
+
+typedef struct {
 	uint32_t id_mensaje;
 	char* pokemon;
 	uint32_t posicion[2];

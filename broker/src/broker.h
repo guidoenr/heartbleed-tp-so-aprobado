@@ -1,12 +1,12 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<commons/log.h>
-#include<commons/string.h>
-#include<commons/config.h>
-#include<readline/readline.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <commons/log.h>
+#include <commons/string.h>
+#include <commons/config.h>
+#include <readline/readline.h>
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 #include <semaphore.h>
-#include <time.h>
+
 
 typedef struct {
     uint32_t size_memoria;
@@ -41,18 +41,11 @@ typedef struct {
 	uint32_t base;
 } t_memoria_dinamica;
 
-typedef struct {
-  uint32_t id_mensaje;
-  op_code  tipo_mensaje;
-  char*    id_proceso;
-  uint32_t socket; //Este dato es necesario? En teoría está en la suscripcion para mandar rta.
-} t_ack;
-
 typedef struct{
 	uint32_t libre;
 	uint32_t tamanio;
 	void* payload;
-}t_memoria_buddy;
+} t_memoria_buddy;
 
 struct t_node{
 	t_memoria_buddy* bloque;
@@ -74,13 +67,14 @@ t_list* lista_suscriptores_localized;
 t_list* lista_suscriptores_new;
 t_list* lista_suscriptores_appeared;
 
+//void* memoria_cache;
 t_list* memoria_cache;
 t_config* config;
 t_config_broker* config_broker;
 t_log* logger;
 
 sem_t semaforo;
-sem_t mutex_id_correlativo;
+sem_t mutex_id;
 
 //Funciones generales
 void iniciar_programa			 (void);
@@ -129,6 +123,9 @@ t_suscriptor*  armar_suscripcion_a_guardar (t_suscripcion*);
 void 		   destruir_suscripcion 	   (void*);
 t_list*		   encontrar_suscriptores	   (void);
 void 		   actualizar_suscriptores     (t_mensaje*);
+void 		   eliminar_suscriptor		   (void*);
+//Para team y game_card
+t_ack* 		   armar_confirmacion_de_recepcion(t_paquete*);
 
 //Memoria
 void eliminar_particion_de_memoria(void);
