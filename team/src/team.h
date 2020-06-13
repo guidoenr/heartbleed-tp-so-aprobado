@@ -11,7 +11,8 @@
 // agregar un id 0 al mensaje a mandar al broker
 
 typedef struct {
-	pthread_t* hilo;
+	uint32_t id;
+	pthread_t hilo;
 	sem_t sem_binario;
 	uint32_t posicion[2];
 	t_list* pokemons;
@@ -111,14 +112,16 @@ void planificar_sjf_cd(t_pedido_captura*);
 void desalojar_ejecucion();
 void ordenar_ready_segun_estimacion();
 void* ejecutar_algoritmo();
-void crear_hilo_planificar_entrenadores();
 void resolver_deadlocks_fifo_o_sjf();
 void resolver_deadlocks_rr();
 
-// ejecucion
+// hilos
 pthread_t hilo_algoritmo;
-pthread_t hilo_entrenadores;
+pthread_t hilo_planificar;
 void crear_hilo_segun_algoritmo();
+void crear_hilo_planificar_entrenadores();
+void terminar_hilos();
+void terminar_hilos_entrenadores();
 
 
 // estados
@@ -166,7 +169,6 @@ void destruir_pokemon_mapa(void*);
 void matchear_pokemon_con_entrenador(t_pedido_captura*);
 void eliminar_pokemon_de_mapa(t_pokemon_mapa*);
 t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo();
-bool es_el_mismo_pedido_intercambio(t_pedido_intercambio*, t_pedido_intercambio*);
 
 // objetivo
 t_list* objetivo_global;
