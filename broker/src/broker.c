@@ -702,7 +702,13 @@ void guardar_en_memoria(t_mensaje* mensaje){
 		   exponente = obtenerPotenciaDe2(sizeof(mensaje -> payload));
 	   else
 		   exponente = obtenerPotenciaDe2(config_broker -> size_min_memoria);
-	       recorrer(memoria_cache, exponente, mensaje -> payload);
+
+	  uint32_t pudoGuardarlo = recorrer(memoria_cache, exponente, mensaje -> payload);
+	  if(pudoGuardarlo)
+	  {
+		  log_info(logger,"no hay memoria suficiente para guardarlo");
+		  exit(-7);
+	  }
 	}
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
