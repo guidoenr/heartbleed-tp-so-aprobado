@@ -18,19 +18,20 @@ int main(void) {
 	//conectarse(socket_br);
 	iniciarTallGrass();
 
-//	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
-//	device->cantidad= 1;
-//	device->id_mensaje= 124;
-//	device->pokemon= "device";
-//	device->posicion[0]= 16;
-//	device->posicion[1] = 51;
+	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
+	device->cantidad= 1;
+	device->id_mensaje= 124;
+	device->pokemon= "device";
+	device->posicion[0]= 16;
+	device->posicion[1] = 51;
 
-//	funcionHiloNewPokemon(device, socket_br);
-//
-//	free(device);
+	//funcionHiloNewPokemon(device, socket_br);
+	int tam = crearBitmap(config->punto_montaje_tallgrass);
+	t_bitarray* bitarray = obtenerBitmap(tam);
+	mostrarBitarray(tam);
 
-	printf(buscarBlockLibre());
-	//mostrarBitmap(10);
+
+	free(device);
 
 	//void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
 
@@ -208,12 +209,15 @@ void crearMetadata(char* path){
 
 	t_metadata metadata;
 	metadata.blocksize = 64;
-	metadata.blocks = 5192; // es 5192 pero no voy a crear miles de bin
-	metadata.magic = "TALL_GRASS";
+	metadata.blocks = 5192; //
+	metadata.magic = "MAGIC"; //TODO es TALL_GRASS pero nose que onda el stackmashing
 
 	int tam = tamanio_de_metadata(metadata);
 
-	fwrite(&metadata,tam,1,file);
+	fwrite(&metadata.blocksize,sizeof(int),1,file);
+	fwrite(&metadata.blocks,sizeof(int),1,file);
+	fwrite(&metadata.magic,string_length(metadata.magic),1,file);
+
 
 	fclose(file);
 
@@ -226,14 +230,8 @@ void crearPokemon(t_new_pokemon* newPoke){
 	char* metaPath = obtenerPathMetaFile(newPoke);
 	char* dirPokemon = obtenerPathDirPokemon(newPoke);
 
-	t_file_metadata metadata;
-	metadata.blocks = list_create();
+	t_file_metadata metadata = generarMetadata(newPoke);
 
-	asignarBlocks(&metadata.blocks);
-
-	metadata.directory = 'N';
-	metadata.open = 'N';
-	metadata.size = 12; //TODO Y ESTO?
 
 	escribirEnBlocks(metadata,newPoke);
 
@@ -248,6 +246,15 @@ void crearPokemon(t_new_pokemon* newPoke){
 
 }
 
+t_file_metadata generarMetadata(t_new_pokemon* newPoke){
+
+	t_file_metadata metadata;
+	metadata.directory = 'N';
+	metadata.open = 'N';
+	metadata.blocks = asignarBlocks();
+
+	return metadata;
+}
 void escribirEnBlocks(t_file_metadata metadata,t_new_pokemon* newPoke){
 
 	char* path = concatenar(config->punto_montaje_tallgrass,"/Blocks/");
@@ -265,17 +272,9 @@ void escribirEnBlocks(t_file_metadata metadata,t_new_pokemon* newPoke){
 
 					fwrite(&a_escribir[i],1,1,block);
 		}
-
 	}
-
-
 }
 
-inicializarPokemon(t_new_pokemon* newPoke){
-
-
-
-}
 
 char* posicion_into_string(t_new_pokemon* newpoke){
 
@@ -289,7 +288,9 @@ char* posicion_into_string(t_new_pokemon* newpoke){
 //tengo 64 bytes para escribir en un block
 //un char pesa 1 byte
 
-t_list* asignarBlocks(t_list* lista){
+t_list* asignarBlocks(){
+
+	t_list* lista = list_create();
 
 	char* block = buscarBlockLibre();
 
@@ -311,21 +312,16 @@ char* buscarBlockLibre(){ //TODO, EL BITARRAY EN UN FILE? PARA QUE
 
 	int blockLibre;
 
-	bitarray_set_bit(bitarray,0);
-	bitarray_set_bit(bitarray,1);
-	bitarray_set_bit(bitarray,2);
-	bitarray_set_bit(bitarray,3);
-	bitarray_set_bit(bitarray,4);
-	bitarray_set_bit(bitarray,5);
 
 	for(int i=0; i<= 5192 ; i++){
 
 		if (bitarray_test_bit(bitarray,i) != true){
 
 			blockLibre = i + 1;				//porque el array arranca en 0
+			log_info(logger,"El block %d anda masa, usalo tranka nomas",i+1);
 			break;
 		} else {
-				log_info(logger,"No hay mas blocks libres ,kpo");
+				log_info(logger,"El block %d esta ocupado ,kpo",i+1);
 		}
 	}
 
@@ -344,18 +340,22 @@ int tamanio_file_metadata(t_file_metadata fileMeta){
 }
 
 t_metadata leerMetadata(char* path){
-	FILE* file = fopen(path,"rb"); //read-binary
+
+	t_metadata metadata;
+	FILE* file = fopen(path,"rb");
 
 	if (!isFile(path)){
+
 		log_warning(logger,"No existe el archivo a leer");
+
+	} else {
+
+		t_metadata metadata;
+		fread(&(metadata.blocksize),sizeof(int),1,file);
+		fread(&(metadata.blocks),sizeof(int),1,file);
+		fread(&(metadata.magic),12,1,file);
+
 	}
-
-	t_metadata metadata; //despues vemos como se usa esta verga
-
-	fread(&(metadata.blocksize),sizeof(int),1,file);
-	fread(&(metadata.blocks),sizeof(int),1,file);
-	fread(&(metadata.magic),13,1,file);
-
 
 	fclose(file);
 
@@ -385,8 +385,7 @@ bool isFile(char* path){
 bool isDir(const char* name){
     DIR* directory = opendir(name);
 
-    if(directory != NULL)
-    {
+    if(directory != NULL){
      closedir(directory);
      return true;
     } else {
@@ -394,48 +393,62 @@ bool isDir(const char* name){
     }
 }
 
-void crearBitmap(char* path){
+int crearBitmap(char* path){
 
-	char* realPath = concatenar(path,"/Metadata/Bitmap.bin");
-	t_metadata fileSystemMetadata = leerMetadata(concatenar(path,"/Metadata/Metadata.bin"));
+	char* bitmapPath = concatenar(path,"/Metadata/Bitmap.bin");
+	char* metadataPath = concatenar(path,"/Metadata/Metadata.bin");
+	t_metadata fileSystemMetadata = leerMetadata(metadataPath);
 
 	int blocks = fileSystemMetadata.blocks;
 
-	int size_in_bytes = 8 / blocks;
-
+	int size_in_bytes = (blocks/8) ;
+	int size_in_bits = blocks;
 	char* bytes = calloc(size_in_bytes, sizeof(char));
 
 	t_bitarray* bitarray = bitarray_create_with_mode(bytes, size_in_bytes, LSB_FIRST);
 
 	log_info(logger,"Se creo el bitarray de %d posiciones, con un tamaño de %d bytes",blocks,size_in_bytes);
 
-	FILE* file = fopen(realPath,"wb");
+	int tam = bitarray->size;
+	FILE* file = fopen(bitmapPath,"wb");
 
-	fwrite(&bitarray,sizeof(t_bitarray),1,file);
+	fwrite(&bitarray->bitarray,bitarray->size,1,file);
+	fwrite(&bitarray->mode,sizeof(bit_numbering_t),1,file);
+	fwrite(&bitarray->size,sizeof(size_t),1,file);
 
+	printf("%d",bitarray_test_bit(bitarray,5192));
 	bitarray_destroy(bitarray);
-	free(bytes);
 	fclose(file);
+	free(bytes);
+	return tam;
 
 }
 
-void mostrarBitmap(){
+t_bitarray* obtenerBitmap(int size){
 
 	char* path = concatenar(config->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
 
 	t_bitarray* bitarray;
+	//TODO
 
-	FILE* f = fopen(path,"wb");
+	FILE* file = fopen(path,"wb");
 
+	fread(&bitarray->bitarray,size,1,file);
+	fread(&bitarray->mode,sizeof(bit_numbering_t),1,file);
+	fread(&bitarray->size,sizeof(size_t),1,file);
 
-	fread(&bitarray,649,1,f);
-	fclose(f);
+	fclose(file);
+	return bitarray;
 
-	for (int i =0; i<10;i++){
+}
+
+void mostrarBitarray(int tam){
+	t_bitarray* bitarray = obtenerBitmap(tam);
+
+	for(int i=1;i<bitarray->size;i++){
 		bool x = bitarray_test_bit(bitarray,i);
-		printf("%d",x);
+		printf("asd: %d",x);
 	}
-
 	bitarray_destroy(bitarray);
 }
 
