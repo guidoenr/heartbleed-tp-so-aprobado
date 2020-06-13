@@ -16,7 +16,7 @@ int main(void) {
 	int socket_br;
 
 	//conectarse(socket_br);
-	iniciarTallGrass();
+	//iniciarTallGrass();
 
 	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
 	device->cantidad= 1;
@@ -26,6 +26,9 @@ int main(void) {
 	device->posicion[1] = 51;
 
 	//funcionHiloNewPokemon(device, socket_br);
+
+
+	bool x= isOpen(device);
 
 
 	free(device);
@@ -45,7 +48,8 @@ int main(void) {
 
 
 	//enviar_new_pokemon(luken,socket_br);
-	//t_new_pokemon* a = recibir_new_pokemon(socket_br, 30);
+	//t_new_pokemon* a = recibir_new_pokem
+
 
 	//verificarPokemon(pikachu);
 	//verificarAperturaPokemon(pikachu);
@@ -229,14 +233,16 @@ void crearPokemon(t_new_pokemon* newPoke){
 
 	t_file_metadata metadata = generarMetadata(newPoke);
 
-
 	escribirEnBlocks(metadata,newPoke);
-
 
 	FILE* file = fopen(metaPath,"wb");
 
-	fwrite(&metadata,sizeof(tamanio_de_file_metadata(metadata)),1,file);
 
+	fwrite(&metadata.open,sizeof(char),1,file);
+	fwrite(&metadata.directory,sizeof(char),1,file);
+	fwrite(&metadata.size,sizeof(int),1,file);
+	fwrite(&metadata.blocks->elements_count,sizeof(int),1,file);
+// TODO
 	fclose(file);
 
 	unlock_file(metaPath);
@@ -473,19 +479,26 @@ bool isDirectory(char* path){
 }
 
 bool isOpen(char* path){
+
 	t_file_metadata fileMeta;
 	FILE* file = fopen(path,"rb");
 
-	fread(&fileMeta.open,sizeof(char),1,file);
+	fread(&(fileMeta.open), sizeof(char),1,file);
 	fclose(file);
-		return fileMeta.open == 'Y';
+
+	return fileMeta.open == 'Y';
 }
 
 void lock_file(char* path){
+
 	FILE* f = fopen(path,"wb");
+
 	t_file_metadata fileMeta;
+
 	fileMeta.open = 'Y';
+
 	fwrite(&fileMeta.open,sizeof(char),1,f);
+
 	fclose(f);
 }
 
@@ -616,7 +629,7 @@ int existeDirectorio(char* path){
 void verificarAperturaPokemon(t_new_pokemon* newpoke,int socket){
 
 	char* path = obtenerPathMetaFile(newpoke);
-
+	bool x = isOpen(path);
 	if (isOpen(path)){
 		int secs = config->tiempo_retardo_operacion;
 		log_info(logger,"No se puede acceder a este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
