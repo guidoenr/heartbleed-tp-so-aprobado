@@ -28,7 +28,7 @@ int main(void) {
 	//funcionHiloNewPokemon(device, socket_br);
 	int tam = crearBitmap(config->punto_montaje_tallgrass);
 	t_bitarray* bitarray = obtenerBitmap(tam);
-	mostrarBitarray(tam);
+	//mostrarBitarray(tam);
 
 
 	free(device);
@@ -412,9 +412,13 @@ int crearBitmap(char* path){
 	int tam = bitarray->size;
 	FILE* file = fopen(bitmapPath,"wb");
 
-	fwrite(&bitarray->bitarray,bitarray->size,1,file);
-	fwrite(&bitarray->mode,sizeof(bit_numbering_t),1,file);
-	fwrite(&bitarray->size,sizeof(size_t),1,file);
+	char* a_escribir = bitarray->bitarray;
+	bit_numbering_t bit = bitarray->mode;
+	size_t size = bitarray->size;
+
+	fwrite(&a_escribir,bitarray->size,1,file);
+	fwrite(&bit,sizeof(bit_numbering_t),1,file);
+	fwrite(&size,sizeof(size_t),1,file);
 
 	printf("%d",bitarray_test_bit(bitarray,5192));
 	bitarray_destroy(bitarray);
@@ -428,14 +432,19 @@ t_bitarray* obtenerBitmap(int size){
 
 	char* path = concatenar(config->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
 
-	t_bitarray* bitarray;
-	//TODO
+	char* a_escribir;
+	bit_numbering_t bit;
+	size_t sizeb;
+
 
 	FILE* file = fopen(path,"wb");
+	fread(&a_escribir,size,1,file);
+	fread(&bit,sizeof(bit_numbering_t),1,file);
+	fread(&sizeb,sizeof(size_t),1,file);
 
-	fread(&bitarray->bitarray,size,1,file);
-	fread(&bitarray->mode,sizeof(bit_numbering_t),1,file);
-	fread(&bitarray->size,sizeof(size_t),1,file);
+
+	t_bitarray* bitarray;
+
 
 	fclose(file);
 	return bitarray;
@@ -447,7 +456,7 @@ void mostrarBitarray(int tam){
 
 	for(int i=1;i<bitarray->size;i++){
 		bool x = bitarray_test_bit(bitarray,i);
-		printf("asd: %d",x);
+		printf("bit: %b",x);
 	}
 	bitarray_destroy(bitarray);
 }

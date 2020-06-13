@@ -45,7 +45,7 @@ typedef struct {
 typedef struct{
 	char directory;
 	int size;
-	t_list* blocks; //TODO - array dinamico?
+	t_list* blocks;
 	char open;
 }t_file_metadata;
 
