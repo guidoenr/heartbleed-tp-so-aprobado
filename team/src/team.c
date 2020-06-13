@@ -30,7 +30,7 @@ int main(void) {
 	list_add(mapa_pokemons, onix);
 	sem_post(&sem_cont_mapa);
 
-	sleep(25*5);
+	sleep(25*1);
 
 	t_pokemon_mapa* squirtle2 = malloc(sizeof(t_pokemon_mapa));
 	squirtle2 -> nombre = "Squirtle";
@@ -49,7 +49,8 @@ int main(void) {
 	sem_post(&sem_cont_mapa);
 
 
-	sleep(15*5);
+	sleep(15*1);
+
 	sem_post(&sem_cont_mapa); // ESTE CUANDO HAY QUE RESOLVER DEADLOCKS
 	sem_post(&sem_cont_entrenadores_a_replanif); // ESTE CUANDO HAY QUE RESOLVER DEADLOCKS
 
@@ -1376,7 +1377,6 @@ void terminar_hilos_entrenadores() {
 void terminar_programa(/*uint32_t conexion*/) {
 	terminar_hilos();
 	free(mapa_pokemons); // ver, se va destruyendo como objetivo global?
-	liberar_logger();
 	//liberar_conexion(conexion);
 	liberar_listas();
 	liberar_estados();
@@ -1384,4 +1384,5 @@ void terminar_programa(/*uint32_t conexion*/) {
 	liberar_config();
 	log_info(logger, "El team completo su objetivo");
 	log_info(logger, "El team finalizo correctamente");
+	liberar_logger();
 }
