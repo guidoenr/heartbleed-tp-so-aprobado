@@ -16,22 +16,23 @@ int main(void) {
 	int socket_br;
 
 	//conectarse(socket_br);
-	//iniciarTallGrass();
+	iniciarTallGrass();
 
-	t_new_pokemon* device = malloc(sizeof(t_new_pokemon));
-	device->cantidad= 1;
-	device->id_mensaje= 124;
-	device->pokemon= "device";
-	device->posicion[0]= 16;
-	device->posicion[1] = 51;
+	t_new_pokemon* simple = malloc(sizeof(t_new_pokemon));
+	simple->cantidad= 1;
+	simple->id_mensaje= 124;
+	simple->pokemon= "Simple";
+	simple->posicion[0]= 16;
+	simple->posicion[1] = 51;
 
-	//funcionHiloNewPokemon(device, socket_br);
+	//funcionHiloNewPokemon(simple, socket_br);
+	char* path = concatenar(config->punto_montaje_tallgrass,"/Files/Simple/Metadata.bin");
+	t_file_metadata metadata = leerMetadataFile(path);
 
 
-	bool x= isOpen(device);
+	free(luken);
 
 
-	free(device);
 
 	//void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
 
@@ -58,7 +59,6 @@ int main(void) {
 }
 
 //punto_montaje = /home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje
-
 
 void conectarse(int socket){
 	socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
@@ -231,33 +231,50 @@ void crearPokemon(t_new_pokemon* newPoke){
 	char* metaPath = obtenerPathMetaFile(newPoke);
 	char* dirPokemon = obtenerPathDirPokemon(newPoke);
 
-	t_file_metadata metadata = generarMetadata(newPoke);
+	t_file_metadata metadata = generar_file_metadata(newPoke);
 
-	escribirEnBlocks(metadata,newPoke);
+	//escribirEnBlocks(metadata,newPoke);
 
 	FILE* file = fopen(metaPath,"wb");
 
+//	typedef struct{
+//		char directory;
+//		int size;
+//		t_list* blocks;
+//		char open;
+//	}t_file_metadata;
+
+	int tam_lista_blocks = size_of_meta_blocks(metadata.blocks);
 
 	fwrite(&metadata.open,sizeof(char),1,file);
 	fwrite(&metadata.directory,sizeof(char),1,file);
 	fwrite(&metadata.size,sizeof(int),1,file);
-	fwrite(&metadata.blocks->elements_count,sizeof(int),1,file);
-// TODO
+	fwrite(&metadata.blocks,tam_lista_blocks,1,file);
+	// TODO
 	fclose(file);
 
 	unlock_file(metaPath);
 
 }
 
-t_file_metadata generarMetadata(t_new_pokemon* newPoke){
+int size_of_meta_blocks(t_list* lista){
+	return sizeof(int) + (lista->elements_count * 4);
+}
+
+t_file_metadata generar_file_metadata(t_new_pokemon* newPoke){
 
 	t_file_metadata metadata;
 	metadata.directory = 'N';
 	metadata.open = 'N';
 	metadata.blocks = asignarBlocks();
-
+	metadata.size = calcular_size_inicial(newPoke);
 	return metadata;
 }
+
+int calcular_size_inicial(t_new_pokemon* newPoke){
+	return strlen(posicion_into_string(newPoke)) + 1;
+}
+
 void escribirEnBlocks(t_file_metadata metadata,t_new_pokemon* newPoke){
 
 	char* path = concatenar(config->punto_montaje_tallgrass,"/Blocks/");
@@ -285,8 +302,7 @@ char* posicion_into_string(t_new_pokemon* newpoke){
 	char* b = concatenar(a,string_itoa(newpoke->posicion[1]));
 	char* c = concatenar(b,"=");
 	char* d = concatenar(c,string_itoa(newpoke->cantidad));
-	char* e = concatenar(d,"\n");
-	return e;
+	return d;
 }
 //tengo 64 bytes para escribir en un block
 //un char pesa 1 byte
@@ -295,13 +311,29 @@ t_list* asignarBlocks(){
 
 	t_list* lista = list_create();
 
-	char* block = buscarBlockLibre();
+	int block = buscarBlockLibre();
 
 	list_add(lista,block);
 
 	return lista;
 }
 
+t_file_metadata leerMetadataFile(char* path){
+
+	t_file_metadata fmetadata_leido;
+	FILE* file = fopen(path,"rb");
+
+
+	fread(&fmetadata_leido.open,sizeof(char),1,file);
+	fread(&fmetadata_leido.directory,sizeof(char),1,file);
+	fread(&fmetadata_leido.size,sizeof(int),1,file);
+	fread(&fmetadata_leido.blocks,4,1,file);
+
+	// TODO
+
+	fclose(file);
+	return fmetadata_leido;
+}
 
 char* buscarBlockLibre(){ //TODO, EL BITARRAY EN UN FILE? PARA QUE
 
@@ -324,12 +356,12 @@ char* buscarBlockLibre(){ //TODO, EL BITARRAY EN UN FILE? PARA QUE
 			log_info(logger,"El block %d anda masa, usalo tranka nomas",i+1);
 			break;
 		} else {
-				log_info(logger,"El block %d esta ocupado ,kpo",i+1);
+				log_info(logger,"El block %d esta ocupado kpo, sigo buscando",i+1);
 		}
 	}
 
 	//TODO guardar y grabar el bitarray en el Bitmap.bin
-	return string_itoa(blockLibre);
+	return blockLibre;
 
 }
 int tamanio_de_metadata(t_metadata metadata){
@@ -396,6 +428,16 @@ bool isDir(const char* name){
     }
 }
 
+// 1 - 2 = 16;
+
+int bitarraySizeFromFS(){
+
+	char* path = concatenar(config->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
+	t_metadata metadata = leerMetadata(path);
+
+	return metadata.blocks / 8;
+}
+
 int crearBitmap(char* path){
 
 	char* bitmapPath = concatenar(path,"/Metadata/Bitmap.bin");
@@ -424,7 +466,9 @@ int crearBitmap(char* path){
 	fwrite(&size,sizeof(size_t),1,file);
 
 	printf("%d",bitarray_test_bit(bitarray,5192));
+
 	bitarray_destroy(bitarray);
+
 	fclose(file);
 	free(bytes);
 	return tam;
@@ -490,24 +534,19 @@ bool isOpen(char* path){
 }
 
 void lock_file(char* path){
-
 	FILE* f = fopen(path,"wb");
-
 	t_file_metadata fileMeta;
-
 	fileMeta.open = 'Y';
-
 	fwrite(&fileMeta.open,sizeof(char),1,f);
-
 	fclose(f);
 }
 
 void unlock_file(char* path){
 	FILE* f = fopen(path,"wb");
-		t_file_metadata fileMeta;
-		fileMeta.open = 'N';
-		fwrite(&fileMeta.open,sizeof(char),1,f);
-		fclose(f);
+	t_file_metadata fileMeta;
+	fileMeta.open = 'N';
+	fwrite(&fileMeta.open,sizeof(char),1,f);
+	fclose(f);
 }
 
 void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende del que toque ese modulo.
@@ -562,7 +601,7 @@ void funcionHiloNewPokemon(t_new_pokemon* new_pokemon,int socket){
 	verificarAperturaPokemon(new_pokemon,socket);
 
 	if (existePokemonEnPosicion(new_pokemon)){
-		log_info(logger,"Existe pokemon \n");
+		log_info(logger,"Existe pokemon ");
 
 		//agregarAPoisiconExistente(); TODO PARA BLOCKS Y FILESYTEM
 	} else {
@@ -593,7 +632,7 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 		appeared_pokemon->posicion[1] = new_pokemon->posicion[1];
 		appeared_pokemon->pokemon = new_pokemon->pokemon;
 		appeared_pokemon->id_mensaje_correlativo = 0;
-		appeared_pokemon->id_mensaje = new_pokemon->id_mensaje; // TODO que onda este ID
+		appeared_pokemon->id_mensaje = new_pokemon->id_mensaje;
 		return appeared_pokemon;
 }
 

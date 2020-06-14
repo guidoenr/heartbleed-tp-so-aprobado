@@ -69,7 +69,7 @@ int existeDirectorio(char* path);
 void verificarExistenciaPokemon(t_new_pokemon* pokemon);
 void verificarAperturaPokemon(t_new_pokemon* msg,int socket);
 int tamanio_file_metadata(t_file_metadata fileMeta);
-
+t_file_metadata leerMetadataFile(char* path);
 
 //commons
 void terminar_programa(int, t_config_game_card*);
@@ -98,5 +98,5 @@ t_list* asignarBlocks();
 void inicializarPokemon(t_new_pokemon* newPoke);
 char* buscarBlockLibre();
 char* posicion_into_string(t_new_pokemon* newpoke);
-t_file_metadata generarMetadata(t_new_pokemon* newPoke);
+t_file_metadata generar_file_metadata(t_new_pokemon* newPoke);
 t_bitarray* obtenerBitmap(int size);
