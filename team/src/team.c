@@ -73,7 +73,7 @@ void iniciar_programa() {
 
 	iniciar_hilos_ejecucion();
 	//suscribirme_a_colas();
-	//iniciar_conexion_game_boy(); abrir socket con el game_boy (pthread_create)
+	//iniciar_conexion_game_boy();
 }
 
 void iniciar_hilos_ejecucion() {
@@ -263,7 +263,6 @@ void suscribirme_a_colas() {
 	suscribirse_a(LOCALIZED_POKEMON);
 }
 
-
 //TODO CHEQUEAR, robado de game_card :p
 void suscribirse_a(op_code cola) {
 	uint32_t socket 			      = crear_conexion(config -> ip_broker, config -> puerto_broker);
@@ -291,6 +290,18 @@ void conectarse(int socket) {
 	} else {
 		log_info(logger, "conexion exitosa con broker");
 	}
+}
+
+void iniciar_conexion_game_boy() {
+
+	uint32_t err = pthread_create(&hilo_game_boy, NULL, conexion_con_game_boy, NULL);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+}
+
+void* conexion_con_game_boy() {
+
 }
 
 // ------------------------------- ENTRENADORES -------------------------------//
@@ -1342,6 +1353,7 @@ void terminar_hilos() {
 	terminar_hilos_entrenadores();
 	pthread_cancel(hilo_algoritmo); // ambos bloqueados por semaforos pq terminaron los entrenadores y no van a recibir post
 	pthread_cancel(hilo_planificar); // ambos bloqueados por semaforos pq terminaron los entrenadores y no van a recibir post
+	//pthread_cancel(hilo_game_boy);
 }
 
 void terminar_hilos_entrenadores() {
