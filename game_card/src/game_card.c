@@ -13,6 +13,7 @@ int main(void) {
 	config = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
 
+	punto_montaje = config->punto_montaje_tallgrass;
 	int socket_br;
 
 	//conectarse(socket_br);
@@ -25,15 +26,14 @@ int main(void) {
 	simple->posicion[0]= 16;
 	simple->posicion[1] = 51;
 
-	//funcionHiloNewPokemon(simple, socket_br);
-	char* path = concatenar(config->punto_montaje_tallgrass,"/Files/Simple/Metadata.bin");
-	t_file_metadata metadata = leerMetadataFile(path);
+	t_new_pokemon* kennyS = malloc(sizeof(t_new_pokemon));
+	kennyS->cantidad= 1;
+	kennyS->id_mensaje= 124;
+	kennyS->pokemon= "KennyS";
+	kennyS->posicion[0]= 16;
+	kennyS->posicion[1] = 51;
 
-
-	free(luken);
-
-
-
+	pruebas(punto_montaje);
 	//void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
 
 	//t_appeared_pokemon* deviceAP = armar_appeared(device);
@@ -59,6 +59,52 @@ int main(void) {
 }
 
 //punto_montaje = /home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje
+void pruebas(char* path){
+	char *blockpath= concatenar(path,"/Blocks/41.bin");
+
+	escribirLinea(blockpath,"Hola");
+	escribirLinea(blockpath,"GUidoti");
+	escribirLinea(blockpath,"Sos una masa");
+
+
+	leerLinea(blockpath);
+	leerLinea(blockpath);
+
+
+
+}
+
+void leerLinea(char* path){
+	FILE*f = fopen(path,"rb");
+
+	char* leer;
+	rewind(f);
+	fread(&leer,1512,1,f);
+
+
+	fclose(f);
+}
+
+void escribirLinea(char* path,char* linea_a_escribir){
+
+	FILE* f = fopen(path,"wb");
+	fwrite(&linea_a_escribir,string_length(linea_a_escribir),1,f);
+
+
+	fclose(f);
+}
+
+
+int file_current_size(FILE* f){
+
+	char* path = concatenar(config->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
+	t_metadata metadataFS = leerMetadata(path);
+
+	int pos = ftell(f);
+
+	return metadataFS.blocksize - pos;
+
+}
 
 void conectarse(int socket){
 	socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
@@ -601,6 +647,8 @@ void funcionHiloNewPokemon(t_new_pokemon* new_pokemon,int socket){
 	verificarAperturaPokemon(new_pokemon,socket);
 
 	if (existePokemonEnPosicion(new_pokemon)){
+		//agregarAPosicionExistente(new_pokemon);
+
 		log_info(logger,"Existe pokemon ");
 
 		//agregarAPoisiconExistente(); TODO PARA BLOCKS Y FILESYTEM
@@ -644,7 +692,8 @@ void verificarExistenciaPokemon(t_new_pokemon* newpoke){
 	char* path = concatenar(montaje,newpoke->pokemon);
 	if (existeDirectorio(path)){
 
-		log_info(logger,"Existe el pokemon %s en : %s",newpoke->pokemon,path);
+		log_info(logger,"Existe el pokemon %s en : %s y se le van a agregar posiciones",newpoke->pokemon,path);
+
 
 	} else{
 
@@ -657,6 +706,7 @@ void verificarExistenciaPokemon(t_new_pokemon* newpoke){
 	}
 
 }
+
 
 int existeDirectorio(char* path){
 	DIR* dir = opendir(path);
@@ -699,8 +749,10 @@ char* obtenerPathDirPokemon(t_new_pokemon* pokemon){
 }
 
 bool existePokemonEnPosicion(t_new_pokemon* pokemon){
+	char* meta_file_path = obtenerPathMetaFile(pokemon);
 
-	return 1; //TODO TALLGRASS
+
+
 }
 
 void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
