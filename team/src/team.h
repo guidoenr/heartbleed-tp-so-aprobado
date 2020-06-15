@@ -118,10 +118,16 @@ void planificar_deadlocks_rr();
 // hilos
 pthread_t hilo_algoritmo;
 pthread_t hilo_planificar;
+pthread_t hilo_game_boy;
 void crear_hilo_segun_algoritmo();
 void crear_hilo_planificar_entrenadores();
 void terminar_hilos();
 void terminar_hilos_entrenadores();
+void iniciar_conexion_game_boy();
+
+
+// game boy
+void* conexion_con_game_boy();
 
 
 // estados
