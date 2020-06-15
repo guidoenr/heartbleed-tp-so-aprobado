@@ -48,7 +48,6 @@ int main(void) {
 	list_add(mapa_pokemons, gengar);
 	sem_post(&sem_cont_mapa);
 
-
 	sleep(15*1);
 
 	sem_post(&sem_cont_mapa); // ESTE CUANDO HAY QUE RESOLVER DEADLOCKS
@@ -686,7 +685,7 @@ void resolver_deadlocks_fifo_o_sjf() {
 			log_error(logger, "Tengo poca gente para resolver deadlocks!");
 		}
 
-		if(estado_block -> elements_count > 1){
+		if(estado_block -> elements_count > 1) {
 			t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
 			list_add(pedidos_intercambio, pedido);
 
@@ -716,10 +715,10 @@ void resolver_deadlocks_rr() {
 			log_error(logger, "Tengo poca gente para resolver deadlocks!");
 		}
 
-		if(estado_block -> elements_count > 1){
+		if(estado_block -> elements_count > 1) {
 			t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
 
-			if(pedido){
+			if(pedido) {
 
 				list_add(pedidos_intercambio, pedido);
 
