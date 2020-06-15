@@ -9,6 +9,7 @@
 #include <string.h>
 
 
+
 int main(void) {
 	config = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
@@ -59,37 +60,16 @@ int main(void) {
 }
 
 //punto_montaje = /home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje
-void pruebas(char* path){
-	char *blockpath= concatenar(path,"/Blocks/41.bin");
-
-	escribirLinea(blockpath,"Hola");
-	escribirLinea(blockpath,"GUidoti");
-	escribirLinea(blockpath,"Sos una masa");
-
-
-	leerLinea(blockpath);
-	leerLinea(blockpath);
 
 
 
-}
 
-void leerLinea(char* path){
-	FILE*f = fopen(path,"rb");
-
-	char* leer;
-	rewind(f);
-	fread(&leer,1512,1,f);
-
-
-	fclose(f);
-}
 
 void escribirLinea(char* path,char* linea_a_escribir){
 
 	FILE* f = fopen(path,"wb");
-	fwrite(&linea_a_escribir,string_length(linea_a_escribir),1,f);
 
+	fwrite(&linea_a_escribir,string_length(linea_a_escribir),1,f);
 
 	fclose(f);
 }
