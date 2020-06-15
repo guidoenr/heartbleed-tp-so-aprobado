@@ -112,8 +112,8 @@ void planificar_sjf_cd(t_pedido_captura*);
 void desalojar_ejecucion();
 void ordenar_ready_segun_estimacion();
 void* ejecutar_algoritmo();
-void resolver_deadlocks_fifo_o_sjf();
-void resolver_deadlocks_rr();
+void planificar_deadlocks_fifo_o_sjf();
+void planificar_deadlocks_rr();
 
 // hilos
 pthread_t hilo_algoritmo;

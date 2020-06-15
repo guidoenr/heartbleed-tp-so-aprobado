@@ -298,7 +298,7 @@ void conectarse(int socket) {
 void iniciar_entrenadores() {
 
 	void crear_hilo_entrenador(void* un_entrenador) {
-		pthread_t hilo;
+
 		t_entrenador* entrenador = un_entrenador;
 		agregar_a_estado(estado_new, entrenador);
 
@@ -347,19 +347,20 @@ void* operar_entrenador(void* un_entrenador) {
 
 					tradear_pokemon(pedido_intercambio);
 				}
-				if(!(entrenador -> tire_accion)) { // RR
+				if(!(entrenador -> tire_accion)) { // RR Desalojado
 					sem_wait(&mx_estados);
 					cambiar_a_estado(estado_ready, entrenador);
 					log_info(logger, "El entrenador %d fue desalojado por fin de quantum", entrenador -> id);
 					sem_post(&mx_estados);
+					entrenador -> pasos_a_moverse = ((config -> quantum < pedido_intercambio -> distancia) ? config -> quantum : pedido_intercambio -> distancia);
 					sem_post(&entrenadores_ready);
 				} else {
 					asignar_estado_luego_de_trade(entrenador);
 				}
+				sem_post(&mx_estado_exec);
 			} else {
 				asignar_estado_luego_de_trade(entrenador);
 			}
-			sem_post(&mx_estado_exec);
 		}
 	}
 	return NULL;
@@ -378,7 +379,9 @@ void asignar_estado_luego_de_trade(t_entrenador* entrenador) {
 			log_info(logger, "Luego de ejecutar el trade, el entrenador %d no cumplio su objetivo personal y vuelve a block", entrenador -> id);
 			sem_post(&mx_estados);
 		}
+		sem_post(&sem_cont_entrenadores_a_replanif);
 	}
+	entrenador -> tire_accion = 0;
 }
 
 void manejar_desalojo_captura(t_pedido_captura* pedido){
@@ -454,9 +457,8 @@ void procesar_caught(t_pedido_captura* pedido){
 		sem_post(&sem_cont_entrenadores_a_replanif);
 	}
 	pedido -> entrenador -> tire_accion = 0;
-	// sacar el pedido de los pedidos
-	eliminar_pedido_captura(pedido);
 
+	eliminar_pedido_captura(pedido);
 }
 
 bool estoy_en_deadlock(t_entrenador* entrenador){
@@ -548,7 +550,7 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 		pedido -> entrenador -> posicion[1] --;
 		pedido -> distancia --;
 		log_info(logger, "El entrenador %d se mueve a [%d,%d]", pedido -> entrenador -> id, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
-	} else { // misma posicion
+	} else {
 		// tirar el catch (agarrar)
 		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_block, pedido -> entrenador);
@@ -558,7 +560,7 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 		log_info(logger, "El entrenador %d se mueve a block para esperar la respuesta del catch", pedido -> entrenador -> id);
 		sem_post(&mx_estados);
 		pedido -> entrenador -> tire_accion = 1;
-		//aca capaz falta sleep(config -> retardo_cpu*4);
+		//sleep(config -> retardo_cpu * 4); //dsp decomentar CREO
 	}
 	sleep(config -> retardo_cpu);// RETARDO_CICLO_CPU
 	pedido -> entrenador -> pasos_a_moverse --;
@@ -581,11 +583,11 @@ void tradear_pokemon(t_pedido_intercambio* pedido){
 		pedido -> entrenador_buscando -> posicion[1] --;
 		pedido -> distancia --;
 		log_info(logger, "El entrenador %d se mueve a [%d,%d]", pedido -> entrenador_buscando -> id, pedido -> entrenador_buscando -> posicion[0], pedido -> entrenador_buscando-> posicion[1]);
-	} else { // misma posicion
-
+	} else {
 		pedido -> entrenador_buscando -> tire_accion = 1;
 		ejecutar_trade(pedido);
-
+		sem_post(&(pedido -> entrenador_esperando -> sem_binario));
+		//sleep(config -> retardo_cpu * 4); //dsp decomentar CREO
 	}
 	pedido -> entrenador_buscando -> pasos_a_moverse --;
 	sleep(config -> retardo_cpu);
@@ -593,7 +595,7 @@ void tradear_pokemon(t_pedido_intercambio* pedido){
 
 void ejecutar_trade(t_pedido_intercambio* pedido) {
 
-	bool es_el_pokemon_a_dar(void* un_pokemon){
+	bool es_el_pokemon_a_dar(void* un_pokemon) {
 
 		char* pokemon_a_dar = un_pokemon;
 
@@ -617,10 +619,6 @@ void ejecutar_trade(t_pedido_intercambio* pedido) {
 	log_info(logger, "Intercambio entre el entrenador %d (%s) con el %d (%s)",
 			pedido -> entrenador_buscando -> id, pedido -> pokemon_a_dar,
 			pedido -> entrenador_esperando -> id, pedido -> pokemon_a_recibir);
-
-	if(string_equals_ignore_case(config -> algoritmo_planificacion, "RR")){
-		sem_post(&(pedido -> entrenador_esperando -> sem_binario));
-	}
 
 	eliminar_pedido_intercambio(pedido);
 }
@@ -668,74 +666,69 @@ void* planificar_entrenadores() {
 			log_info(logger, "Inicio del algoritmo de deteccion de deadlocks");
 			//matar hilo gameboy
 			//matar suscripciones broker
-			resolver_deadlocks_fifo_o_sjf();
+			for(int i=0; i <= estado_block -> elements_count; i++) {
+				sem_post(&sem_cont_entrenadores_a_replanif);
+			}
+
+			if(string_equals_ignore_case(config -> algoritmo_planificacion, "RR")){
+				//planificar_deadlocks_rr();
+				planificar_deadlocks_fifo_o_sjf(); // may remove in future.
+			} else {
+				planificar_deadlocks_fifo_o_sjf();
+			}
 			deadlocks = 0;
 		}
 	}
-
 	return 0;
 }
 
-void resolver_deadlocks_fifo_o_sjf() {
+void planificar_deadlocks_fifo_o_sjf() {
 
-	//sem_wait(&mx_estado_exec); ?
 	while(estado_exit -> elements_count < config -> entrenadores -> elements_count) {
 
+		sem_wait(&sem_cont_entrenadores_a_replanif);
+		sem_wait(&sem_cont_entrenadores_a_replanif);
+
 		if(config -> entrenadores -> elements_count - estado_exit -> elements_count < 2) {
-			log_error(logger, "Tengo poca gente para resolver deadlocks!");
+			log_error(logger, "Tengo poca gente para resolver deadlocks!!");
+		}
+		if(estado_block -> elements_count < 2) {
+			log_error(logger, "Me mandaste a planificar deadlock y no tengo 2 pibes en block!!");
 		}
 
-		if(estado_block -> elements_count > 1) {
-			t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
-			list_add(pedidos_intercambio, pedido);
+		t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
+		list_add(pedidos_intercambio, pedido);
 
-			sem_wait(&mx_estados);
-			cambiar_a_estado(estado_ready, pedido -> entrenador_buscando);
-			log_info(logger, "El entrenador %d se mueve a ready para resolver deadlock con el %d", pedido -> entrenador_buscando -> id, pedido -> entrenador_esperando -> id);
-
-			cambiar_a_estado(estado_exec, pedido -> entrenador_buscando);
-			log_info(logger, "El entrenador %d se mueve a exec para realizar el intercambio con el %d", pedido -> entrenador_buscando -> id, pedido -> entrenador_esperando -> id);
-			sem_post(&mx_estados);
-			sem_post(&(pedido -> entrenador_buscando -> sem_binario));
-
-			sem_wait(&mx_estado_exec);
-			sem_post(&(pedido -> entrenador_esperando -> sem_binario));
-			sem_wait(&mx_estado_exec);
-		}
+		sem_wait(&mx_estados);
+		cambiar_a_estado(estado_ready, pedido -> entrenador_buscando);
+		log_info(logger, "El entrenador %d se mueve a ready para resolver deadlock con el %d", pedido -> entrenador_buscando -> id, pedido -> entrenador_esperando -> id);
+		sem_post(&entrenadores_ready);
+		sem_post(&mx_estados);
 	}
 }
 
-void resolver_deadlocks_rr() {
+void planificar_deadlocks_rr() {
 
-	//sem_wait(&mx_estado_exec); ?
 	while(estado_exit -> elements_count < config -> entrenadores -> elements_count) {
 
-		sem_wait(&mx_estado_exec);
+		sem_wait(&sem_cont_entrenadores_a_replanif);
+		sem_wait(&sem_cont_entrenadores_a_replanif);
+
 		if(config -> entrenadores -> elements_count - estado_exit -> elements_count < 2) {
-			log_error(logger, "Tengo poca gente para resolver deadlocks!");
+			log_error(logger, "Tengo poca gente para resolver deadlocks!!");
+		}
+		if(estado_block -> elements_count < 2) {
+			log_error(logger, "Me mandaste a planificar deadlock y no tengo 2 pibes en block!!");
 		}
 
-		if(estado_block -> elements_count > 1) {
-			t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
+		t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
+		list_add(pedidos_intercambio, pedido);
 
-			if(pedido) {
-
-				list_add(pedidos_intercambio, pedido);
-
-				sem_wait(&mx_estados);
-				cambiar_a_estado(estado_ready, pedido -> entrenador_buscando);
-				log_info(logger, "El entrenador %d se mueve a ready para resolver deadlock", pedido -> entrenador_buscando -> id);
-				sem_post(&mx_estados);
-			}
-		}
-
-		sem_wait(&entrenadores_ready);
 		sem_wait(&mx_estados);
-		cambiar_a_estado(estado_exec, (t_entrenador*)estado_ready -> head -> data);
-		log_info(logger, "El entrenador %d se mueve a exec para realizar el intercambio", ((t_entrenador*)estado_ready -> head -> data) -> id);
+		cambiar_a_estado(estado_ready, pedido -> entrenador_buscando);
+		log_info(logger, "El entrenador %d se mueve a ready para resolver deadlock con el %d", pedido -> entrenador_buscando -> id, pedido -> entrenador_esperando -> id);
+		sem_post(&entrenadores_ready);
 		sem_post(&mx_estados);
-
-		sem_post(&(((t_entrenador*)estado_exec -> head -> data) -> sem_binario));
 	}
 }
 
@@ -751,7 +744,6 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 		cabeza_block = cabeza_block -> next;
 
 		if(!cabeza_block){
-
 			log_error(logger, "NO HAY NADIE DESOCUPADO EN BLOCK");
 		}
 	}
@@ -760,21 +752,29 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 
 	pedido -> pokemon_a_recibir = encontrar_pokemon_faltante(pedido -> entrenador_buscando);
 
-	bool entrenador_que_le_sobra_pokemon(void* un_entrenador){
+	bool entrenador_que_le_sobra_pokemon_y_esta_libre(void* un_entrenador){
 
 		t_entrenador* entrenador = un_entrenador;
 
-		return le_sobra_pokemon(entrenador, pedido -> pokemon_a_recibir);
+		return le_sobra_pokemon(entrenador, pedido -> pokemon_a_recibir) && !estoy_esperando_trade(cabeza_block -> data);
 	}
 
-	pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon);
+	pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon_y_esta_libre);
 
-	if(!(pedido -> entrenador_esperando) && !string_equals_ignore_case(config -> algoritmo_planificacion, "RR")){
-		log_error(logger, "A nadie le sobra mi pokemon!!");
+	if(!(pedido -> entrenador_esperando)) {
 
-	} else if(!(pedido -> entrenador_esperando)){
-		return NULL;
+		bool entrenador_que_le_sobra_pokemon(void* un_entrenador){
+			t_entrenador* entrenador = un_entrenador;
+			return le_sobra_pokemon(entrenador, pedido -> pokemon_a_recibir);
+		}
+		pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon);
+
+		if(!(pedido -> entrenador_esperando)) {
+			log_error(logger, "A nadie le sobra mi pokemon!! (lo debe tener alguien que se este moviendo)"); // si se llega a este log handlear el case para perseguir.
+		}
 	}
+
+	pedido -> pokemon_a_dar = encontrar_pokemon_sobrante(pedido -> entrenador_buscando);
 
 	pedido -> distancia = distancia(pedido -> entrenador_buscando -> posicion, pedido -> entrenador_esperando -> posicion) + 1;
 
@@ -784,8 +784,6 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 	} else {
 		pedido -> entrenador_buscando -> pasos_a_moverse = pedido -> distancia;
 	}
-
-	pedido -> pokemon_a_dar = encontrar_pokemon_sobrante(pedido -> entrenador_buscando);
 
 	return pedido;
 }
@@ -901,23 +899,6 @@ char* encontrar_pokemon_faltante(t_entrenador* entrenador){
 bool tengo_la_mochila_llena(t_entrenador* entrenador) {
 	return entrenador -> pokemons -> elements_count >= entrenador -> objetivos -> elements_count;
 }
-
-int estado_block_replanificable_no_interbloqueado() { // no se esta usando, era la condicion del if antes
-	bool encontrar_replanificable_no_interbloqueado(void* un_entrenador) {
-		t_entrenador* entrenador = un_entrenador;
-		if(!(entrenador -> tire_accion) && !tengo_la_mochila_llena(entrenador)) {
-			return 1;
-		}
-		return 0;
-	}
-
-	if(list_find(estado_block, encontrar_replanificable_no_interbloqueado)) {
-
-		return 1;
-	}
-	return 0;
-}
-
 
 void planificar_segun_algoritmo(t_pedido_captura* pedido) {
 
@@ -1359,8 +1340,8 @@ void liberar_listas() {
 
 void terminar_hilos() {
 	terminar_hilos_entrenadores();
-	pthread_cancel(hilo_algoritmo); // matar desde aca
-	pthread_join(hilo_planificar, NULL);
+	pthread_cancel(hilo_algoritmo); // ambos bloqueados por semaforos pq terminaron los entrenadores y no van a recibir post
+	pthread_cancel(hilo_planificar); // ambos bloqueados por semaforos pq terminaron los entrenadores y no van a recibir post
 }
 
 void terminar_hilos_entrenadores() {
