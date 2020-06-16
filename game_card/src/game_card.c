@@ -34,7 +34,10 @@ int main(void) {
 	kennyS->posicion[0]= 16;
 	kennyS->posicion[1] = 51;
 
-	pruebas(punto_montaje);
+	//funcionHiloNewPokemon(kennyS, socket_br);
+	pruebas();
+
+
 	//void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
 
 	//t_appeared_pokemon* deviceAP = armar_appeared(device);
@@ -62,22 +65,12 @@ int main(void) {
 //punto_montaje = /home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje
 
 
-void pruebas(char* puno_montaje){
-	char* path = concatenar(punto_montaje,"/Blocks/54.bin");
-
-
-	t_list* blocks = list_create();
-
-	list_add(blocks,1);
-
-
-	char* dir ="N";
+void pruebas(){
+	char* path = "/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/ArchivoDePrueba.bin";
 	FILE* f = fopen(path,"wb");
-
-	escribir_campo_directory(f, dir);
-	escribir_campo_blocks(f,blocks);
-
+	escribir_campo_open(f,"SI");
 	fclose(f);
+
 
 }
 
@@ -276,7 +269,7 @@ void crearPokemon(t_new_pokemon* newPoke){
 
 	t_file_metadata metadata = generar_file_metadata(newPoke);
 
-	//escribirEnBlocks(metadata,newPoke);
+	escribir_block_inicial(metadata,newPoke);
 
 	FILE* file = fopen(metaPath,"wb");
 
@@ -306,7 +299,7 @@ void append(char* s, char c) {
 
 void escribir_campo_open(FILE* f,char* metadata_open){
 	char* a_escribir = concatenar("OPEN=",metadata_open);
-	fwrite(&a_escribir,6,1,f); //hardcodeado el 6
+	fwrite(&a_escribir,strlen(a_escribir)+1,1,f); //hardcodeado el 6
 }
 
 void escribir_campo_directory(FILE* f,char* metadata_directory){
@@ -353,7 +346,7 @@ t_file_metadata generar_file_metadata(t_new_pokemon* newPoke){
 	t_file_metadata metadata;
 	metadata.directory = "N";
 	metadata.open = "N";
-	metadata.blocks = asignarBlocks();
+	metadata.blocks = asignar_block_inicial();
 	metadata.size = string_itoa(calcular_size_inicial(newPoke)); //TODO que es este size?
 	return metadata;
 }
@@ -362,24 +355,23 @@ int calcular_size_inicial(t_new_pokemon* newPoke){
 	return strlen(posicion_into_string(newPoke)) + 1;
 }
 
-void escribirEnBlocks(t_file_metadata metadata,t_new_pokemon* newPoke){
+void escribir_block_inicial(t_file_metadata metadata,t_new_pokemon* newPoke){
 
 	char* path = concatenar(config->punto_montaje_tallgrass,"/Blocks/");
-	char* blockPath = concatenar(path,metadata.blocks->head->data);
+	char* blockPath = concatenar(path,string_itoa(metadata.blocks->head->data));
 	char* finalPath = concatenar(blockPath,".bin");
 
 	FILE* block = fopen(finalPath,"wb");
 
 	char* a_escribir = posicion_into_string(newPoke);
-	int i = 0;
+	int size = strlen(a_escribir) + 1;
+	int i = 1;
 
-	while (fileSize(finalPath) <= 64){
-
-		while (i <= string_length(a_escribir)){
-
-					fwrite(&a_escribir[i],1,1,block);
+	while (file_current_size(block) >=0 && i<= size){
+			fwrite(&a_escribir[i],1,1,block);
+			i++;
 		}
-	}
+
 }
 
 
@@ -394,7 +386,7 @@ char* posicion_into_string(t_new_pokemon* newpoke){
 //tengo 64 bytes para escribir en un block
 //un char pesa 1 byte
 
-t_list* asignarBlocks(){
+t_list* asignar_block_inicial(){
 
 	t_list* lista = list_create();
 
@@ -611,28 +603,28 @@ bool isDirectory(char* path){
 
 bool isOpen(char* path){
 
-	t_file_metadata fileMeta;
+	char* status;
+
 	FILE* file = fopen(path,"rb");
 
-	fread(&(fileMeta.open), sizeof(char),1,file);
-	fclose(file);
+	fread(&status,7,1,file);
 
-	return fileMeta.open == 'Y';
+	fclose(file);
+	return status == "OPEN=Y";
 }
 
 void lock_file(char* path){
 	FILE* f = fopen(path,"wb");
-	t_file_metadata fileMeta;
-	fileMeta.open = 'Y';
-	fwrite(&fileMeta.open,sizeof(char),1,f);
+	escribir_campo_open(f, "Y");
+
 	fclose(f);
 }
 
 void unlock_file(char* path){
 	FILE* f = fopen(path,"wb");
-	t_file_metadata fileMeta;
-	fileMeta.open = 'N';
-	fwrite(&fileMeta.open,sizeof(char),1,f);
+
+	escribir_campo_open(f, "N");
+
 	fclose(f);
 }
 
@@ -740,7 +732,6 @@ void verificarExistenciaPokemon(t_new_pokemon* newpoke){
 
 		mkdir(path, 0777);
 		log_info(logger,"Se creo el directorio %s en %s",newpoke->pokemon,path);
-		char* metaPath = concatenar(path,"/Metadata.bin");
 
 		crearPokemon(newpoke);
 		log_info(logger,"Se creo el file_metadata de %s",newpoke->pokemon);
