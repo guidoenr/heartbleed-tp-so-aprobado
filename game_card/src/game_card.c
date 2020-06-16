@@ -66,11 +66,28 @@ int main(void) {
 
 
 void pruebas(){
+
 	char* path = "/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/ArchivoDePrueba.bin";
+
 	FILE* f = fopen(path,"wb");
+
+
+
 	escribir_campo_open(f,"SI");
+	escribir_campo_open(f,"SI");
+
+
 	fclose(f);
 
+	FILE* otrof = fopen(path,"rb");
+
+	char* a = malloc(5);
+
+	fread(a,5,1,otrof);
+
+	log_info(logger,"ASD ASD :%s",a);
+
+	fclose(otrof);
 
 }
 
@@ -298,8 +315,11 @@ void append(char* s, char c) {
 }
 
 void escribir_campo_open(FILE* f,char* metadata_open){
+
 	char* a_escribir = concatenar("OPEN=",metadata_open);
-	fwrite(&a_escribir,strlen(a_escribir)+1,1,f); //hardcodeado el 6
+
+	int a = fwrite(a_escribir,strlen(a_escribir)+1,1,f); //hardcodeado el 6
+
 }
 
 void escribir_campo_directory(FILE* f,char* metadata_directory){
