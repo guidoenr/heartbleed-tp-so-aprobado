@@ -69,9 +69,7 @@ void pruebas(char* puno_montaje){
 	t_list* blocks = list_create();
 
 	list_add(blocks,1);
-	list_add(blocks,61);
-	list_add(blocks,3);
-	list_add(blocks,12);
+
 
 	char* dir ="N";
 	FILE* f = fopen(path,"wb");
@@ -325,19 +323,28 @@ void escribir_campo_size(FILE* f,char* metadata_size){
 void escribir_campo_blocks(FILE* f ,t_list* blocks){
 	char* format = "[";
 
-	while (blocks->head->next != NULL){
-		format = concatenar(format,string_itoa(blocks->head->data));
-		format = concatenar(format,",");
-		blocks->head = blocks->head->next;
-		if (blocks->head->next == NULL){
-			format=concatenar(format,string_itoa(blocks->head->data));
-		}
-	}
+	if (blocks->elements_count == 1){
 
+		format = concatenar(format,string_itoa(blocks->head->data));
+
+	} else {
+
+			while (blocks->head->next != NULL){
+				format = concatenar(format,string_itoa(blocks->head->data));
+				format = concatenar(format,",");
+				blocks->head = blocks->head->next;
+
+					if (blocks->head->next == NULL){
+						format=concatenar(format,string_itoa(blocks->head->data));
+					}
+			}
+	}
 	format = concatenar(format,"]");
 
+	int size = strlen(format) + 1 ;
 
-	int size = strlen(format);
+	fwrite(&format,size,1,f);
+
 }
 
 
