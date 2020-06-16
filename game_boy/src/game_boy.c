@@ -7,6 +7,7 @@ int main(int argc, char * argv[]) {
   uint32_t socket = seleccionar_proceso(argv);
   recibir_id_de_mensaje_enviado(socket, id_mensaje);
   terminar_programa(socket, logger, config_game_boy);
+
 }
 
 void iniciar_programa(uint32_t argc) {
@@ -21,12 +22,13 @@ void iniciar_programa(uint32_t argc) {
 
   log_info(logger, "El size del comando es: %i", argc);
 }
-///char*  parametros[] = BROKER GET_POKEMON PIKACHU 2 5 // vector de puntertos de char === vector de strings
+///char*  parametros[] = BROKER GET_POKEMON PIKACHU 2 5 // vector de punteros de char === vector de strings
 uint32_t seleccionar_proceso(char * parametros[]) {
 
   uint32_t conexion;
   char * proceso = parametros[1];
-  uint32_t size_mensaje;
+  uint32_t tamanio_mensaje;
+  void* mensaje;
 
   if (string_equals_ignore_case(proceso, "")) {
     log_info(logger, "No ha ingresado un proceso correcto");
@@ -38,7 +40,6 @@ uint32_t seleccionar_proceso(char * parametros[]) {
     log_info(logger, "No ha ingresado un codigo de operacion");
     exit(-4);
   }
-  uint32_t tamanio_char = sizeof(parametros[3]);
 
   if (string_equals_ignore_case(proceso, "BROKER")) {
     conexion = crear_conexion(config_game_boy -> ip_broker, config_game_boy -> puerto_broker);
@@ -51,34 +52,34 @@ uint32_t seleccionar_proceso(char * parametros[]) {
 
     switch (cod_op) {
 		case GET_POKEMON:
-		  mensaje = malloc(sizeof(t_get_pokemon)+tamanio_char);
-		  size_mensaje = sizeof(t_get_pokemon) + tamanio_char;
-		  armar_mensaje_get_pokemon(parametros, mensaje);
-		  enviar_mensaje(GET_POKEMON, mensaje, conexion,size_mensaje);
+		  tamanio_mensaje = size_mensaje(armar_mensaje_get_pokemon(parametros), GET_POKEMON);
+		  mensaje = malloc(tamanio_mensaje);
+		  mensaje = armar_mensaje_get_pokemon(parametros);
+		  enviar_mensaje(GET_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
 		case CATCH_POKEMON:
-		  mensaje = malloc(sizeof(t_catch_pokemon) + tamanio_char);
-		  size_mensaje = sizeof(t_catch_pokemon)+ tamanio_char;
-		  armar_mensaje_catch_pokemon(parametros, mensaje);
-		  enviar_mensaje(CATCH_POKEMON, mensaje, conexion,size_mensaje);
+		  tamanio_mensaje = size_mensaje(armar_mensaje_catch_pokemon(parametros), CATCH_POKEMON);
+		  mensaje = malloc(tamanio_mensaje);
+		  mensaje = armar_mensaje_catch_pokemon(parametros);
+		  enviar_mensaje(CATCH_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
 		case CAUGHT_POKEMON:
-		  mensaje = malloc(sizeof(t_caught_pokemon));
-		  size_mensaje = sizeof(t_caught_pokemon);
-		  armar_mensaje_caught_pokemon(parametros, mensaje);
-		  enviar_mensaje(CAUGHT_POKEMON, mensaje, conexion,size_mensaje);
+		  tamanio_mensaje = size_mensaje(armar_mensaje_caught_pokemon(parametros), CAUGHT_POKEMON);
+		  mensaje = malloc(tamanio_mensaje);
+		  mensaje = armar_mensaje_caught_pokemon(parametros);
+		  enviar_mensaje(CAUGHT_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
 		case APPEARED_POKEMON:
-		  mensaje = malloc(sizeof(t_appeared_pokemon)+tamanio_char);
-		  size_mensaje = sizeof(t_appeared_pokemon)+tamanio_char;
-		  armar_mensaje_appeared_pokemon(parametros, mensaje);
-		  enviar_mensaje(APPEARED_POKEMON, mensaje, conexion,size_mensaje);
+		  tamanio_mensaje = size_mensaje(armar_mensaje_appeared_pokemon(parametros), APPEARED_POKEMON);
+		  mensaje = malloc(tamanio_mensaje);
+		  mensaje = armar_mensaje_appeared_pokemon(parametros);
+		  enviar_mensaje(APPEARED_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
 		case NEW_POKEMON:
-		  mensaje = malloc(sizeof(t_new_pokemon)+tamanio_char);
-		  size_mensaje = sizeof(t_new_pokemon)+tamanio_char;
-		  armar_mensaje_new_pokemon(parametros, mensaje);
-		  enviar_mensaje(NEW_POKEMON, mensaje, conexion,size_mensaje);
+		  tamanio_mensaje = size_mensaje(armar_mensaje_new_pokemon(parametros), NEW_POKEMON);
+		  mensaje = malloc(tamanio_mensaje);
+		  mensaje = armar_mensaje_new_pokemon(parametros);
+		  enviar_mensaje(NEW_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
 		default:
 		  log_info(logger, "Ingrese un codigo de operacion valido");
@@ -86,26 +87,27 @@ uint32_t seleccionar_proceso(char * parametros[]) {
 		  break;
     }
   }
+
   if (string_equals_ignore_case(proceso, "GAMECARD")) {
     conexion = crear_conexion(config_game_boy -> ip_gameCard, config_game_boy -> puerto_gameCard);
     switch (cod_op) {
-		case GET_POKEMON:
-		  mensaje = malloc(sizeof(t_get_pokemon)+tamanio_char);
-		  size_mensaje = sizeof(GET_POKEMON)+tamanio_char;
-		  armar_mensaje_get_pokemon(parametros, mensaje);
-		  enviar_mensaje(GET_POKEMON, mensaje, conexion,size_mensaje);
+       case GET_POKEMON:
+		  tamanio_mensaje = size_mensaje(armar_mensaje_get_pokemon(parametros), GET_POKEMON);
+		  mensaje = malloc(tamanio_mensaje);
+		  mensaje = armar_mensaje_get_pokemon(parametros);
+		  enviar_mensaje(GET_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
-		case CATCH_POKEMON:
-		  mensaje = malloc(sizeof(t_catch_pokemon)+tamanio_char);
-		  size_mensaje = sizeof(CATCH_POKEMON)+tamanio_char;
-		  armar_mensaje_catch_pokemon(parametros, mensaje);
-		  enviar_mensaje(CATCH_POKEMON, mensaje, conexion,size_mensaje);
+       case CATCH_POKEMON:
+		  tamanio_mensaje = size_mensaje(armar_mensaje_catch_pokemon(parametros), CATCH_POKEMON);
+		  mensaje = malloc(tamanio_mensaje);
+		  mensaje = armar_mensaje_catch_pokemon(parametros);
+		  enviar_mensaje(CATCH_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
-		case NEW_POKEMON:
-		  mensaje = malloc(sizeof(t_new_pokemon)+tamanio_char);
-		  size_mensaje = sizeof(NEW_POKEMON)+tamanio_char;
-		  armar_mensaje_new_pokemon(parametros, mensaje);
-		  enviar_mensaje(NEW_POKEMON, mensaje, conexion,size_mensaje);
+       case NEW_POKEMON:
+		  tamanio_mensaje = size_mensaje(armar_mensaje_new_pokemon(parametros), NEW_POKEMON);
+		  mensaje = malloc(tamanio_mensaje);
+		  mensaje = armar_mensaje_new_pokemon(parametros);
+		  enviar_mensaje(NEW_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
 		default:
 		  log_info(logger, "Ingrese un codigo de operacion valido");
@@ -116,18 +118,18 @@ uint32_t seleccionar_proceso(char * parametros[]) {
 
   if (string_equals_ignore_case(proceso, "TEAM")) {
     conexion = crear_conexion(config_game_boy -> ip_team, config_game_boy -> puerto_team);
-    mensaje = malloc(sizeof(t_appeared_pokemon)+tamanio_char);
-    size_mensaje = sizeof(t_appeared_pokemon)+tamanio_char;
-    armar_mensaje_appeared_pokemon(parametros, mensaje);
-    enviar_mensaje(APPEARED_POKEMON, mensaje, conexion,size_mensaje);
+    tamanio_mensaje = size_mensaje(armar_mensaje_appeared_pokemon(parametros), APPEARED_POKEMON);
+	mensaje = malloc(tamanio_mensaje);
+	mensaje = armar_mensaje_appeared_pokemon(parametros);
+	enviar_mensaje(APPEARED_POKEMON, mensaje, conexion, tamanio_mensaje);
   }
 
   if (string_equals_ignore_case(proceso, "SUSCRIPTOR")) {
     conexion = crear_conexion(config_game_boy -> ip_broker, config_game_boy -> puerto_broker);
-    mensaje = malloc(sizeof(t_suscripcion));
-    size_mensaje = sizeof(t_suscripcion);
-    armar_mensaje_suscripcion(parametros, mensaje);
-    enviar_mensaje(SUBSCRIPTION, mensaje, conexion,size_mensaje);
+    tamanio_mensaje = size_mensaje(armar_mensaje_suscripcion(parametros), SUBSCRIPTION);
+    mensaje = malloc(tamanio_mensaje);
+    mensaje = armar_mensaje_suscripcion(parametros);
+    enviar_mensaje(SUBSCRIPTION, mensaje, conexion, tamanio_mensaje);
   }
 
   if (conexion < 0) {
@@ -184,7 +186,9 @@ op_code obtener_enum_de_string(char * string) {
   return 0;
 }
 
-void armar_mensaje_suscripcion(char * parametros[], t_suscripcion * a_enviar) {
+t_suscripcion* armar_mensaje_suscripcion(char * parametros[]) {
+  uint32_t tamanio = sizeof(uint32_t) * 3 + sizeof(op_code);
+  t_suscripcion* a_enviar = malloc(tamanio);
 
   char * cola_a_suscribir = parametros[2];
   a_enviar -> socket = 10000;
@@ -216,19 +220,30 @@ void armar_mensaje_suscripcion(char * parametros[], t_suscripcion * a_enviar) {
    //Esto esta setteado, hay que adaptarlo.
   a_enviar -> tiempo_suscripcion = (uint32_t)parametros[3];
 
+  return a_enviar;
+
 }
 
 
-void armar_mensaje_get_pokemon(char * parametros[], t_get_pokemon * a_enviar) {
+t_get_pokemon* armar_mensaje_get_pokemon(char * parametros[]) {
+
+  uint32_t tamanio = sizeof(uint32_t) + strlen(parametros[3]) + 1;
+  t_get_pokemon* a_enviar = malloc(tamanio);
+
   a_enviar -> pokemon = parametros[3];
   if(parametros[4] != NULL ){
 	  a_enviar -> id_mensaje = (uint32_t) parametros[4];
   } else {
 	  a_enviar -> id_mensaje = 0;
   }
+
+  return a_enviar;
 }
 
-void armar_mensaje_catch_pokemon(char * parametros[], t_catch_pokemon * a_enviar) {
+t_catch_pokemon* armar_mensaje_catch_pokemon(char * parametros[]) {
+  uint32_t tamanio = sizeof(uint32_t) * 3 + strlen(parametros[3]) + 1;
+  t_catch_pokemon* a_enviar = malloc(tamanio);
+
   a_enviar -> pokemon = parametros[3];
   a_enviar -> posicion[0] = (uint32_t) parametros[4];
   a_enviar -> posicion[1] = (uint32_t) parametros[5];
@@ -237,15 +252,25 @@ void armar_mensaje_catch_pokemon(char * parametros[], t_catch_pokemon * a_enviar
   } else {
 	  a_enviar -> id_mensaje = (uint32_t) 0; ///A LABURAR A FUTURO
   }
+
+  return a_enviar;
 }
 
-void armar_mensaje_caught_pokemon(char * parametros[], t_caught_pokemon * a_enviar) {
+t_caught_pokemon* armar_mensaje_caught_pokemon(char * parametros[]) {
+
+  t_caught_pokemon* a_enviar = malloc((sizeof(uint32_t)*3));
+
   a_enviar -> id_mensaje = (uint32_t) 0;
   a_enviar -> id_mensaje_correlativo = (uint32_t) parametros[3];
   a_enviar -> resultado = (uint32_t) parametros[4];
+
+  return a_enviar;
 }
 
-void armar_mensaje_appeared_pokemon(char * parametros[], t_appeared_pokemon * a_enviar) {
+t_appeared_pokemon* armar_mensaje_appeared_pokemon(char * parametros[]) {
+  uint32_t tamanio = sizeof(uint32_t) * 4 + strlen(parametros[3]) + 1;
+  t_appeared_pokemon* a_enviar = malloc(tamanio);
+
   a_enviar -> pokemon = parametros[3];
   a_enviar -> posicion[0] = (uint32_t) parametros[4];
   a_enviar -> posicion[1] = (uint32_t) parametros[5];
@@ -253,9 +278,14 @@ void armar_mensaje_appeared_pokemon(char * parametros[], t_appeared_pokemon * a_
   if(parametros[6] != NULL){
 	  a_enviar -> id_mensaje_correlativo = (uint32_t) parametros[6];
   }
+
+  return a_enviar;
 }
 
-void armar_mensaje_new_pokemon(char * parametros[], t_new_pokemon * a_enviar) {
+t_new_pokemon* armar_mensaje_new_pokemon(char * parametros[]) {
+  uint32_t tamanio = sizeof(uint32_t) * 4 + strlen(parametros[3]) + 1;
+  t_new_pokemon* a_enviar = malloc(tamanio);
+
   a_enviar -> pokemon = parametros[3];
   a_enviar -> posicion[0] = (uint32_t) parametros[4];
   a_enviar -> posicion[1] = (uint32_t) parametros[5];
@@ -266,6 +296,7 @@ void armar_mensaje_new_pokemon(char * parametros[], t_new_pokemon * a_enviar) {
 	  a_enviar -> id_mensaje = 0; /// A futuro
   }
 
+  return a_enviar;
 }
 
 
@@ -273,37 +304,38 @@ void leer_config() {
 
   config_game_boy = malloc(sizeof(t_config_game_boy));
 
-  t_config * config = config_create("game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
+  config = config_create("game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
 
   if (config == NULL) {
     printf("no se pudo encontrar el path del config");
     exit(-2);
   }
-  config_game_boy -> ip_broker = strdup(config_get_string_value(config, "IP_BROKER"));
-  config_game_boy -> puerto_broker = strdup(config_get_string_value(config, "PUERTO_BROKER"));
-  config_game_boy -> ip_team = strdup(config_get_string_value(config, "IP_TEAM"));
-  config_game_boy -> puerto_team = strdup(config_get_string_value(config, "PUERTO_TEAM"));
-  config_game_boy -> ip_gameCard = strdup(config_get_string_value(config, "IP_GAMECARD"));
-  config_game_boy -> puerto_gameCard = strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
-  config_game_boy -> log_file = strdup(config_get_string_value(config, "LOG_FILE"));
-  config_destroy(config);
+  config_game_boy -> ip_broker = config_get_string_value(config, "IP_BROKER");
+  config_game_boy -> puerto_broker = config_get_string_value(config, "PUERTO_BROKER");
+  config_game_boy -> ip_team = config_get_string_value(config, "IP_TEAM");
+  config_game_boy -> puerto_team = config_get_string_value(config, "PUERTO_TEAM");
+  config_game_boy -> ip_gameCard = config_get_string_value(config, "IP_GAMECARD");
+  config_game_boy -> puerto_gameCard = config_get_string_value(config, "PUERTO_GAMECARD");
+  config_game_boy -> log_file = config_get_string_value(config, "LOG_FILE");
+
 }
 
-void liberar_config(t_config_game_boy * config) {
-  free(config -> ip_broker);
-  free(config -> puerto_broker);
-  free(config -> ip_team);
-  free(config -> puerto_team);
-  free(config -> ip_gameCard);
-  free(config -> puerto_gameCard);
-  free(config -> log_file);
-  free(config);
+void liberar_config(t_config_game_boy * config_game_boy) {
+  free(config_game_boy -> ip_broker);
+  free(config_game_boy -> puerto_broker);
+  free(config_game_boy -> ip_team);
+  free(config_game_boy -> puerto_team);
+  free(config_game_boy -> ip_gameCard);
+  free(config_game_boy -> puerto_gameCard);
+  free(config_game_boy -> log_file);
+  free(config_game_boy);
 }
 
-void terminar_programa(uint32_t conexion, t_log * logger, t_config_game_boy * config) {
-  liberar_config(config);
+void terminar_programa(uint32_t conexion, t_log * logger, t_config_game_boy * config_game_boy) {
+  liberar_config(config_game_boy);
   liberar_logger(logger);
   liberar_conexion(conexion);
+  config_destroy(config);
 }
 
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {}

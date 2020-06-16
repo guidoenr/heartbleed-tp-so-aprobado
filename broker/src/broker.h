@@ -23,17 +23,11 @@ typedef struct {
 typedef struct {
 	uint32_t id_mensaje;
 	uint32_t id_correlativo;
-	void* 	 payload;//Se puede poner como t_paquete? Solucionaría un par de cosas
+	void* 	 payload;
 	t_list*  suscriptor_enviado;
 	t_list*  suscriptor_recibido;
 	op_code  codigo_operacion;
 } t_mensaje;
-
-typedef struct {
-	uint32_t socket;
-	char* 	 emisor;
-	uint32_t temporal;
-} t_suscriptor;
 
 typedef struct {
 	uint32_t tamanio_mensaje;
@@ -76,6 +70,8 @@ t_log* logger;
 sem_t semaforo;
 sem_t mutex_id;
 
+uint32_t id_mensaje_univoco;
+
 //Funciones generales
 void iniciar_programa			 (void);
 void iniciar_semaforos			 (void);
@@ -91,7 +87,7 @@ void destruir_semaforos			 (void);
 
 //Administracion de mensajes
 void 	 encolar_mensaje			       			   (t_mensaje*, op_code);
-void 	 agregar_mensaje				   			   (uint32_t,uint32_t,t_paquete*,uint32_t);
+void 	 agregar_mensaje				   			   (uint32_t,uint32_t,void*,uint32_t);
 uint32_t generar_id_univoco				   			   (void);
 void 	 enviar_mensajes_get			   			   (void);
 void 	 enviar_mensajes_catch			   			   (void);
@@ -101,31 +97,28 @@ void 	 enviar_mensajes_appeared		   			   (void);
 void 	 enviar_mensaje_get				   			   (void*);
 void 	 desencolar_mensaje				   			   (t_mensaje*);
 void 	 actualizar_mensaje_confirmado 	   			   ();
-t_ack* 	 deserealizar_ack				   			   (void*);
 void 	 actualizar_mensajes_confirmados   			   (t_ack*);
-void     agregar_suscriptor_a_enviados_confirmados	   (t_mensaje*, char*);
-void 	 agregar_suscriptor_a_enviados_sin_confirmar   (t_mensaje*, char*);
-void	 eliminar_suscriptor_de_enviados_sin_confirmar (t_mensaje*, char*);
+void     agregar_suscriptor_a_enviados_confirmados	   (t_mensaje*, uint32_t);
+void 	 agregar_suscriptor_a_enviados_sin_confirmar   (t_mensaje*, uint32_t);
+void	 eliminar_suscriptor_de_enviados_sin_confirmar (t_mensaje*, uint32_t);
 bool 	 es_el_mismo_suscriptor			   			   (void*);
 void 	 eliminar_mensajes_confirmados	   			   (void);
 void 	 borrar_mensajes_confirmados	   			   (op_code, t_list*, t_list*);
 void 	 eliminar_mensaje							   (void*);
-bool 	 no_tiene_el_mensaje						   (t_mensaje*, char*);
+bool 	 no_tiene_el_mensaje						   (t_mensaje*, uint32_t);
 
 //Suscripciones
-void 		   recibir_suscripcion         (t_mensaje*);
-t_suscripcion* deserealizar_suscripcion    (void*);
-void 		   suscribir_a_cola			   (t_list*, t_suscriptor*, op_code);
+void 		   recibir_suscripcion         (t_suscripcion*);
+void 		   suscribir_a_cola			   (t_list*, t_suscripcion*, op_code);
 bool 		   es_la_misma_suscripcion     (void*);
-void 		   informar_mensajes_previos   (t_suscriptor*, op_code);
+void 		   informar_mensajes_previos   (t_suscripcion*, op_code);
 void 		   descargar_historial_mensajes(op_code, uint32_t);
-t_suscriptor*  armar_suscripcion_a_guardar (t_suscripcion*);
 void 		   destruir_suscripcion 	   (void*);
 t_list*		   encontrar_suscriptores	   (void);
 void 		   actualizar_suscriptores     (t_mensaje*);
 void 		   eliminar_suscriptor		   (void*);
 //Para team y game_card
-t_ack* 		   armar_confirmacion_de_recepcion(t_paquete*);
+//t_ack* 		   armar_confirmacion_de_recepcion(t_paquete*);
 
 //Memoria
 void eliminar_particion_de_memoria(void);

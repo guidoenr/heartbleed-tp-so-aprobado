@@ -137,62 +137,37 @@ void liberar_listas(){
 /*EL SERVICE DEL BROKER*/
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	uint32_t size;
-	t_paquete* msg = malloc(sizeof(t_paquete));
-	t_ack* confirmacion_mensaje = malloc(sizeof(t_ack));
-
-	log_info(logger,"Codigo de operacion %d",(op_code) cod_op);
-	msg = recibir_mensaje(cliente_fd, &size);
+	op_code* codigo_op = malloc(sizeof(op_code));
+	void* msg;
+	recibir_paquete(cliente_fd, &size, codigo_op, msg);
+	cod_op = (*codigo_op);
+	log_info(logger,"Codigo de operacion %d", cod_op);
+	void* mensaje_e_agregar = deserealizar_paquete(msg, *codigo_op, size);
 
 	switch (cod_op) {
 		case GET_POKEMON:
-			//msg = malloc(sizeof(t_get_pokemon));
-			//msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
-			free(msg);
+			agregar_mensaje(GET_POKEMON, size, mensaje_e_agregar, cliente_fd);
 			break;
 		case CATCH_POKEMON:
-			//msg = malloc(sizeof(t_catch_pokemon));
-			//msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(CATCH_POKEMON, size, msg, cliente_fd);
-			free(msg);
+			agregar_mensaje(CATCH_POKEMON, size, mensaje_e_agregar, cliente_fd);
 			break;
 		case LOCALIZED_POKEMON:
-			//msg = malloc(sizeof(t_localized_pokemon));
-			//msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(LOCALIZED_POKEMON, size, msg, cliente_fd);
-			free(msg);
+			agregar_mensaje(LOCALIZED_POKEMON, size, mensaje_e_agregar, cliente_fd);
 			break;
 		case CAUGHT_POKEMON:
-			//msg = malloc(sizeof(t_caught_pokemon));
-			//msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(CAUGHT_POKEMON, size, msg, cliente_fd);
-			free(msg);
+			agregar_mensaje(CAUGHT_POKEMON, size, mensaje_e_agregar, cliente_fd);
 			break;
 		case APPEARED_POKEMON:
-			//msg = malloc(sizeof(t_caught_pokemon));
-			//msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(APPEARED_POKEMON, size, msg, cliente_fd);
-			free(msg);
+			agregar_mensaje(APPEARED_POKEMON, size, mensaje_e_agregar, cliente_fd);
 			break;
 		case NEW_POKEMON:
-			//msg = malloc(sizeof(t_new_pokemon));
-			//msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd);
-			free(msg);
+			agregar_mensaje(NEW_POKEMON, size, mensaje_e_agregar, cliente_fd);
 			break;
 		case SUBSCRIPTION:
-			//msg = malloc(sizeof(t_suscripcion));
-			//msg = recibir_mensaje(cliente_fd, &size);
-			agregar_mensaje(SUBSCRIPTION, size, msg, cliente_fd);
-			free(msg);
+			recibir_suscripcion(mensaje_e_agregar);
 			break;
 		case ACK:
-			//msg = malloc(sizeof(t_ack));
-			//msg = recibir_mensaje(cliente_fd, &size);
-			confirmacion_mensaje        = 	deserealizar_ack(msg); //REVISAR LO QUE RECIBE EL DESEREALIZAR
-			actualizar_mensajes_confirmados(confirmacion_mensaje);
-			free(confirmacion_mensaje);
-			free(msg);
+			actualizar_mensajes_confirmados(mensaje_e_agregar);
 			break;
 		case 0:
 			log_info(logger,"No se encontro el tipo de mensaje");
@@ -200,56 +175,37 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 		case -1:
 			pthread_exit(NULL);
 	}
-
+	free(codigo_op);
+//REVISAR DONDE Y CUANDO HACER EL FREE DE LOS MENSAJES QUE SE AGREGARON
 }
 
-void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size) {
 
-	void* buffer;
-	log_info(logger, "Recibiendo mensaje.");
-	sem_wait(&semaforo);
-
-	recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
-
-	log_info(logger, "Tamano de paquete recibido: %s", size);
-
-	buffer = malloc(*size);
-
-	recv(socket_cliente, buffer, *size, MSG_WAITALL);
-
-	sem_post(&semaforo);
-
-	log_info(logger, "Mensaje recibido: %s", buffer);
-
-
-	t_paquete* paquete = malloc(sizeof(t_paquete));
-
-	paquete = deserealizar_paquete(buffer,size);
-
-    return paquete;
-}
-
-void agregar_mensaje(uint32_t cod_op, uint32_t size, t_paquete* paquete, uint32_t socket_cliente){
+void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t socket_cliente){
 	log_info(logger, "Agregando mensaje");
 	log_info(logger, "Size: %d", size);
 	log_info(logger, "Socket_cliente: %d", socket_cliente);
-	log_info(logger, "Payload: %s", (char*) paquete);
+	log_info(logger, "Payload: %s", (char*) mensaje);
 
-	t_mensaje* mensaje    = malloc(sizeof(t_mensaje));
+	uint32_t malloc_size = size + sizeof(uint32_t) * 2 + sizeof(op_code);
+	t_mensaje* mensaje_a_agregar = malloc(malloc_size);
 	uint32_t nuevo_id     = generar_id_univoco();
-	paquete -> id_mensaje = nuevo_id;
-	mensaje -> id_mensaje = nuevo_id;
+
+	//HAY QUE ARREGLAR ESTO
+	//PREGUNTAR POR EL VOID*
+
+	//mensaje -> id_mensaje = nuevo_id;
+	mensaje_a_agregar -> id_mensaje = nuevo_id;
 
 	//Este id habría que ver como pasarlo al id de un t_get por ejemplo.
 
-	mensaje -> payload 		       = paquete -> buffer -> stream;
-	mensaje -> codigo_operacion    = cod_op;
-	mensaje -> suscriptor_enviado  = list_create();
-	mensaje -> suscriptor_recibido = list_create();
+	mensaje_a_agregar -> payload   = mensaje;
+	mensaje_a_agregar -> codigo_operacion    = cod_op;
+	mensaje_a_agregar -> suscriptor_enviado  = list_create();
+	mensaje_a_agregar -> suscriptor_recibido = list_create();
 
 
 	sem_post(&mutex_id);
-	send(socket_cliente, &(paquete -> id_mensaje) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
+	send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
 	sem_post(&mutex_id);
 
 
@@ -300,9 +256,6 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				list_add(cola_new, mensaje);
 				log_info(logger, "Mensaje agregado a cola de mensajes new.");
 				break;
-			case SUBSCRIPTION:
-				recibir_suscripcion(mensaje);
-				break;
 			default:
 				log_info(logger, "El codigo de operacion es invalido");
 				exit(-6);
@@ -310,59 +263,41 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 }
 
 //-----------------------SUSCRIPCIONES------------------------//
-void recibir_suscripcion(t_mensaje* mensaje){
+void recibir_suscripcion(t_suscripcion* mensaje_suscripcion){
 
-	t_suscripcion* mensaje_suscripcion = malloc(sizeof(t_suscripcion));
-	mensaje_suscripcion -> id_proceso  = malloc(sizeof(char*));
-
-	mensaje_suscripcion 			   = deserealizar_suscripcion(mensaje -> payload);
 	op_code cola_a_suscribir		   = mensaje_suscripcion -> cola_a_suscribir;
-	t_suscriptor* suscripcion    	   = armar_suscripcion_a_guardar(mensaje_suscripcion);
 
 	log_info(logger, "Se recibe una suscripción.");
 
 		switch (cola_a_suscribir) {
 			 case GET_POKEMON:
-				suscribir_a_cola(lista_suscriptores_get, suscripcion, cola_a_suscribir);
+				suscribir_a_cola(lista_suscriptores_get, mensaje_suscripcion, cola_a_suscribir);
 				break;
 			 case CATCH_POKEMON:
-				suscribir_a_cola(lista_suscriptores_catch, suscripcion, cola_a_suscribir);
+				suscribir_a_cola(lista_suscriptores_catch, mensaje_suscripcion, cola_a_suscribir);
 				break;
 			 case LOCALIZED_POKEMON:
-				suscribir_a_cola(lista_suscriptores_localized, suscripcion, cola_a_suscribir);
+				suscribir_a_cola(lista_suscriptores_localized, mensaje_suscripcion, cola_a_suscribir);
 				break;
 			 case CAUGHT_POKEMON:
-				suscribir_a_cola(lista_suscriptores_caught, suscripcion, cola_a_suscribir);
+				suscribir_a_cola(lista_suscriptores_caught, mensaje_suscripcion, cola_a_suscribir);
 				break;
 			 case APPEARED_POKEMON:
-				suscribir_a_cola(lista_suscriptores_appeared,suscripcion, cola_a_suscribir);
+				suscribir_a_cola(lista_suscriptores_appeared, mensaje_suscripcion, cola_a_suscribir);
 				break;
 			 case NEW_POKEMON:
-				suscribir_a_cola(lista_suscriptores_new, suscripcion, cola_a_suscribir);
+				suscribir_a_cola(lista_suscriptores_new, mensaje_suscripcion, cola_a_suscribir);
 				break;
 			 default:
 				log_info(logger, "Ingrese un codigo de operacion valido");
 				break;
 		 }
 
-	 free(suscripcion -> emisor);
-	 free(mensaje_suscripcion -> id_proceso);
-	 free(mensaje_suscripcion);
-	 free(suscripcion);
-
 }
 
-t_suscriptor* armar_suscripcion_a_guardar(t_suscripcion* mensaje_suscripcion){
-	t_suscriptor* nueva_suscripcion = malloc(sizeof(t_suscriptor));
-	nueva_suscripcion -> emisor 	= malloc(sizeof(char*));
-	nueva_suscripcion -> emisor     = mensaje_suscripcion -> id_proceso;
-	nueva_suscripcion -> socket     = mensaje_suscripcion -> socket;
-	nueva_suscripcion -> temporal   = mensaje_suscripcion -> tiempo_suscripcion;
-	return nueva_suscripcion;
-}
 
 //Ver de agregar threads.
-void suscribir_a_cola(t_list* lista_suscriptores, t_suscriptor* suscripcion, op_code cola_a_suscribir){
+void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion, op_code cola_a_suscribir){
 
 	//esto es solo para probar, una vez que funciones se saca
 	char* cola;
@@ -397,13 +332,13 @@ void suscribir_a_cola(t_list* lista_suscriptores, t_suscriptor* suscripcion, op_
 
 
 	bool es_la_misma_suscripcion(void* una_suscripcion){
-		t_suscriptor* otra_suscripcion = una_suscripcion;
-		return otra_suscripcion -> emisor == suscripcion -> emisor;
+		t_suscripcion* otra_suscripcion = una_suscripcion;
+		return otra_suscripcion -> id_proceso == suscripcion -> id_proceso;
 	}
 
 
-	if(suscripcion -> temporal != 0){
-		sleep(suscripcion -> temporal);
+	if(suscripcion -> tiempo_suscripcion != 0){
+		sleep(suscripcion -> tiempo_suscripcion);
 		list_remove_by_condition(lista_suscriptores, es_la_misma_suscripcion);
 		//list_remove_and_destroy_by_condition(lista_suscriptores, es_la_misma_suscripcion, destruir_suscripcion);
 		log_info(logger, "La suscripcion fue anulada correctamente.");
@@ -413,16 +348,13 @@ void suscribir_a_cola(t_list* lista_suscriptores, t_suscriptor* suscripcion, op_
 
 //REVISAR FUERTE
 void destruir_suscripcion(void* suscripcion) {
-	t_suscriptor* una_suscripcion = suscripcion;
-	free(una_suscripcion -> emisor);
-	free((t_suscriptor*)suscripcion);
-	free(una_suscripcion);
+	free(suscripcion);
 }
 
 
 //REVISAR SI LOS HISTORIALES ESTÁN BIEN RELACIONADOS
 //REVISAR EL PARAMETRO QUE RECIBE
-void informar_mensajes_previos(t_suscriptor* una_suscripcion, op_code cola_a_suscribir){
+void informar_mensajes_previos(t_suscripcion* una_suscripcion, op_code cola_a_suscribir){
 
 	switch(cola_a_suscribir){
 		case GET_POKEMON: //GAME_CARD SUSCRIPTO
@@ -462,29 +394,6 @@ void descargar_historial_mensajes(op_code tipo_de_mensaje, uint32_t socket_clien
 	//Despues enviar todos los mensajes de cada cola a la que fue suscripta.
 }
 
-t_suscripcion* deserealizar_suscripcion(void* stream){
-	t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
-	memcpy(&(suscripcion->socket), stream, sizeof(uint32_t));
-	stream += sizeof(uint32_t);
-	memcpy(&(suscripcion->tiempo_suscripcion), stream, sizeof(uint32_t));
-	stream += sizeof(uint32_t);
-	memcpy(&(suscripcion->cola_a_suscribir), stream, sizeof(op_code));
-	stream += sizeof(op_code);
-	return suscripcion;
-}
-
-t_ack* deserealizar_ack(void* stream){
-	t_ack* acknowledgment = malloc(sizeof(t_ack));
-	memcpy(&(acknowledgment -> id_mensaje), stream, sizeof(uint32_t));
-	stream += sizeof(uint32_t);
-	memcpy(&(acknowledgment -> tipo_mensaje), stream, sizeof(op_code));
-	stream += sizeof(op_code);
-	memcpy(&(acknowledgment -> id_proceso), stream, sizeof(char*));
-	stream += sizeof(char*);
-	memcpy(&(acknowledgment -> socket), stream, sizeof(uint32_t));
-	stream += sizeof(uint32_t);
-	return acknowledgment;
-}
 
 /*Para team y game_card
 t_ack* armar_confirmacion_de_recepcion(t_paquete* paquete){
@@ -557,8 +466,9 @@ void borrar_mensajes_confirmados(op_code tipo_lista, t_list* cola_mensajes, t_li
 	t_list* lista_id_suscriptores = list_create();
 
 	void* id_suscriptor(void* un_suscriptor){
-		t_suscriptor* suscripto = un_suscriptor;
-		return suscripto -> emisor;
+		t_suscripcion* suscripto = un_suscriptor;
+		uint32_t* id = &(suscripto -> id_proceso);
+		return id;
 	}
 
 	lista_id_suscriptores = list_map(suscriptores, id_suscriptor);
@@ -567,11 +477,11 @@ void borrar_mensajes_confirmados(op_code tipo_lista, t_list* cola_mensajes, t_li
 		t_mensaje* un_mensaje = mensaje;
 
 		bool suscriptor_recibio_mensaje(void* suscripto){
-			char* un_suscripto = suscripto;
+			uint32_t* un_suscripto = suscripto;
 
 			bool es_el_mismo_suscripto(void* id_suscripto){
-				char* alguna_suscripcion = id_suscripto;
-				return string_equals_ignore_case(alguna_suscripcion, un_suscripto);
+				uint32_t* alguna_suscripcion = id_suscripto;
+				return (*alguna_suscripcion) == (*un_suscripto);
 			}
 
 			return list_any_satisfy(un_mensaje -> suscriptor_recibido, es_el_mismo_suscripto);
@@ -610,31 +520,26 @@ void borrar_mensajes_confirmados(op_code tipo_lista, t_list* cola_mensajes, t_li
 // REVISAR TAMBIÉN
 void eliminar_mensaje(void* mensaje){
 	t_mensaje* un_mensaje = mensaje;
-	list_destroy_and_destroy_elements(un_mensaje -> suscriptor_enviado, eliminar_suscriptor);
-	list_destroy_and_destroy_elements(un_mensaje -> suscriptor_recibido, eliminar_suscriptor);
+	list_destroy(un_mensaje -> suscriptor_enviado);
+	list_destroy(un_mensaje -> suscriptor_recibido);
 	free(un_mensaje -> payload);
 	free(un_mensaje);
 	free((t_mensaje*) mensaje);
 }
 
-void eliminar_suscriptor(void* un_suscriptor){
-	char* id_suscripto = un_suscriptor;
-	free(id_suscripto);
-	free((char*)un_suscriptor);
-}
 
-void eliminar_suscriptor_de_enviados_sin_confirmar(t_mensaje* mensaje, char* suscriptor){
+void eliminar_suscriptor_de_enviados_sin_confirmar(t_mensaje* mensaje, uint32_t suscriptor){
 
 	bool es_el_mismo_suscriptor(void* un_suscripto){
-		char* suscripto = un_suscripto;
-		return string_equals_ignore_case(suscripto, suscriptor);
+		uint32_t* suscripto = un_suscripto;
+		return suscriptor == (*suscripto);
 	}
 
 	list_remove_by_condition(mensaje -> suscriptor_enviado, es_el_mismo_suscriptor);
 }
 
-void agregar_suscriptor_a_enviados_confirmados(t_mensaje* mensaje, char* confirmacion){
-	list_add(mensaje -> suscriptor_recibido, confirmacion);
+void agregar_suscriptor_a_enviados_confirmados(t_mensaje* mensaje, uint32_t confirmacion){
+	list_add(mensaje -> suscriptor_recibido, &confirmacion);
 }
 //Se le pasa por parametro la cola y la lista de sus suscriptores segun se necesite.
 //Por ejemplo:
@@ -645,11 +550,12 @@ void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){
 			t_mensaje* un_mensaje = mensaje;
 
 			void mandar_mensaje(void* suscriptor){
-				t_suscriptor* un_suscriptor = suscriptor;
+				t_suscripcion* un_suscriptor = suscriptor;
 
-				if(no_tiene_el_mensaje(un_mensaje, un_suscriptor -> emisor)){
-					enviar_mensaje(un_mensaje -> codigo_operacion, un_mensaje -> payload, un_suscriptor -> socket, 24);// HAy que sacar el 24 por el size real
-					agregar_suscriptor_a_enviados_sin_confirmar(un_mensaje, un_suscriptor -> emisor);
+				if(no_tiene_el_mensaje(un_mensaje, un_suscriptor -> id_proceso)){
+					uint32_t tamanio_mensaje = size_mensaje(un_mensaje -> payload, un_mensaje -> codigo_operacion);
+					enviar_mensaje(un_mensaje -> codigo_operacion, un_mensaje -> payload, un_suscriptor -> socket, tamanio_mensaje);
+					agregar_suscriptor_a_enviados_sin_confirmar(un_mensaje, un_suscriptor -> id_proceso);
 				}
 			}
 			list_iterate(lista_suscriptores, mandar_mensaje);
@@ -657,13 +563,13 @@ void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){
 	list_iterate(cola_de_mensajes, mensajear_suscriptores);
 }
 
-bool no_tiene_el_mensaje(t_mensaje* mensaje, char* un_suscripto){
+bool no_tiene_el_mensaje(t_mensaje* mensaje, uint32_t un_suscripto){
 	bool mensaje_enviado;
 	bool mensaje_recibido;
 
 	bool es_el_mismo_suscripto(void* suscripto){
-		char* id_suscripcion = suscripto;
-		return id_suscripcion == un_suscripto;
+		uint32_t* id_suscripcion = suscripto;
+		return (*id_suscripcion) == un_suscripto;
 	}
 
 	mensaje_enviado  = list_any_satisfy(mensaje -> suscriptor_enviado, es_el_mismo_suscripto);
@@ -672,8 +578,8 @@ bool no_tiene_el_mensaje(t_mensaje* mensaje, char* un_suscripto){
 	return !mensaje_enviado && !mensaje_recibido;
 }
 
-void agregar_suscriptor_a_enviados_sin_confirmar(t_mensaje* mensaje_enviado, char* un_suscriptor){
-	list_add(mensaje_enviado -> suscriptor_enviado, un_suscriptor);
+void agregar_suscriptor_a_enviados_sin_confirmar(t_mensaje* mensaje_enviado, uint32_t un_suscriptor){
+	list_add(mensaje_enviado -> suscriptor_enviado, &un_suscriptor);
 }
 
 //--------------MEMORIA-------------//
