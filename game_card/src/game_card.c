@@ -62,7 +62,26 @@ int main(void) {
 //punto_montaje = /home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje
 
 
+void pruebas(char* puno_montaje){
+	char* path = concatenar(punto_montaje,"/Blocks/54.bin");
 
+
+	t_list* blocks = list_create();
+
+	list_add(blocks,1);
+	list_add(blocks,61);
+	list_add(blocks,3);
+	list_add(blocks,12);
+
+	char* dir ="N";
+	FILE* f = fopen(path,"wb");
+
+	escribir_campo_directory(f, dir);
+	escribir_campo_blocks(f,blocks);
+
+	fclose(f);
+
+}
 
 
 void escribirLinea(char* path,char* linea_a_escribir){
@@ -270,30 +289,65 @@ void crearPokemon(t_new_pokemon* newPoke){
 //		char open;
 //	}t_file_metadata;
 
-	int tam_lista_blocks = size_of_meta_blocks(metadata.blocks);
+	escribir_campo_open(file,metadata.open);
+	escribir_campo_directory(file,metadata.directory);
+	escribir_campo_size(file,metadata.size);
+	escribir_campo_blocks(file,metadata.blocks);
 
-	fwrite(&metadata.open,sizeof(char),1,file);
-	fwrite(&metadata.directory,sizeof(char),1,file);
-	fwrite(&metadata.size,sizeof(int),1,file);
-	fwrite(&metadata.blocks,tam_lista_blocks,1,file);
-	// TODO
 	fclose(file);
 
 	unlock_file(metaPath);
 
 }
 
-int size_of_meta_blocks(t_list* lista){
-	return sizeof(int) + (lista->elements_count * 4);
+void append(char* s, char c) {
+        int len = strlen(s);
+        s[len] = c;
+        s[len+1] = '\0';
 }
+
+void escribir_campo_open(FILE* f,char* metadata_open){
+	char* a_escribir = concatenar("OPEN=",metadata_open);
+	fwrite(&a_escribir,6,1,f); //hardcodeado el 6
+}
+
+void escribir_campo_directory(FILE* f,char* metadata_directory){
+	char* a_escribir = concatenar("DIRECTORY=",metadata_directory);
+	fwrite(&a_escribir,11,1,f);
+}
+
+void escribir_campo_size(FILE* f,char* metadata_size){
+	char* a_escribir = concatenar("SIZE=",metadata_size);
+	int tam = strlen("SIZE=") + strlen(metadata_size);
+	fwrite(&a_escribir,tam,1,f);
+}
+
+void escribir_campo_blocks(FILE* f ,t_list* blocks){
+	char* format = "[";
+
+	while (blocks->head->next != NULL){
+		format = concatenar(format,string_itoa(blocks->head->data));
+		format = concatenar(format,",");
+		blocks->head = blocks->head->next;
+		if (blocks->head->next == NULL){
+			format=concatenar(format,string_itoa(blocks->head->data));
+		}
+	}
+
+	format = concatenar(format,"]");
+
+
+	int size = strlen(format);
+}
+
 
 t_file_metadata generar_file_metadata(t_new_pokemon* newPoke){
 
 	t_file_metadata metadata;
-	metadata.directory = 'N';
-	metadata.open = 'N';
+	metadata.directory = "N";
+	metadata.open = "N";
 	metadata.blocks = asignarBlocks();
-	metadata.size = calcular_size_inicial(newPoke);
+	metadata.size = string_itoa(calcular_size_inicial(newPoke)); //TODO que es este size?
 	return metadata;
 }
 
@@ -599,7 +653,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende
 		case NEW_POKEMON:
 			//void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size);
 			msg = malloc(sizeof(t_new_pokemon));
-			msg = recibir_new_pokemon(cliente_fd,size); // retorna un t_new_pokemon
+			//msg = recibir_new_pokemon(cliente_fd,size); // retorna un t_new_pokemon
 			informarAlBroker(cliente_fd, NEW_POKEMON);
 			funcionHiloNewPokemon(msg,cliente_fd);
 
@@ -640,12 +694,12 @@ void funcionHiloNewPokemon(t_new_pokemon* new_pokemon,int socket){
 
 	t_appeared_pokemon* appeared_pokemon = armar_appeared(new_pokemon);
 
-
-	enviar_appeared_pokemon(appeared_pokemon,socket);
-	free(appeared_pokemon->id_mensaje);
-	free(appeared_pokemon->id_mensaje_correlativo);
-	free(appeared_pokemon->pokemon);
-	free(appeared_pokemon->posicion);
+//
+//	enviar_appeared_pokemon(appeared_pokemon,socket);
+//	free(appeared_pokemon->id_mensaje);
+//	free(appeared_pokemon->id_mensaje_correlativo);
+//	free(appeared_pokemon->pokemon);
+//	free(appeared_pokemon->posicion);
 
 	char* path = obtenerPathMetaFile(new_pokemon);
 	unlock_file(path);
@@ -731,81 +785,79 @@ char* obtenerPathDirPokemon(t_new_pokemon* pokemon){
 bool existePokemonEnPosicion(t_new_pokemon* pokemon){
 	char* meta_file_path = obtenerPathMetaFile(pokemon);
 
-
-
 }
 
-void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
-	t_buffer* buffer = malloc(sizeof(t_buffer));
-
-	buffer -> size = sizeNewPokemon(pokemon);
-	buffer -> stream = malloc(buffer -> size);
-	buffer -> stream = pokemon;
-	log_info(logger,"Armando paquete New_Pokemon");
-	//TAMBIEN HAY QUE LLENAR EL CAMPO DE ID DEL PAQUETE
-	t_paquete* paquete = malloc(sizeof(t_paquete));
-	paquete -> codigo_operacion = NEW_POKEMON;
-	paquete -> buffer = buffer;
-	//HABRIA QUE DARLE UN VALOR AL SIZE SERIALIZADO
-	uint32_t size_serializado;
-	void* stream = serializar_paquete(paquete, &size_serializado);
-	log_info(logger,"Paquete serializado con tamaño :%d",size_serializado);
-	//EN VEZ DE SERIALIZARLO ACA PODES USAR LA FUNCION ENVIAR_MENSAJE
-	//DEL UTILS QUE YA TE LO SERIALIZA ADENTRO.
-	send(socket_cliente, stream, size_serializado, 0);
-	log_info(logger,"Paquete enviado");
-	//free(buffer -> stream);
-	free(buffer);
-	free(paquete);
-	free(stream);
-}
-
-void enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket){
-		t_buffer* buffer = malloc(sizeof(t_buffer));
-
-		buffer -> size = sizeAppearedPokemon(appeared_pokemon);
-		buffer -> stream = malloc(buffer -> size);
-		buffer -> stream = appeared_pokemon;
-		log_info(logger,"Armando paquete APPEARED_POKEMON");
-
-		t_paquete* paquete = malloc(sizeof(t_paquete));
-		paquete -> codigo_operacion = APPEARED_POKEMON;
-		paquete -> buffer = buffer;
-
-		uint32_t size_serializado;
-		void* stream = serializar_paquete(paquete, &size_serializado);
-		log_info(logger,"Paquete serializado con tamaño :%d",size_serializado);
-		send(socket, stream, size_serializado, 0);
-		log_info(logger,"Paquete enviado");
-		//free(buffer -> stream);
-		free(buffer);
-		free(paquete);
-		free(stream);
-}
-
-t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
-		log_info(logger, "recibiendo new_pokemon");
-		recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
-		log_info(logger, "tamaño new_pokemon: %d", *size);
-		void* buffer = malloc(*size);
-		recv(socket_cliente, buffer, *size, MSG_WAITALL);
-		log_info(logger, "mensaje recibido: %s", buffer);
-
-		t_new_pokemon* pokemon = deserealizar_new_pokemon(buffer);
-		return pokemon;
-	}
-
-t_appeared_pokemon* recibir_appeared_pokemon(uint32_t socket_cliente, uint32_t* size){
-		log_info(logger, "recibiendo appeared_pokemon");
-		recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
-		log_info(logger, "tamaño appeared_pokemon: %d", *size);
-		void* buffer = malloc(*size);
-		recv(socket_cliente, buffer, *size, MSG_WAITALL);
-		log_info(logger, "mensaje recibido: %s", buffer);
-
-		t_new_pokemon* pokemon = deserealizar_appeared_pokemon(buffer);
-		return pokemon;
-	}
+//void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
+//	t_buffer* buffer = malloc(sizeof(t_buffer));
+//
+//	buffer -> size = sizeNewPokemon(pokemon);
+//	buffer -> stream = malloc(buffer -> size);
+//	buffer -> stream = pokemon;
+//	log_info(logger,"Armando paquete New_Pokemon");
+//	//TAMBIEN HAY QUE LLENAR EL CAMPO DE ID DEL PAQUETE
+//	t_paquete* paquete = malloc(sizeof(t_paquete));
+//	paquete -> codigo_operacion = NEW_POKEMON;
+//	paquete -> buffer = buffer;
+//	//HABRIA QUE DARLE UN VALOR AL SIZE SERIALIZADO
+//	uint32_t size_serializado;
+//	void* stream = serializar_paquete(paquete, &size_serializado);
+//	log_info(logger,"Paquete serializado con tamaño :%d",size_serializado);
+//	//EN VEZ DE SERIALIZARLO ACA PODES USAR LA FUNCION ENVIAR_MENSAJE
+//	//DEL UTILS QUE YA TE LO SERIALIZA ADENTRO.
+//	send(socket_cliente, stream, size_serializado, 0);
+//	log_info(logger,"Paquete enviado");
+//	//free(buffer -> stream);
+//	free(buffer);
+//	free(paquete);
+//	free(stream);
+//}
+//
+//void enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket){
+//		t_buffer* buffer = malloc(sizeof(t_buffer));
+//
+//		buffer -> size = sizeAppearedPokemon(appeared_pokemon);
+//		buffer -> stream = malloc(buffer -> size);
+//		buffer -> stream = appeared_pokemon;
+//		log_info(logger,"Armando paquete APPEARED_POKEMON");
+//
+//		t_paquete* paquete = malloc(sizeof(t_paquete));
+//		paquete -> codigo_operacion = APPEARED_POKEMON;
+//		paquete -> buffer = buffer;
+//
+//		uint32_t size_serializado;
+//		void* stream = serializar_paquete(paquete, &size_serializado);
+//		log_info(logger,"Paquete serializado con tamaño :%d",size_serializado);
+//		send(socket, stream, size_serializado, 0);
+//		log_info(logger,"Paquete enviado");
+//		//free(buffer -> stream);
+//		free(buffer);
+//		free(paquete);
+//		free(stream);
+//}
+//
+//t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size){
+//		log_info(logger, "recibiendo new_pokemon");
+//		recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
+//		log_info(logger, "tamaño new_pokemon: %d", *size);
+//		void* buffer = malloc(*size);
+//		recv(socket_cliente, buffer, *size, MSG_WAITALL);
+//		log_info(logger, "mensaje recibido: %s", buffer);
+//
+//		t_new_pokemon* pokemon = deserealizar_new_pokemon(buffer);
+//		return pokemon;
+//	}
+//
+//t_appeared_pokemon* recibir_appeared_pokemon(uint32_t socket_cliente, uint32_t* size){
+//		log_info(logger, "recibiendo appeared_pokemon");
+//		recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
+//		log_info(logger, "tamaño appeared_pokemon: %d", *size);
+//		void* buffer = malloc(*size);
+//		recv(socket_cliente, buffer, *size, MSG_WAITALL);
+//		log_info(logger, "mensaje recibido: %s", buffer);
+//
+//		t_new_pokemon* pokemon = deserealizar_appeared_pokemon(buffer);
+//		return pokemon;
+//	}
 
 uint32_t sizeNewPokemon(t_new_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;

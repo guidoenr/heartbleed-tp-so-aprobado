@@ -43,10 +43,10 @@ typedef struct {
 }t_metadata;
 
 typedef struct{
-	char directory;
-	int size;
+	char* directory;
+	char* size;
 	t_list* blocks;
-	char open;
+	char* open;
 }t_file_metadata;
 
 //package sending
