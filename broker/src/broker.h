@@ -132,3 +132,13 @@ struct t_node* crear_nodo(uint32_t);
 void arrancar_buddy();
 void asignar_nodo(struct t_node*, void*);
 uint32_t recorrer(struct t_node*,uint32_t ,void*);
+void ubicar_particion(uint32_t, uint32_t, void* );
+void liberar_particion_dinamica(t_memoria_dinamica*);
+void iniciar_memoria_particiones(t_list*);
+uint32_t encontrar_primer_ajuste(uint32_t);
+uint32_t encontrar_mejor_ajuste(uint32_t);
+void destruir_particion(void*);
+uint32_t encontrar_indice(t_memoria_dinamica*);
+
+
+

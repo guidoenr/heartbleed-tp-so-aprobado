@@ -728,7 +728,7 @@ typedef struct {
 
 void iniciar_memoria_particiones(t_list* memoria_de_particiones){
     /*tamanio_mensaje+payload+base+ocupado+base*/
-    uint32_t size_particion = sizeof(uint32_t) * 3 + (config_broker -> tamanio_memoria);
+    uint32_t size_particion = sizeof(uint32_t) * 3 + (config_broker ->size_memoria);
     t_memoria_dinamica* particion_de_memoria = malloc(size_particion);
     particion_de_memoria -> tamanio_mensaje = 0;
     particion_de_memoria -> payload         = memoria_cache;
@@ -749,7 +749,7 @@ void guardar_particion(t_mensaje* un_mensaje){
             exit(-20);
         }
 
-        ubicar_particion(posicion_a_ubicar, tamanio);
+        ubicar_particion(posicion_a_ubicar, tamanio, un_mensaje->payload);
 
     }
     if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"BF")){
@@ -760,7 +760,7 @@ void guardar_particion(t_mensaje* un_mensaje){
             exit(-21);
         }
 
-        ubicar_particion(posicion_a_ubicar, tamanio);
+        ubicar_particion(posicion_a_ubicar, tamanio, un_mensaje->payload);
     }
 
 }
