@@ -33,6 +33,7 @@ typedef struct {
 	uint32_t tamanio_mensaje;
 	void* 	 payload;
 	uint32_t base;
+	uint32_t ocupado;
 } t_memoria_dinamica;
 
 typedef struct{
@@ -63,6 +64,7 @@ t_list* lista_suscriptores_appeared;
 
 //void* memoria_cache;
 t_list* memoria_cache;
+t_list* memoria_con_particiones;
 t_config* config;
 t_config_broker* config_broker;
 t_log* logger;
