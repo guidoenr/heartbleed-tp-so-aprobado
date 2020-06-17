@@ -35,7 +35,7 @@ int main(void) {
 	kennyS->posicion[1] = 51;
 
 	//funcionHiloNewPokemon(kennyS, socket_br);
-	pruebas();
+	laboratorio_de_pruebas();
 
 
 	//void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
@@ -65,30 +65,36 @@ int main(void) {
 //punto_montaje = /home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje
 
 
-void pruebas(){
+void laboratorio_de_pruebas(){
 
 	char* path = "/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/ArchivoDePrueba.bin";
 
-	FILE* f = fopen(path,"wb");
+	t_list* blocks = list_create();
 
+	list_add(blocks,1);
+	list_add(blocks,2);
+	list_add(blocks,3);
+	list_add(blocks,4)
+	;
+	FILE* file = fopen(path,"wb");
 
+	escribir_campo_open(file,"Y");
+	escribir_campo_directory(file,"N");
+	escribir_campo_blocks(file,blocks);
 
-	escribir_campo_open(f,"SI");
-	escribir_campo_open(f,"SI");
+	fclose(file);
 
-
-	fclose(f);
-
-	FILE* otrof = fopen(path,"rb");
-
-	char* a = malloc(5);
-
-	fread(a,5,1,otrof);
-
-	log_info(logger,"ASD ASD :%s",a);
-
-	fclose(otrof);
-
+	unlock_file(path);
+	lock_file(path);
+//
+//	fclose(file);
+//
+//	FILE* update_file = fopen(path,"r+b");
+//
+//	fseek(update_file,0,SEEK_SET);
+//	fputs("NEPO=N",update_file);
+//
+//	fclose(update_file);
 }
 
 
@@ -317,20 +323,20 @@ void append(char* s, char c) {
 void escribir_campo_open(FILE* f,char* metadata_open){
 
 	char* a_escribir = concatenar("OPEN=",metadata_open);
-
-	int a = fwrite(a_escribir,strlen(a_escribir)+1,1,f); //hardcodeado el 6
-
+	fwrite(a_escribir,strlen(a_escribir)+1,1,f);
 }
 
 void escribir_campo_directory(FILE* f,char* metadata_directory){
+
 	char* a_escribir = concatenar("DIRECTORY=",metadata_directory);
-	fwrite(&a_escribir,11,1,f);
+	int tam = strlen("DIRECTORY=") + strlen(metadata_directory) + 1;
+	fwrite(a_escribir,tam,1,f);
 }
 
 void escribir_campo_size(FILE* f,char* metadata_size){
 	char* a_escribir = concatenar("SIZE=",metadata_size);
-	int tam = strlen("SIZE=") + strlen(metadata_size);
-	fwrite(&a_escribir,tam,1,f);
+	int tam = strlen("SIZE=") + strlen(metadata_size)+1;
+	fwrite(a_escribir,tam,1,f);
 }
 
 void escribir_campo_blocks(FILE* f ,t_list* blocks){
@@ -349,14 +355,15 @@ void escribir_campo_blocks(FILE* f ,t_list* blocks){
 
 					if (blocks->head->next == NULL){
 						format=concatenar(format,string_itoa(blocks->head->data));
-					}
-			}
+						}
+				}
 	}
+
 	format = concatenar(format,"]");
 
 	int size = strlen(format) + 1 ;
 
-	fwrite(&format,size,1,f);
+	fwrite(format,size,1,f);
 
 }
 
@@ -634,18 +641,19 @@ bool isOpen(char* path){
 }
 
 void lock_file(char* path){
-	FILE* f = fopen(path,"wb");
-	escribir_campo_open(f, "Y");
+	FILE* update_file = fopen(path,"r+b");
 
-	fclose(f);
+	fseek(update_file,0,SEEK_SET);
+	fputs("OPEN=Y",update_file);
+	fclose(update_file);
 }
 
 void unlock_file(char* path){
-	FILE* f = fopen(path,"wb");
+	FILE* update_file = fopen(path,"r+b");
 
-	escribir_campo_open(f, "N");
-
-	fclose(f);
+	fseek(update_file,0,SEEK_SET);
+	fputs("OPEN=N",update_file);
+	fclose(update_file);
 }
 
 void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende del que toque ese modulo.
