@@ -20,19 +20,21 @@ int main(void) {
 	//conectarse(socket_br);
 	iniciarTallGrass();
 
-	t_new_pokemon* simple = malloc(sizeof(t_new_pokemon));
-	simple->cantidad= 1;
-	simple->id_mensaje= 124;
-	simple->pokemon= "Simple";
-	simple->posicion[0]= 16;
-	simple->posicion[1] = 51;
-
-	t_new_pokemon* kennyS = malloc(sizeof(t_new_pokemon));
-	kennyS->cantidad= 1;
-	kennyS->id_mensaje= 124;
-	kennyS->pokemon= "KennyS";
-	kennyS->posicion[0]= 16;
-	kennyS->posicion[1] = 51;
+//	t_new_pokemon* simple = malloc(sizeof(t_new_pokemon));
+//	simple->cantidad= 1;
+//	simple->id_mensaje= 124;
+//	simple->pokemon= "Simple";
+//	simple->posicion[0]= 16;
+//	simple->posicion[1] = 51;
+//
+//	t_new_pokemon* kennyS = malloc(sizeof(t_new_pokemon));
+//	kennyS->cantidad= 1;
+//	kennyS->id_mensaje= 124;
+//	kennyS->pokemon= "KennyS";
+//	kennyS->posicion[0]= 16;
+//	kennyS->posicion[1] = 51;
+//
+//	free(kennyS)
 
 	//funcionHiloNewPokemon(kennyS, socket_br);
 	laboratorio_de_pruebas();
@@ -78,6 +80,8 @@ void laboratorio_de_pruebas(){
 	;
 	FILE* file = fopen(path,"wb");
 
+
+
 	escribir_campo_open(file,"Y");
 	escribir_campo_directory(file,"N");
 	escribir_campo_blocks(file,blocks);
@@ -85,26 +89,18 @@ void laboratorio_de_pruebas(){
 	fclose(file);
 
 	unlock_file(path);
+	log_info(logger,"El archivo esta open? %d",isOpen(path));
 	lock_file(path);
-//
+	log_info(logger,"El archivo esta open? %d",isOpen(path));
+
 //	fclose(file);
-//
+
 //	FILE* update_file = fopen(path,"r+b");
 //
 //	fseek(update_file,0,SEEK_SET);
 //	fputs("NEPO=N",update_file);
 //
 //	fclose(update_file);
-}
-
-
-void escribirLinea(char* path,char* linea_a_escribir){
-
-	FILE* f = fopen(path,"wb");
-
-	fwrite(&linea_a_escribir,string_length(linea_a_escribir),1,f);
-
-	fclose(f);
 }
 
 
@@ -171,7 +167,6 @@ void suscribirse_a(op_code cola) {
 
 	free(suscripcion -> id_proceso);
 	free(suscripcion);
-
 
 }
 
@@ -324,6 +319,7 @@ void escribir_campo_open(FILE* f,char* metadata_open){
 
 	char* a_escribir = concatenar("OPEN=",metadata_open);
 	fwrite(a_escribir,strlen(a_escribir)+1,1,f);
+	free(a_escribir);
 }
 
 void escribir_campo_directory(FILE* f,char* metadata_directory){
@@ -331,12 +327,14 @@ void escribir_campo_directory(FILE* f,char* metadata_directory){
 	char* a_escribir = concatenar("DIRECTORY=",metadata_directory);
 	int tam = strlen("DIRECTORY=") + strlen(metadata_directory) + 1;
 	fwrite(a_escribir,tam,1,f);
+	free(a_escribir);
 }
 
 void escribir_campo_size(FILE* f,char* metadata_size){
 	char* a_escribir = concatenar("SIZE=",metadata_size);
 	int tam = strlen("SIZE=") + strlen(metadata_size)+1;
 	fwrite(a_escribir,tam,1,f);
+	free(a_escribir);
 }
 
 void escribir_campo_blocks(FILE* f ,t_list* blocks){
@@ -364,7 +362,7 @@ void escribir_campo_blocks(FILE* f ,t_list* blocks){
 	int size = strlen(format) + 1 ;
 
 	fwrite(format,size,1,f);
-
+	free(format);
 }
 
 
@@ -398,7 +396,9 @@ void escribir_block_inicial(t_file_metadata metadata,t_new_pokemon* newPoke){
 			fwrite(&a_escribir[i],1,1,block);
 			i++;
 		}
-
+	free(path);
+	free(blockPath);
+	free(finalPath);
 }
 
 
@@ -630,11 +630,11 @@ bool isDirectory(char* path){
 
 bool isOpen(char* path){
 
-	char* status;
+	char* status = (char*)malloc(sizeof(char)*5);
 
 	FILE* file = fopen(path,"rb");
 
-	fread(&status,7,1,file);
+	fread(status,sizeof(char),5,file);
 
 	fclose(file);
 	return status == "OPEN=Y";
