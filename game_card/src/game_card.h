@@ -31,14 +31,13 @@ typedef struct {
 
 } t_config_game_card;
 
-
 t_config_game_card* config;
 t_config_game_card* leer_config(void);
 
 
 typedef struct {
-    int blocksize;
-	int blocks;
+    char* blocksize;
+	char* blocks;
 	char* magic;
 }t_metadata;
 
@@ -61,7 +60,7 @@ void enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket);
 
 //metadata + fileSystem
 void iniciarTallGrass();
-t_metadata leerMetadata();
+t_metadata leer_fs_metadata();
 void escribirMetadata();
 void crearMetadata();
 int tamanio_de_metadata(t_metadata metadata);
@@ -69,7 +68,7 @@ int existeDirectorio(char* path);
 void verificarExistenciaPokemon(t_new_pokemon* pokemon);
 void verificarAperturaPokemon(t_new_pokemon* msg,int socket);
 int tamanio_file_metadata(t_file_metadata fileMeta);
-t_file_metadata leerMetadataFile(char* path);
+t_file_metadata leer_file_metadata(char* path);
 
 //commons
 void terminar_programa(int, t_config_game_card*);
@@ -99,4 +98,4 @@ void inicializarPokemon(t_new_pokemon* newPoke);
 char* buscarBlockLibre();
 char* posicion_into_string(t_new_pokemon* newpoke);
 t_file_metadata generar_file_metadata(t_new_pokemon* newPoke);
-t_bitarray* obtenerBitmap(int size);
+t_bitarray* obtener_bitmap(int size);

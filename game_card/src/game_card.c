@@ -40,27 +40,6 @@ int main(void) {
 	laboratorio_de_pruebas();
 
 
-	//void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje) {
-
-	//t_appeared_pokemon* deviceAP = armar_appeared(device);
-
-	//enviar_mensaje(APPEARED_POKEMON,deviceAP,socket_br,sizeAppearedPokemon(deviceAP));
-
-	//char* punto_montaje = config->punto_montaje_tallgrass;
-
-	//int socket_gb = crear_conexion(config -> ip_gameBoy, config -> puerto_gameBoy);
-	//enviar_mensaje(GC_LOCALIZED_POKEMON_BR, "Localized Pokemon", socket_br);
-	//iniciar_servidor(config -> ip_gameCard,config -> puerto_gameCard);
-	//suscribirme_a_colas();
-
-
-	//enviar_new_pokemon(luken,socket_br);
-	//t_new_pokemon* a = recibir_new_pokem
-
-
-	//verificarPokemon(pikachu);
-	//verificarAperturaPokemon(pikachu);
-
 	terminar_programa(socket,config);
 }
 
@@ -69,45 +48,17 @@ int main(void) {
 
 void laboratorio_de_pruebas(){
 
-	char* path = "/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/ArchivoDePrueba.bin";
-
-	t_list* blocks = list_create();
-
-	list_add(blocks,1);
-	list_add(blocks,2);
-	list_add(blocks,3);
-	list_add(blocks,4)
-	;
-	FILE* file = fopen(path,"wb");
 
 
 
-	escribir_campo_open(file,"Y");
-	escribir_campo_directory(file,"N");
-	escribir_campo_blocks(file,blocks);
 
-	fclose(file);
-
-	unlock_file(path);
-	log_info(logger,"El archivo esta open? %d",isOpen(path));
-	lock_file(path);
-	log_info(logger,"El archivo esta open? %d",isOpen(path));
-
-//	fclose(file);
-
-//	FILE* update_file = fopen(path,"r+b");
-//
-//	fseek(update_file,0,SEEK_SET);
-//	fputs("NEPO=N",update_file);
-//
-//	fclose(update_file);
 }
 
 
 int file_current_size(FILE* f){
 
 	char* path = concatenar(config->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
-	t_metadata metadataFS = leerMetadata(path);
+	t_metadata metadataFS = leer_fs_metadata(path);
 
 	int pos = ftell(f);
 
@@ -135,10 +86,10 @@ void iniciarTallGrass(){
 
 	if (!isDir(punto_montaje)){
 
-		crearDirectorios(punto_montaje);
+		crear_directorios(punto_montaje);
 		crearMetadata(punto_montaje);
-		crearBitmap(punto_montaje);
-		crearBlocks(punto_montaje);
+		crear_bitmap(punto_montaje);
+		crear_blocks(punto_montaje);
 
 	} else {
 		log_info(logger, "Tallgrass ya existente en %s",punto_montaje);
@@ -200,13 +151,14 @@ void liberar_config(t_config_game_card* config) {
 	free(config);
 }
 
+
 void terminar_programa(int conexion,t_config_game_card* config) {
 	liberar_config(config);
 	liberar_logger(logger);
 	liberar_conexion(conexion);
 }
 
-void crearDirectorios(char* path){
+void crear_directorios(char* path){
 
 	char* blocks = concatenar(path,"/Blocks");
 	char* metadata = concatenar(path,"/Metadata");
@@ -222,26 +174,26 @@ void crearDirectorios(char* path){
 
 }
 
-void crearBlocks(char* path){
+void crear_blocks(char* path){
 
 	char* realPath = concatenar(path,"/Metadata/Metadata.bin");
-	t_metadata metadata = leerMetadata(realPath);
+	t_metadata metadata = leer_fs_metadata(realPath);
 
 	int cantidadBloques = metadata.blocks;
 	int sizeBlock = metadata.blocksize;
-	int i = 1;
+	int i = 0;
 
 	char* blocksPath = concatenar(path,"/Blocks/");
 
 
-	while(i <= cantidadBloques){
+	while(i < cantidadBloques){
 		char* c = string_itoa(i);
 		char* block = concatenar(blocksPath,c);
 		char* bloque = concatenar(block,".bin");
 		createFileWithSize(bloque,sizeBlock);
 		i++;
 	}
-	log_info(logger,"Se crearon %d blocks de tamaño: %d bytes",cantidadBloques,sizeBlock);
+	log_info(logger,"Se crearon %d blocks de tamaño: %d bytes",cantidadBloques -1 ,sizeBlock);
 
 }
 
@@ -258,25 +210,49 @@ void createFileWithSize(char* path,int size) {
 }
 
 void crearMetadata(char* path){
+
 	char* realPath = concatenar(path,"/Metadata/Metadata.bin");
 
-	FILE* file = fopen(realPath,"wb"); //write-binary
+	FILE* f = fopen(realPath,"w-b");
+	fclose(f);
 
-	t_metadata metadata;
-	metadata.blocksize = 64;
-	metadata.blocks = 5192; //
-	metadata.magic = "MAGIC"; //TODO es TALL_GRASS pero nose que onda el stackmashing
+	t_config* metadata_config = malloc(sizeof(t_config));
+	metadata_config = config_create(realPath);
 
-	int tam = tamanio_de_metadata(metadata);
+	metadata_config -> properties = dictionary_create();
 
-	fwrite(&metadata.blocksize,sizeof(int),1,file);
-	fwrite(&metadata.blocks,sizeof(int),1,file);
-	fwrite(&metadata.magic,string_length(metadata.magic),1,file);
+	dictionary_put(metadata_config -> properties,"BLOCKS",5192);
+	dictionary_put(metadata_config -> properties,"BLOCKS_SIZE",64);
+	dictionary_put(metadata_config -> properties,"MAGIC_NUMBER","TALL_GRASS");
 
+	config_save(metadata_config);
 
-	fclose(file);
+	config_destroy(metadata_config);
 
 	log_info(logger,"Se creo Metadata.bin en: %s",realPath);
+	free(realPath);
+
+}
+
+void escribir_campo_blocks_metadata(FILE* f,char* blocks){
+	char* a_escribir = concatenar("BLOCKS=",blocks);
+	int tam = strlen(a_escribir) + 1;
+	fwrite(a_escribir,tam,1,f);
+	free(a_escribir);
+}
+
+void escribir_campo_blocksize_metadata(FILE* f,char* blocksize){
+	char* a_escribir = concatenar("BLOCKS_SIZE=",blocksize);
+	int tam = strlen(a_escribir) + 1;
+	fwrite(a_escribir,tam,1,f);
+	free(a_escribir);
+}
+
+void escribir_campo_magic_metadata(FILE* f,char* magic){
+	char* a_escribir = concatenar("MAGIC_NUMBER=",magic);
+	int tam = strlen(a_escribir) + 1;
+	fwrite(a_escribir,tam,1,f);
+	free(a_escribir);
 
 }
 
@@ -424,7 +400,7 @@ t_list* asignar_block_inicial(){
 	return lista;
 }
 
-t_file_metadata leerMetadataFile(char* path){
+t_file_metadata leer_file_metadata(char* path){
 
 	t_file_metadata fmetadata_leido;
 	FILE* file = fopen(path,"rb");
@@ -480,7 +456,7 @@ int tamanio_file_metadata(t_file_metadata fileMeta){
 	return sizeof(char) + listSize + sizeof(int) + sizeof(char);
 }
 
-t_metadata leerMetadata(char* path){
+t_metadata leer_fs_metadata(char* path){
 
 	t_metadata metadata;
 	FILE* file = fopen(path,"rb");
@@ -491,10 +467,13 @@ t_metadata leerMetadata(char* path){
 
 	} else {
 
-		t_metadata metadata;
-		fread(&(metadata.blocksize),sizeof(int),1,file);
-		fread(&(metadata.blocks),sizeof(int),1,file);
-		fread(&(metadata.magic),12,1,file);
+
+
+
+		// TODO
+
+
+
 
 	}
 
@@ -536,67 +515,60 @@ bool isDir(const char* name){
 
 // 1 - 2 = 16;
 
-int bitarraySizeFromFS(){
+int default_bitarray_sizebytes(){
 
 	char* path = concatenar(config->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
-	t_metadata metadata = leerMetadata(path);
-
-	return metadata.blocks / 8;
+	t_metadata metadata = leer_fs_metadata(path);
+	int blocks = atoi(metadata.blocks);
+	return blocks/ 8;
 }
 
-int crearBitmap(char* path){
+int crear_bitmap(char* path){
 
 	char* bitmapPath = concatenar(path,"/Metadata/Bitmap.bin");
 	char* metadataPath = concatenar(path,"/Metadata/Metadata.bin");
-	t_metadata fileSystemMetadata = leerMetadata(metadataPath);
+	t_metadata fs_metadata = leer_fs_metadata(metadataPath);
 
-	int blocks = fileSystemMetadata.blocks;
+	int blocks = atoi(fs_metadata.blocks);
 
-	int size_in_bytes = (blocks/8) ;
+	int size_in_bytes = (blocks/8);
 	int size_in_bits = blocks;
-	char* bytes = calloc(size_in_bytes, sizeof(char));
+	int tam = blocks;
+
+	char* bytes = calloc(size_in_bytes, sizeof(char)); // esto me da [0,0,0,0,0,0...n]
 
 	t_bitarray* bitarray = bitarray_create_with_mode(bytes, size_in_bytes, LSB_FIRST);
 
 	log_info(logger,"Se creo el bitarray de %d posiciones, con un tamaño de %d bytes",blocks,size_in_bytes);
 
-	int tam = bitarray->size;
+
 	FILE* file = fopen(bitmapPath,"wb");
 
 	char* a_escribir = bitarray->bitarray;
-	bit_numbering_t bit = bitarray->mode;
-	size_t size = bitarray->size;
 
-	fwrite(&a_escribir,bitarray->size,1,file);
-	fwrite(&bit,sizeof(bit_numbering_t),1,file);
-	fwrite(&size,sizeof(size_t),1,file);
+	fwrite(a_escribir,size_in_bytes,1,file);
 
-	printf("%d",bitarray_test_bit(bitarray,5192));
 
 	bitarray_destroy(bitarray);
-
 	fclose(file);
 	free(bytes);
 	return tam;
 
 }
 
-t_bitarray* obtenerBitmap(int size){
+t_bitarray* obtener_bitmap(int size){
 
 	char* path = concatenar(config->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
+	char* a_leer;
 
-	char* a_escribir;
-	bit_numbering_t bit;
-	size_t sizeb;
-
-
+	int size_in_bytes = default_bitarray_sizebytes();
 	FILE* file = fopen(path,"wb");
-	fread(&a_escribir,size,1,file);
-	fread(&bit,sizeof(bit_numbering_t),1,file);
-	fread(&sizeb,sizeof(size_t),1,file);
+
+	fread(&a_leer,size_in_bytes,1,file);
 
 
-	t_bitarray* bitarray;
+
+	t_bitarray* bitarray = bitarray_create_with_mode(a_leer, (8/5192), LSB_FIRST);
 
 
 	fclose(file);
@@ -605,7 +577,7 @@ t_bitarray* obtenerBitmap(int size){
 }
 
 void mostrarBitarray(int tam){
-	t_bitarray* bitarray = obtenerBitmap(tam);
+	t_bitarray* bitarray = obtener_bitmap(tam);
 
 	for(int i=1;i<bitarray->size;i++){
 		bool x = bitarray_test_bit(bitarray,i);
@@ -615,8 +587,9 @@ void mostrarBitarray(int tam){
 }
 
 int bitarray_default_size(){
-	t_metadata metadata = leerMetadata(concatenar(config->punto_montaje_tallgrass,"/Metadata/Metadata.bin"));
-	return 8 / metadata.blocks;
+	t_metadata metadata = leer_fs_metadata(concatenar(config->punto_montaje_tallgrass,"/Metadata/Metadata.bin"));
+	int blockks = atoi(metadata.blocks);
+	return (8/blockks);
 }
 
 bool isDirectory(char* path){
@@ -630,14 +603,18 @@ bool isDirectory(char* path){
 
 bool isOpen(char* path){
 
-	char* status = (char*)malloc(sizeof(char)*5);
-
+	char a;
+	char* total;
 	FILE* file = fopen(path,"rb");
 
-	fread(status,sizeof(char),5,file);
+	fread(&a,1,1,file);
+	while (a != "/0"){
+		total = concatenar(total,a);
+	}
+
 
 	fclose(file);
-	return status == "OPEN=Y";
+	return true;
 }
 
 void lock_file(char* path){
