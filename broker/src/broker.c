@@ -144,11 +144,10 @@ void liberar_listas(){
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	uint32_t size;
 	op_code* codigo_op = malloc(sizeof(op_code));
-	void* msg;
-	recibir_paquete(cliente_fd, &size, codigo_op, msg);
+	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
 	cod_op = (*codigo_op);
 	log_info(logger,"Codigo de operacion %d", cod_op);
-	void* mensaje_e_agregar = deserealizar_paquete(msg, *codigo_op, size);
+	void* mensaje_e_agregar = deserealizar_paquete(stream, *codigo_op, size);
 
 	switch (cod_op) {
 		case GET_POKEMON:
@@ -182,6 +181,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			pthread_exit(NULL);
 	}
 	free(codigo_op);
+	free(stream);
 //REVISAR DONDE Y CUANDO HACER EL FREE DE LOS MENSAJES QUE SE AGREGARON
 }
 

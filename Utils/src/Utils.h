@@ -103,6 +103,7 @@ void esperar_cliente(uint32_t);
 void serve_client(uint32_t *socket);
 void process_request(uint32_t cod_op, uint32_t cliente_fd);
 uint32_t recibir_operacion(uint32_t);
+void* recibir_paquete(uint32_t,uint32_t*,op_code*);
 
 //mensaje
 void enviar_mensaje(uint32_t cod_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje);
