@@ -17,6 +17,7 @@ t_new_pokemon* luken;
 
 
 
+
 typedef struct {
     int tiempo_reintento_conexion;
 	int tiempo_reintento_operacion;
@@ -28,12 +29,10 @@ typedef struct {
 	char* puerto_gameBoy;
 	char* ip_gameCard;
 	char* puerto_gameCard;
-
 } t_config_game_card;
 
-t_config_game_card* config;
+t_config_game_card* config_gc;
 t_config_game_card* leer_config(void);
-
 
 typedef struct {
 	int blocksize;
@@ -56,8 +55,6 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon);
 bool existePokemonEnPosicion(t_new_pokemon* pokemon);
 void enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket);
 
-
-
 //metadata + fileSystem
 void iniciar_tall_grass();
 t_metadata leer_fs_metadata();
@@ -74,7 +71,7 @@ t_file_metadata leer_file_metadata(char* path);
 void terminar_programa(int, t_config_game_card*);
 void liberar_conexion(uint32_t);
 void liberar_logger();
-void liberar_config(t_config_game_card*);
+void liberar_config_gc(t_config_game_card*);
 void suscribirme_a_colas();
 void suscribirse_a(op_code);
 

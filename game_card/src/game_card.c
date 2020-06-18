@@ -11,10 +11,10 @@
 
 
 int main(void) {
-	config = leer_config();
+	config_gc = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
 
-	punto_montaje = config->punto_montaje_tallgrass;
+	punto_montaje = config_gc->punto_montaje_tallgrass;
 	int socket_br;
 
 	//conectarse(socket_br);
@@ -40,7 +40,7 @@ int main(void) {
 	laboratorio_de_pruebas();
 
 
-	terminar_programa(socket,config);
+	terminar_programa(socket,config_gc);
 }
 
 //punto_montaje = /home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje
@@ -48,14 +48,14 @@ int main(void) {
 
 void laboratorio_de_pruebas(){
 
-	t_bitarray * bitarray = obtener_bitmap();
+	//t_bitarray * bitarray = obtener_bitmap();
 
 }
 
 
 int file_current_size(FILE* f){
 
-	char* path = concatenar(config->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
+	char* path = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
 	t_metadata metadataFS = leer_fs_metadata(path);
 
 	int pos = ftell(f);
@@ -65,8 +65,8 @@ int file_current_size(FILE* f){
 }
 
 void conectarse(int socket){
-	socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
-	int time = config->tiempo_reintento_conexion;
+	socket = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
+	int time = config_gc->tiempo_reintento_conexion;
 	if (socket == -1 ){
 		log_info(logger,"imposible conectar con broker, reintento en: %d",time);
 		sleep(time);
@@ -79,7 +79,7 @@ void conectarse(int socket){
 
 void iniciar_tall_grass(){
 
-	punto_montaje = config->punto_montaje_tallgrass;
+	punto_montaje = config_gc->punto_montaje_tallgrass;
 	log_info(logger,"Iniciando tallgrass en: %s",punto_montaje);
 
 	if (!isDir(punto_montaje)){
@@ -104,7 +104,7 @@ void suscribirme_a_colas() {
 }
 
 void suscribirse_a(op_code cola) {
-	uint32_t socket 			      = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	uint32_t socket 			      = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
 	t_suscripcion* suscripcion 		  = malloc(sizeof(t_suscripcion));
 	suscripcion -> id_proceso 		  = malloc(sizeof(char*));
 	uint32_t tamanio_suscripcion	  = sizeof(t_suscripcion);
@@ -126,7 +126,7 @@ t_config_game_card* leer_config() {
 
 	t_config_game_card* config_game_card = malloc(sizeof(t_config_game_card));
 
-	t_config_game_card* config = config_create("Debug/game_card.config");
+	t_config* config = config_create("Debug/game_card.config");
 
 	config_game_card -> tiempo_reintento_conexion = config_get_int_value(config, "TIEMPO_DE_REINTENTO_CONEXION");
 	config_game_card -> tiempo_reintento_operacion = config_get_int_value(config, "TIEMPO_DE_REINTENTO_OPERACION");
@@ -140,28 +140,23 @@ t_config_game_card* leer_config() {
 	config_game_card -> tiempo_retardo_operacion = config_get_int_value(config,"TIEMPO_RETARDO_OPERACION");
 
 	config_destroy(config);
-	liberar_config(config);
-
 	return config_game_card;
 }
 
-void liberar_config(t_config_game_card* config) {
+void liberar_config_gc(t_config_game_card* config) {
 	free(config->ip_broker);
 	free(config->ip_gameBoy);
 	free(config->ip_gameCard);
 	free(config->puerto_broker);
 	free(config->puerto_gameBoy);
 	free(config->puerto_gameCard);
-	free(config->tiempo_reintento_conexion);
-	free(config->tiempo_reintento_operacion);
-	free(config->tiempo_retardo_operacion);
 	free(config->punto_montaje_tallgrass);
 	free(config);
 }
 
 
-void terminar_programa(int conexion,t_config_game_card* config) {
-	liberar_config(config);
+void terminar_programa(int conexion,t_config_game_card* config_gc) {
+	liberar_config_gc(config_gc);
 	liberar_logger(logger);
 	liberar_conexion(conexion);
 }
@@ -348,7 +343,7 @@ int calcular_size_inicial(t_new_pokemon* newPoke){
 
 void escribir_block_inicial(t_file_metadata metadata,t_new_pokemon* newPoke){
 
-	char* path = concatenar(config->punto_montaje_tallgrass,"/Blocks/");
+	char* path = concatenar(config_gc->punto_montaje_tallgrass,"/Blocks/");
 	char* blockPath = concatenar(path,string_itoa(metadata.blocks->head->data));
 	char* finalPath = concatenar(blockPath,".bin");
 
@@ -457,9 +452,6 @@ t_metadata leer_fs_metadata(char* path){
 
 	config_destroy(config_metadata);
 
-	free(config_metadata->path);
-	free(config_metadata->properties);
-
 	return metadata_fs;
 
 }
@@ -498,7 +490,7 @@ bool isDir(const char* name){
 // 1 - 2 = 16;
 
 int default_bitarray_sizebytes(){
-	char* path = concatenar(config->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
+	char* path = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
 	t_metadata metadata = leer_fs_metadata(path);
 	return (metadata.blocks/ 8);
 }
@@ -532,13 +524,13 @@ void crear_bitmap(char* path){
 
 }
 
-t_bitarray* obtener_bitmap(){
+//t_bitarray* obtener_bitmap(){
+////
 //
-
-}
+//}
 
 int bitarray_default_size(){
-	char* path = concatenar(config->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
+	char* path = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
 	t_metadata metadata = leer_fs_metadata(path);
 	return (metadata.blocks/8);
 
@@ -677,7 +669,7 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 
 
 void verificarExistenciaPokemon(t_new_pokemon* newpoke){
-	punto_montaje = config->punto_montaje_tallgrass;
+	punto_montaje = config_gc->punto_montaje_tallgrass;
 
 	char* montaje = concatenar(punto_montaje,"/Files/");
 	char* path = concatenar(montaje,newpoke->pokemon);
@@ -710,7 +702,7 @@ void verificarAperturaPokemon(t_new_pokemon* newpoke,int socket){
 	char* path = obtenerPathMetaFile(newpoke);
 	bool x = isOpen(path);
 	if (isOpen(path)){
-		int secs = config->tiempo_retardo_operacion;
+		int secs = config_gc->tiempo_retardo_operacion;
 		log_info(logger,"No se puede acceder a este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
 		sleep(secs);
 		funcionHiloNewPokemon(newpoke,socket);
@@ -724,7 +716,7 @@ void verificarAperturaPokemon(t_new_pokemon* newpoke,int socket){
 	}
 
 char* obtenerPathMetaFile(t_new_pokemon* pokemon){
-	punto_montaje = config->punto_montaje_tallgrass;
+	punto_montaje = config_gc->punto_montaje_tallgrass;
 	char* path  = concatenar (punto_montaje,"/Files/");
 	char* path2 = concatenar (path,pokemon->pokemon); //terrible negrada esto, pero anda o no anda?
 	char* path3 = concatenar(path2,"/Metadata.bin");
@@ -732,7 +724,7 @@ char* obtenerPathMetaFile(t_new_pokemon* pokemon){
 }
 
 char* obtenerPathDirPokemon(t_new_pokemon* pokemon){
-	punto_montaje = config->punto_montaje_tallgrass;
+	punto_montaje = config_gc->punto_montaje_tallgrass;
 	char* path = concatenar(punto_montaje,"/Files/");
 	char* path2 = concatenar(path,pokemon->pokemon);
 	return path2;
