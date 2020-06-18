@@ -18,7 +18,7 @@ int main(void) {
 	int socket_br;
 
 	//conectarse(socket_br);
-	iniciarTallGrass();
+	//iniciarTallGrass();
 
 //	t_new_pokemon* simple = malloc(sizeof(t_new_pokemon));
 //	simple->cantidad= 1;
@@ -48,9 +48,23 @@ int main(void) {
 
 void laboratorio_de_pruebas(){
 
+	char* path = concatenar(config->punto_montaje_tallgrass,"/PRUEBA.bin");
+
+	FILE* f = fopen(path,"wb");
+	fclose(f);
 
 
+	t_dictionary* dic = dictionary_create();
+	dictionary_put(dic,"HOLA","COMERVERGA");
+	dictionary_put(dic,"HOLasdA","CasdOMERVERGA");
 
+	t_config* metadata_config = config_create(path);
+
+	dictionary_put(metadata_config -> properties,"BLOCKS",5192);
+	dictionary_put(metadata_config -> properties,"BLOCKS_SIZE",64);
+	dictionary_put(metadata_config -> properties,"MAGIC_NUMBER","TALL_GRASS");
+
+	config_save_in_file(metadata_config,path);
 
 }
 
@@ -212,20 +226,20 @@ void createFileWithSize(char* path,int size) {
 void crearMetadata(char* path){
 
 	char* realPath = concatenar(path,"/Metadata/Metadata.bin");
-
-	FILE* f = fopen(realPath,"w-b");
-	fclose(f);
+//
+//	FILE* f = fopen(realPath,"w-b");
+//	fclose(f);
 
 	t_config* metadata_config = malloc(sizeof(t_config));
-	metadata_config = config_create(realPath);
 
+	metadata_config -> path = realPath;
 	metadata_config -> properties = dictionary_create();
 
 	dictionary_put(metadata_config -> properties,"BLOCKS",5192);
 	dictionary_put(metadata_config -> properties,"BLOCKS_SIZE",64);
 	dictionary_put(metadata_config -> properties,"MAGIC_NUMBER","TALL_GRASS");
 
-	config_save(metadata_config);
+	int a = config_save(metadata_config);
 
 	config_destroy(metadata_config);
 
