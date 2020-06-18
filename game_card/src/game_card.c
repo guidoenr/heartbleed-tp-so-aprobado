@@ -18,7 +18,7 @@ int main(void) {
 	int socket_br;
 
 	//conectarse(socket_br);
-	//iniciarTallGrass();
+	iniciarTallGrass();
 
 //	t_new_pokemon* simple = malloc(sizeof(t_new_pokemon));
 //	simple->cantidad= 1;
@@ -53,18 +53,11 @@ void laboratorio_de_pruebas(){
 	FILE* f = fopen(path,"wb");
 	fclose(f);
 
-
-	t_dictionary* dic = dictionary_create();
-	dictionary_put(dic,"HOLA","COMERVERGA");
-	dictionary_put(dic,"HOLasdA","CasdOMERVERGA");
-
 	t_config* metadata_config = config_create(path);
 
-	dictionary_put(metadata_config -> properties,"BLOCKS",5192);
-	dictionary_put(metadata_config -> properties,"BLOCKS_SIZE",64);
-	dictionary_put(metadata_config -> properties,"MAGIC_NUMBER","TALL_GRASS");
+	config_set_value(metadata_config,"holaasdas","chau");
 
-	config_save_in_file(metadata_config,path);
+	int result = config_save_in_file(metadata_config,path);
 
 }
 
