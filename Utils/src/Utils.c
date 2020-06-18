@@ -56,7 +56,7 @@ void enviar_mensaje(op_code codigo_op, void* mensaje, uint32_t socket_cliente, u
 	free(stream);
 }
 
-void recibir_paquete(uint32_t socket_cliente, uint32_t* size, op_code* codigo_operacion, void* stream){
+void* recibir_paquete(uint32_t socket_cliente, uint32_t* size, op_code* codigo_operacion){
 
     log_info(logger, "Recibiendo mensaje.");
 
@@ -68,14 +68,17 @@ void recibir_paquete(uint32_t socket_cliente, uint32_t* size, op_code* codigo_op
 
     recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
 
-    uint32_t tamanio_mensaje = (*size);
+    uint32_t tamanio_mensaje = (*size)-sizeof(uint32_t)-sizeof(op_code);
     log_info(logger, "Tamanio de paquete recibido: %d", tamanio_mensaje);
 
-	stream = malloc(tamanio_mensaje);
-    recv(socket_cliente, stream, sizeof(tamanio_mensaje), MSG_WAITALL);
+	void* stream = malloc(tamanio_mensaje);
+	(*size) = tamanio_mensaje;
+    recv(socket_cliente, stream, tamanio_mensaje, MSG_WAITALL);
+    log_info(logger, "recibir_paquete stream: %d", *(int*) (stream +4));
 
     //sem_post(&semaforo);
     log_info(logger, "Mensaje recibido: %s", stream);
+    return stream;
 
 }
 
@@ -193,8 +196,11 @@ void iniciar_servidor(char *IP, char *PUERTO) {
     getaddrinfo(IP, PUERTO, &huint32_ts, &servinfo);
 
     for (p = servinfo; p != NULL; p = p -> ai_next) {
-        if ((socket_servidor = socket(p -> ai_family, p -> ai_socktype, p -> ai_protocol)) == -1)
-            continue;
+        if ((socket_servidor = socket(p -> ai_family, p -> ai_socktype, p -> ai_protocol)) == -1){
+           uint32_t flag = 1;
+        	    setsockopt(socket_servidor, SOL_SOCKET,SO_REUSEPORT,&flag,sizeof(flag));
+        	continue;
+        }
 
         if (bind(socket_servidor, p -> ai_addr, p -> ai_addrlen) == -1) {
             close(socket_servidor);
@@ -226,7 +232,7 @@ void esperar_cliente(uint32_t socket_servidor) {
 void serve_client(uint32_t* socket) {
 	uint32_t cod_op;
 
-	if(recv(*socket, &cod_op, sizeof(uint32_t), MSG_WAITALL) == -1)
+	//if(recv(*socket, &cod_op, sizeof(uint32_t), MSG_WAITALL) == -1)
 		cod_op = -1;
 
 	log_info(logger,"Se conecto un cliente con socket: %d",*socket);
@@ -304,27 +310,30 @@ void* serializar_get_pokemon(void* mensaje_get, uint32_t size_mensaje, uint32_t*
 	uint32_t offset = 0;
 
 
-	op_code* codigo_operacion = malloc(sizeof(op_code));
-	(*codigo_operacion) = GET_POKEMON;
-    memcpy(stream + offset, codigo_operacion, sizeof(op_code));
+	op_code codigo_operacion = GET_POKEMON;
+    memcpy(stream + offset, &codigo_operacion, sizeof(op_code));
+    log_info(logger,"Sereliazacion codigo de operacion: %d", *(int*) stream+ offset);
 	offset += sizeof(op_code);
 
     memcpy(stream + offset, size_serializado, sizeof(uint32_t));
+    log_info(logger,"Sereliazacion size: %d", *(int*) (stream+ offset));
     offset += sizeof(uint32_t);
 
     memcpy(stream + offset, &(mensaje_a_enviar -> id_mensaje), sizeof(uint32_t));
+    log_info(logger,"Sereliazacion idmensaje: %d", *(int*) (stream+ offset));
 	offset += sizeof(uint32_t);
 
     memcpy(stream + offset, &tamanio_pokemon, sizeof(uint32_t));
+    log_info(logger,"Sereliazacion tamaniopokemon: %d", *(int*) (stream+ offset));
 	offset += sizeof(uint32_t);
 
-    memcpy(stream + offset, &(mensaje_a_enviar -> pokemon), tamanio_pokemon);
-	offset += sizeof(tamanio_pokemon);
+    memcpy(stream + offset, mensaje_a_enviar -> pokemon, tamanio_pokemon);
+    log_info(logger,"Sereliazacion pokemon %s:", (char*) stream+ offset);
+	offset += tamanio_pokemon;
 
     //log_info(logger, "bytes: %d", *bytes);
 	log_info(logger, "cod op a enviar %d", GET_POKEMON);
 	log_info(logger, "tam a enviar %d", malloc_size);
-	free(codigo_operacion);
     liberar_mensaje_get(mensaje_a_enviar);
 	return stream;
 }
@@ -332,20 +341,23 @@ void* serializar_get_pokemon(void* mensaje_get, uint32_t size_mensaje, uint32_t*
 //El primer recv recibe el tamaño, el segundo recv del cod_op y el proximo recv todo el resto del stream, que luego se
 //pasa por parametro para deserializarse.
 t_get_pokemon* deserealizar_get_pokemon(void* stream, uint32_t size_mensaje){
-	t_get_pokemon* mensaje_get_pokemon = malloc(size_mensaje);
+	t_get_pokemon* mensaje_get_pokemon = malloc(sizeof(t_get_pokemon));
     uint32_t tamanio_pokemon = 0;
+    uint32_t offset = 0 ;
+    memcpy(&(mensaje_get_pokemon -> id_mensaje), stream + offset, sizeof(uint32_t));
+	offset += sizeof(uint32_t);
 
-    memcpy(&(mensaje_get_pokemon -> id_mensaje), stream, sizeof(uint32_t));
-	stream += sizeof(uint32_t);
+    log_info(logger,"des codigo de operacion %d:", (int*) stream+ offset);
 
-    memcpy(&tamanio_pokemon, stream, sizeof(uint32_t));
-    stream += sizeof(uint32_t);
+    memcpy(&tamanio_pokemon,stream + offset, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
 
-	memcpy(&(mensaje_get_pokemon -> pokemon), stream, sizeof(tamanio_pokemon));
-	stream += sizeof(tamanio_pokemon);
+    mensaje_get_pokemon->pokemon = malloc(tamanio_pokemon);
+
+	memcpy(mensaje_get_pokemon -> pokemon,stream + offset, tamanio_pokemon);
+	offset += tamanio_pokemon;
 
     log_info(logger, "Se deserializo un mensaje get del pokemon: %s", mensaje_get_pokemon -> pokemon);
-    free(stream);
 	return mensaje_get_pokemon;
 }
 
@@ -410,7 +422,6 @@ t_catch_pokemon* deserealizar_catch_pokemon(void* stream, uint32_t size_mensaje)
 	stream += sizeof(uint32_t);
 
     log_info(logger, "Se deserializo un mensaje catch del pokemon: %s", mensaje_catch_pokemon -> pokemon);
-    free(stream);
 	return mensaje_catch_pokemon;
 }
 
