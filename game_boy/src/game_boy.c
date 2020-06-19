@@ -218,7 +218,7 @@ t_suscripcion* armar_mensaje_suscripcion(char * parametros[]) {
   }
 
    //Esto esta setteado, hay que adaptarlo.
-  a_enviar -> tiempo_suscripcion = (uint32_t)parametros[3];
+  a_enviar -> tiempo_suscripcion = atof(parametros[3]);
 
   return a_enviar;
 
@@ -232,7 +232,7 @@ t_get_pokemon* armar_mensaje_get_pokemon(char * parametros[]) {
 
   a_enviar -> pokemon = parametros[3];
   if(parametros[4] != NULL ){
-	  a_enviar -> id_mensaje = (uint32_t) parametros[4];
+	  a_enviar -> id_mensaje = atof(parametros[4]);
   } else {
 	  a_enviar -> id_mensaje = 0;
   }
@@ -246,10 +246,10 @@ t_catch_pokemon* armar_mensaje_catch_pokemon(char * parametros[]) {
   a_enviar -> pokemon = malloc(tamanio);
 
   a_enviar -> pokemon = parametros[3];
-  a_enviar -> posicion[0] = *(uint32_t*) parametros[4];
-  a_enviar -> posicion[1] = *(uint32_t*) (parametros[5]);
+  a_enviar -> posicion[0] = atof(parametros[4]);
+  a_enviar -> posicion[1] = atof(parametros[5]);
   if(parametros[6] != NULL){
-	  a_enviar -> id_mensaje = *(uint32_t*) (parametros[6]);
+	  a_enviar -> id_mensaje = atof(parametros[6]);
   } else {
 	  a_enviar -> id_mensaje = 0; ///A LABURAR A FUTURO
   }
@@ -262,8 +262,8 @@ t_caught_pokemon* armar_mensaje_caught_pokemon(char * parametros[]) {
   t_caught_pokemon* a_enviar = malloc(sizeof(t_caught_pokemon));
 
   a_enviar -> id_mensaje = 0;
-  a_enviar -> id_mensaje_correlativo = (uint32_t) parametros[3];
-  a_enviar -> resultado = (uint32_t) parametros[4];
+  a_enviar -> id_mensaje_correlativo = atof(parametros[3]);
+  a_enviar -> resultado = atof(parametros[4]);
 
   return a_enviar;
 }
@@ -274,26 +274,27 @@ t_appeared_pokemon* armar_mensaje_appeared_pokemon(char * parametros[]) {
   a_enviar -> pokemon = malloc(tamanio);
 
   a_enviar -> pokemon = parametros[3];
-  a_enviar -> posicion[0] = *(uint32_t*) parametros[4];
-  a_enviar -> posicion[1] = *(uint32_t*) parametros[5];
+  a_enviar -> posicion[0] = atof(parametros[4]);
+  a_enviar -> posicion[1] = atof(parametros[5]);
   a_enviar -> id_mensaje = 0;
   if(parametros[6] != NULL){
-	  a_enviar -> id_mensaje_correlativo = *(uint32_t*) parametros[6];
+	  a_enviar -> id_mensaje_correlativo = atof(parametros[6]);
   }
 
   return a_enviar;
 }
 
 t_new_pokemon* armar_mensaje_new_pokemon(char * parametros[]) {
-  uint32_t tamanio = sizeof(uint32_t) * 4 + strlen(parametros[3]) + 1;
-  t_new_pokemon* a_enviar = malloc(tamanio);
+  uint32_t tamanio = strlen(parametros[3]) + 1;
+  t_new_pokemon* a_enviar = malloc(sizeof(t_new_pokemon));
+  a_enviar -> pokemon = malloc(tamanio);
 
   a_enviar -> pokemon = parametros[3];
-  a_enviar -> posicion[0] = (uint32_t) parametros[4];
-  a_enviar -> posicion[1] = (uint32_t) parametros[5];
-  a_enviar -> cantidad = (uint32_t) parametros[6];
+  a_enviar -> posicion[0] = atof(parametros[4]);
+  a_enviar -> posicion[1] = atof(parametros[5]);
+  a_enviar -> cantidad = atof(parametros[6]);
   if(parametros[7] != NULL){
-	  a_enviar -> id_mensaje = (uint32_t) parametros[7];
+	  a_enviar -> id_mensaje = atof(parametros[7]);
   } else {
 	  a_enviar -> id_mensaje = 0; /// A futuro
   }
