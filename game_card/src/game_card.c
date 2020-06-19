@@ -48,7 +48,7 @@ int main(void) {
 
 void laboratorio_de_pruebas(){
 
-	//t_bitarray * bitarray = obtener_bitmap();
+	t_bitarray * bitarray = obtener_bitmap();
 
 }
 
@@ -502,21 +502,14 @@ void crear_bitmap(char* path){
 	t_metadata fs_metadata = leer_fs_metadata(metadataPath);
 
 	int size_in_bytes = (fs_metadata.blocks/8);
-
-
-	char* bytes = calloc(size_in_bytes, sizeof(char)); // esto me da [0,0,0,0,0,0...n]
-
-	t_bitarray* bitarray = bitarray_create_with_mode(bytes, size_in_bytes, LSB_FIRST);
+	char* a = string_repeat('0',(size_in_bytes*8));
 
 	FILE* file = fopen(bitmapPath,"wb");
 
-	fwrite(bitarray->bitarray,size_in_bytes,1,file);
+	fwrite(a,size_in_bytes,1,file);
 
 	fclose(file);
 
-
-	bitarray_destroy(bitarray);
-	free(bytes);
 	free(bitmapPath);
 	free(metadataPath);
 
@@ -524,10 +517,28 @@ void crear_bitmap(char* path){
 
 }
 
-//t_bitarray* obtener_bitmap(){
-////
-//
-//}
+t_bitarray* obtener_bitmap(){
+
+	char* bitmapPath = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
+	char* metadataPath = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
+
+	t_metadata fs_metadata = leer_fs_metadata(metadataPath);
+	int size_in_bytes = (fs_metadata.blocks / 8);
+
+	char* bytes = calloc(size_in_bytes, sizeof(char)); // esto me da [0,0,0,0,0,0...n]
+	t_bitarray* bitarray = bitarray_create_with_mode(bytes, size_in_bytes, LSB_FIRST);
+
+
+	FILE*f = fopen(bitmapPath,"rb");
+	int i = 0;
+
+	while(i<5192){
+		fread(bitarray->bitarray[i],1,1,f);
+	}
+
+	fclose(f);
+
+}
 
 int bitarray_default_size(){
 	char* path = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
