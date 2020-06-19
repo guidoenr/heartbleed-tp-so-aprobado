@@ -61,9 +61,9 @@ t_metadata leer_fs_metadata();
 void escribirMetadata();
 void crear_metadata_fs();
 int tamanio_de_metadata(t_metadata metadata);
-int existeDirectorio(char* path);
-void verificarExistenciaPokemon(t_new_pokemon* pokemon);
-void verificarAperturaPokemon(t_new_pokemon* msg,int socket);
+int existe_directorio(char* path);
+void verificar_existencia_pokemon(t_new_pokemon* pokemon);
+void verificar_apertura_pokemon(t_new_pokemon* msg,int socket);
 int tamanio_file_metadata(t_file_metadata fileMeta);
 t_file_metadata leer_file_metadata(char* path);
 
@@ -77,22 +77,25 @@ void suscribirse_a(op_code);
 
 //procces
 void process_request(uint32_t cod_op, uint32_t cliente_fd);
-void funcionHiloNewPokemon(t_new_pokemon* pokemon,int socket);
+void funcion_hilo_new_pokemon(t_new_pokemon* pokemon,int socket);
 
 //parsers + tools
 char* concatenar(char* str1,char* str2);
 bool isFile(char* path);
 uint32_t sizeNewPokemon(t_new_pokemon* pokemon);
 uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon);
-char* obtenerPathMetaFile(t_new_pokemon* pokemon);
-char* obtenerPathDirPokemon(t_new_pokemon* pokemon);
+char* obtener_path_metafile(t_new_pokemon* pokemon);
+char* obtener_path_dir_pokemon(t_new_pokemon* pokemon);
 void conectarse(int socket);
-bool isOpen(char* path);
+bool is_open(char* path);
 bool isDir(const char* name);
 bool existeElFileSystem(char* puntoMontaje);
 t_list* asignar_block_inicial();
 void inicializarPokemon(t_new_pokemon* newPoke);
-char* buscarBlockLibre();
+char* buscar_block_libre();
 char* posicion_into_string(t_new_pokemon* newpoke);
 t_file_metadata generar_file_metadata(t_new_pokemon* newPoke);
 t_bitarray* obtener_bitmap();
+char* get_value_from_position(t_new_pokemon* newpoke);
+char* get_key_from_position(t_new_pokemon* newpoke);
+char* list_to_string_array(t_list* blocks);

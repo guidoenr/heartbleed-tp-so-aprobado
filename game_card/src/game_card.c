@@ -20,23 +20,15 @@ int main(void) {
 	//conectarse(socket_br);
 	iniciar_tall_grass();
 
-//	t_new_pokemon* simple = malloc(sizeof(t_new_pokemon));
-//	simple->cantidad= 1;
-//	simple->id_mensaje= 124;
-//	simple->pokemon= "Simple";
-//	simple->posicion[0]= 16;
-//	simple->posicion[1] = 51;
-//
-//	t_new_pokemon* kennyS = malloc(sizeof(t_new_pokemon));
-//	kennyS->cantidad= 1;
-//	kennyS->id_mensaje= 124;
-//	kennyS->pokemon= "KennyS";
-//	kennyS->posicion[0]= 16;
-//	kennyS->posicion[1] = 51;
-//
-//	free(kennyS)
+	t_new_pokemon* simple = malloc(sizeof(t_new_pokemon));
+	simple->cantidad= 1;
+	simple->id_mensaje= 124;
+	simple->pokemon= "Simple";
+	simple->posicion[0]= 16;
+	simple->posicion[1] = 51;
 
-	//funcionHiloNewPokemon(kennyS, socket_br);
+	funcion_hilo_new_pokemon(simple, socket_br);
+
 	laboratorio_de_pruebas();
 
 
@@ -48,21 +40,8 @@ int main(void) {
 
 void laboratorio_de_pruebas(){
 
-	t_bitarray * bitarray = obtener_bitmap();
-
 }
 
-
-int file_current_size(FILE* f){
-
-	char* path = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
-	t_metadata metadataFS = leer_fs_metadata(path);
-
-	int pos = ftell(f);
-
-	return metadataFS.blocksize - pos;
-
-}
 
 void conectarse(int socket){
 	socket = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
@@ -75,6 +54,17 @@ void conectarse(int socket){
 	} else {
 		log_info(logger,"conexion exitosa con broker ");
 	}
+}
+
+int file_current_size(FILE* f){
+
+	char* path = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
+	t_metadata metadataFS = leer_fs_metadata(path);
+
+	int pos = ftell(f);
+
+	return metadataFS.blocksize - pos;
+
 }
 
 void iniciar_tall_grass(){
@@ -120,7 +110,6 @@ void suscribirse_a(op_code cola) {
 	free(suscripcion);
 
 }
-
 
 t_config_game_card* leer_config() {
 
@@ -196,7 +185,7 @@ void crear_blocks(char* path){
 		char* c = string_itoa(i);
 		char* block = concatenar(blocksPath,c);
 		char* bloque = concatenar(block,".bin");
-		createFileWithSize(bloque,sizeBlock);
+		create_file_with_size(bloque,sizeBlock);
 
 		free(block);
 		free(bloque);
@@ -208,17 +197,6 @@ void crear_blocks(char* path){
 	free(blocksPath);
 	free(realPath);
 
-
-}
-
-void createFileWithSize(char* path,int size) {
-
-        int X = size - 1 ;
-        FILE *fp = fopen(path, "wb");
-        fseek(fp, X , SEEK_SET);
-        fputc('\0', fp);
-
-        fclose(fp);
 
 }
 
@@ -248,25 +226,71 @@ void crear_metadata_fs(char* path){
 
 }
 
+void crear_bitmap(char* path){
+
+	char* bitmapPath = concatenar(path,"/Metadata/Bitmap.bin");
+	char* metadataPath = concatenar(path,"/Metadata/Metadata.bin");
+	t_metadata fs_metadata = leer_fs_metadata(metadataPath);
+
+	int size_in_bytes = (fs_metadata.blocks/8);
+	char* a = string_repeat('0',(size_in_bytes*8));
+
+	FILE* file = fopen(bitmapPath,"wb");
+	fclose(file);
+
+	t_config* config_bitmap = config_create(bitmapPath);
+
+	config_set_value(config_bitmap,"BITARRAY",a);
+
+	int result = config_save(config_bitmap);
+	if (result != 1 ){
+		log_info(logger,"Error en la creacion de bitarray al estilo tall_gd3_grass");
+	}
+
+	config_destroy(config_bitmap);
+
+	free(bitmapPath);
+	free(metadataPath);
+
+	log_info(logger,"Se creo el bitarray de %d posiciones, con un tamaño de %d bytes",fs_metadata.blocks,size_in_bytes);
+
+}
+
+void create_file_with_size(char* path,int size) {
+
+        int X = size - 1 ;
+        FILE *fp = fopen(path, "wb");
+        fseek(fp, X , SEEK_SET);
+        fputc('\0', fp);
+
+        fclose(fp);
+
+}
+
+
+
 void crear_pokemon(t_new_pokemon* newPoke){
 
-	char* metaPath = obtenerPathMetaFile(newPoke);
-	char* dirPokemon = obtenerPathDirPokemon(newPoke);
+	char* meta_file_path = obtener_path_metafile(newPoke);
 
 	t_file_metadata metadata = generar_file_metadata(newPoke);
 
 	escribir_block_inicial(metadata,newPoke);
 
-	FILE* file = fopen(metaPath,"wb");
+	char* blocks_array = list_to_string_array(metadata.blocks);
 
-	escribir_campo_open(file,metadata.open);
-	escribir_campo_directory(file,metadata.directory);
-	escribir_campo_size(file,metadata.size);
-	escribir_campo_blocks(file,metadata.blocks);
+	t_config* meta_file_pokemon = config_create(meta_file_path);
 
-	fclose(file);
+	config_set_value(meta_file_pokemon,"OPEN",metadata.open);
+	config_set_value(meta_file_pokemon,"DIRECTORY",metadata.directory);
+	config_set_value(meta_file_pokemon,"SIZE",metadata.size);
+	config_set_value(meta_file_pokemon,"BLOCKS",blocks_array);
 
-	unlock_file(metaPath);
+	config_save_in_file(meta_file_pokemon,meta_file_path);
+
+	free(blocks_array);
+	free(meta_file_path);
+	config_destroy(meta_file_pokemon);
 
 }
 
@@ -276,29 +300,8 @@ void append(char* s, char c) {
         s[len+1] = '\0';
 }
 
-void escribir_campo_open(FILE* f,char* metadata_open){
+char* list_to_string_array(t_list* blocks){
 
-	char* a_escribir = concatenar("OPEN=",metadata_open);
-	fwrite(a_escribir,strlen(a_escribir)+1,1,f);
-	free(a_escribir);
-}
-
-void escribir_campo_directory(FILE* f,char* metadata_directory){
-
-	char* a_escribir = concatenar("DIRECTORY=",metadata_directory);
-	int tam = strlen("DIRECTORY=") + strlen(metadata_directory) + 1;
-	fwrite(a_escribir,tam,1,f);
-	free(a_escribir);
-}
-
-void escribir_campo_size(FILE* f,char* metadata_size){
-	char* a_escribir = concatenar("SIZE=",metadata_size);
-	int tam = strlen("SIZE=") + strlen(metadata_size)+1;
-	fwrite(a_escribir,tam,1,f);
-	free(a_escribir);
-}
-
-void escribir_campo_blocks(FILE* f ,t_list* blocks){
 	char* format = "[";
 
 	if (blocks->elements_count == 1){
@@ -320,25 +323,37 @@ void escribir_campo_blocks(FILE* f ,t_list* blocks){
 
 	format = concatenar(format,"]");
 
-	int size = strlen(format) + 1 ;
-
-	fwrite(format,size,1,f);
-	free(format);
+	return format;
 }
 
 
 t_file_metadata generar_file_metadata(t_new_pokemon* newPoke){
 
 	t_file_metadata metadata;
+
 	metadata.directory = "N";
 	metadata.open = "N";
 	metadata.blocks = asignar_block_inicial();
-	metadata.size = string_itoa(calcular_size_inicial(newPoke)); //TODO que es este size?
+	metadata.size = string_itoa(calcular_size_inicial(newPoke));
+
 	return metadata;
+
 }
 
 int calcular_size_inicial(t_new_pokemon* newPoke){
-	return strlen(posicion_into_string(newPoke)) + 1;
+	int size;
+
+	char* key = get_key_from_position(newPoke);
+	char* value = get_value_from_position(newPoke);
+
+
+	size = strlen(key) + strlen(value) + 1;
+
+	free(key);
+	free(value);
+
+	return size;
+
 }
 
 void escribir_block_inicial(t_file_metadata metadata,t_new_pokemon* newPoke){
@@ -347,38 +362,45 @@ void escribir_block_inicial(t_file_metadata metadata,t_new_pokemon* newPoke){
 	char* blockPath = concatenar(path,string_itoa(metadata.blocks->head->data));
 	char* finalPath = concatenar(blockPath,".bin");
 
-	FILE* block = fopen(finalPath,"wb");
+	char* new_poke_key = get_key_from_position(newPoke);
+	char* new_poke_value = get_value_from_position(newPoke);
 
-	char* a_escribir = posicion_into_string(newPoke);
-	int size = strlen(a_escribir) + 1;
-	int i = 1;
+	t_config* block = config_create(finalPath);
 
-	while (file_current_size(block) >=0 && i<= size){
-			fwrite(&a_escribir[i],1,1,block);
-			i++;
-		}
+	config_set_value(block,new_poke_key,new_poke_value);
+
+	int status = config_save_in_file(block,finalPath);
+
+	if(status != 1){
+		log_info(logger, "Error al escribir en el block %s el pokemon %s",finalPath,newPoke->pokemon);
+	}
+
+	config_destroy(block);
 	free(path);
 	free(blockPath);
 	free(finalPath);
 }
 
 
-char* posicion_into_string(t_new_pokemon* newpoke){
-
-	char* a = concatenar(string_itoa(newpoke->posicion[0]),"-");
-	char* b = concatenar(a,string_itoa(newpoke->posicion[1]));
-	char* c = concatenar(b,"=");
-	char* d = concatenar(c,string_itoa(newpoke->cantidad));
-	return d;
+char* get_key_from_position(t_new_pokemon* newpoke){
+	char* pos_x = string_itoa(newpoke->posicion[0]);
+	char* pos_y = string_itoa(newpoke->posicion[1]);
+	char* key = concatenar(pos_x,"-");
+	char* final_key = concatenar(key,pos_y);
+	return final_key;
 }
-//tengo 64 bytes para escribir en un block
-//un char pesa 1 byte
+
+char* get_value_from_position(t_new_pokemon* newpoke){
+	char* value = string_itoa(newpoke->cantidad);
+	return value;
+}
+
 
 t_list* asignar_block_inicial(){
 
 	t_list* lista = list_create();
 
-	int block = buscarBlockLibre();
+	int block = buscar_block_libre();
 
 	list_add(lista,block);
 
@@ -388,47 +410,39 @@ t_list* asignar_block_inicial(){
 t_file_metadata leer_file_metadata(char* path){
 
 	t_file_metadata fmetadata_leido;
-	FILE* file = fopen(path,"rb");
 
 
-	fread(&fmetadata_leido.open,sizeof(char),1,file);
-	fread(&fmetadata_leido.directory,sizeof(char),1,file);
-	fread(&fmetadata_leido.size,sizeof(int),1,file);
-	fread(&fmetadata_leido.blocks,4,1,file);
 
 	// TODO
 
-	fclose(file);
+
 	return fmetadata_leido;
 }
 
-char* buscarBlockLibre(){ //TODO, EL BITARRAY EN UN FILE? PARA QUE
+char* buscar_block_libre(){ //TODO, EL BITARRAY EN UN FILE? PARA QUE
 
-	//TODO ACA ESTA HARDCODEADO EL BITARRAY JUSTO POR ESO, NO LO PUEDO LEER DEL ARCHIVO
-	//TODO leer desde el Bitmap.bin.
+	t_bitarray* bitarray = obtener_bitmap();
 
-	int blocks = 5192;
-	int size_in_bytes = 8 / blocks;
-	char* bytes = calloc(size_in_bytes, sizeof(char));
-	t_bitarray* bitarray = bitarray_create_with_mode(bytes, size_in_bytes, LSB_FIRST);
+	int block_libre;
+	int blocks = (bitarray_default_size()*8);
 
-	int blockLibre;
-
-
-	for(int i=0; i<= 5192 ; i++){
+	for(int i=0; i< blocks; i++){
 
 		if (bitarray_test_bit(bitarray,i) != true){
 
-			blockLibre = i + 1;				//porque el array arranca en 0
-			log_info(logger,"El block %d anda masa, usalo tranka nomas",i+1);
+			block_libre = i;
+			log_info(logger,"El block %d esta libre, usalo tranka nomas",i);
+			bitarray_set_bit(bitarray,i);
+			actualizar_bitmap(bitarray);
+			log_info(logger,"El block %d ahora esta en uso",i);
 			break;
+
 		} else {
-				log_info(logger,"El block %d esta ocupado kpo, sigo buscando",i+1);
+				log_info(logger,"El block %d esta ocupado kpo, sigo buscando",i);
 		}
 	}
 
-	//TODO guardar y grabar el bitarray en el Bitmap.bin
-	return blockLibre;
+	return block_libre;
 
 }
 int tamanio_de_metadata(t_metadata metadata){
@@ -495,48 +509,47 @@ int default_bitarray_sizebytes(){
 	return (metadata.blocks/ 8);
 }
 
-void crear_bitmap(char* path){
 
-	char* bitmapPath = concatenar(path,"/Metadata/Bitmap.bin");
-	char* metadataPath = concatenar(path,"/Metadata/Metadata.bin");
-	t_metadata fs_metadata = leer_fs_metadata(metadataPath);
-
-	int size_in_bytes = (fs_metadata.blocks/8);
-	char* a = string_repeat('0',(size_in_bytes*8));
-
-	FILE* file = fopen(bitmapPath,"wb");
-
-	fwrite(a,size_in_bytes,1,file);
-
-	fclose(file);
-
-	free(bitmapPath);
-	free(metadataPath);
-
-	log_info(logger,"Se creo el bitarray de %d posiciones, con un tamaño de %d bytes",fs_metadata.blocks,size_in_bytes);
-
-}
 
 t_bitarray* obtener_bitmap(){
 
 	char* bitmapPath = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
-	char* metadataPath = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
+	int size_in_bytes = bitarray_default_size();
 
-	t_metadata fs_metadata = leer_fs_metadata(metadataPath);
-	int size_in_bytes = (fs_metadata.blocks / 8);
+	t_config* bitarray_config = config_create(bitmapPath);
 
-	char* bytes = calloc(size_in_bytes, sizeof(char)); // esto me da [0,0,0,0,0,0...n]
-	t_bitarray* bitarray = bitarray_create_with_mode(bytes, size_in_bytes, LSB_FIRST);
+	char* data = config_get_string_value(bitarray_config,"BITARRAY");
+
+	config_destroy(bitarray_config);
+
+	t_bitarray* bitarray = bitarray_create_with_mode(data, size_in_bytes, LSB_FIRST);
+
+	return bitarray;
+
+}
+
+void actualizar_bitmap(t_bitarray* bitarray){
+	char* bitmapPath = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
+
+	t_config* bitmap_config = config_create(bitmapPath);
+
+	bitarray_set_bit(bitarray,53);
+	bitarray_set_bit(bitarray,521);
+
+	bool x = bitarray_test_bit(bitarray,53);
+	bool y =bitarray_test_bit(bitarray,521);
+	bool z = bitarray_test_bit(bitarray,524);
+	bool zed = bitarray_test_bit(bitarray,24);
+	bool zdqw = bitarray_test_bit(bitarray,4);
 
 
-	FILE*f = fopen(bitmapPath,"rb");
-	int i = 0;
+	config_set_value(bitmap_config,"BITARRAY",bitarray->bitarray);
 
-	while(i<5192){
-		fread(bitarray->bitarray[i],1,1,f);
-	}
+	int status = config_save(bitmap_config);
 
-	fclose(f);
+	config_destroy(bitmap_config);
+	bitarray_destroy(bitarray);
+	free(bitmapPath);
 
 }
 
@@ -557,36 +570,38 @@ bool isDirectory(char* path){
 	return fileMeta.directory == 'Y';
 }
 
-bool isOpen(char* path){
+bool is_open(char* path){
 
-	char a;
-	char* total;
-	FILE* file = fopen(path,"rb");
+	t_config* file_meta_config = config_create(path);
 
-	fread(&a,1,1,file);
-	while (a != "/0"){
-		total = concatenar(total,a);
-	}
+	char* open = strdup(config_get_string_value(file_meta_config,"OPEN"));
 
+	config_destroy(file_meta_config);
 
-	fclose(file);
-	return true;
+	return open == "Y";
 }
 
 void lock_file(char* path){
-	FILE* update_file = fopen(path,"r+b");
 
-	fseek(update_file,0,SEEK_SET);
-	fputs("OPEN=Y",update_file);
-	fclose(update_file);
+	t_config* file_config = config_create(path);
+
+	config_set_value(file_config,"OPEN","Y");
+
+	config_save(path);
+
+	config_destroy(file_config);
+
 }
 
 void unlock_file(char* path){
-	FILE* update_file = fopen(path,"r+b");
 
-	fseek(update_file,0,SEEK_SET);
-	fputs("OPEN=N",update_file);
-	fclose(update_file);
+	t_config* file_config = config_create(path);
+
+	config_set_value(file_config,"OPEN","N");
+
+	config_save(path);
+
+	config_destroy(file_config);
 }
 
 void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende del que toque ese modulo.
@@ -615,7 +630,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende
 			msg = malloc(sizeof(t_new_pokemon));
 			//msg = recibir_new_pokemon(cliente_fd,size); // retorna un t_new_pokemon
 			informarAlBroker(cliente_fd, NEW_POKEMON);
-			funcionHiloNewPokemon(msg,cliente_fd);
+			funcion_hilo_new_pokemon(msg,cliente_fd);
 
 			//agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd); ??
 			free(msg);
@@ -635,10 +650,12 @@ void informarAlBroker(int socket,op_code codigo){
 	enviar_mensaje(codigo,aviso,socket,tamanioAviso);
 }
 
-void funcionHiloNewPokemon(t_new_pokemon* new_pokemon,int socket){
+void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 
-	verificarExistenciaPokemon(new_pokemon);
-	verificarAperturaPokemon(new_pokemon,socket);
+	log_info(logger,"Llego un NEW_POKEMON %s en (%d,%d) con cantidad %d",new_pokemon->pokemon,new_pokemon->posicion[0],new_pokemon->posicion[1],new_pokemon->cantidad);
+
+	verificar_existencia_pokemon(new_pokemon);
+	verificar_apertura_pokemon(new_pokemon,socket);
 
 	if (existePokemonEnPosicion(new_pokemon)){
 		//agregarAPosicionExistente(new_pokemon);
@@ -661,7 +678,7 @@ void funcionHiloNewPokemon(t_new_pokemon* new_pokemon,int socket){
 //	free(appeared_pokemon->pokemon);
 //	free(appeared_pokemon->posicion);
 
-	char* path = obtenerPathMetaFile(new_pokemon);
+	char* path = obtener_path_metafile(new_pokemon);
 	unlock_file(path);
 
 }
@@ -679,44 +696,50 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 }
 
 
-void verificarExistenciaPokemon(t_new_pokemon* newpoke){
+void verificar_existencia_pokemon(t_new_pokemon* newpoke){
 	punto_montaje = config_gc->punto_montaje_tallgrass;
 
 	char* montaje = concatenar(punto_montaje,"/Files/");
 	char* path = concatenar(montaje,newpoke->pokemon);
-	if (existeDirectorio(path)){
-
+	if (existe_directorio(path)){
 		log_info(logger,"Existe el pokemon %s en : %s y se le van a agregar posiciones",newpoke->pokemon,path);
-
 
 	} else{
 
 		mkdir(path, 0777);
 		log_info(logger,"Se creo el directorio %s en %s",newpoke->pokemon,path);
 
+		FILE* f = fopen(obtener_path_metafile(newpoke),"wb");
+		fclose(f);
+
+		log_info(logger,"Se creo el file_metadata de %s vacio",newpoke->pokemon);
+
+
 		crear_pokemon(newpoke);
-		log_info(logger,"Se creo el file_metadata de %s",newpoke->pokemon);
+		log_info(logger,"Se creo por completo el pokemon %s ",newpoke->pokemon);
+
 	}
 
 }
 
 
-int existeDirectorio(char* path){
+int existe_directorio(char* path){
 	DIR* dir = opendir(path);
 	int x = dir;
 	closedir(dir);
 	return x;
 }
 
-void verificarAperturaPokemon(t_new_pokemon* newpoke,int socket){
+void verificar_apertura_pokemon(t_new_pokemon* newpoke,int socket){
 
-	char* path = obtenerPathMetaFile(newpoke);
-	bool x = isOpen(path);
-	if (isOpen(path)){
+	char* path = obtener_path_metafile(newpoke);
+	bool x = is_open(path);
+
+	if (is_open(path)){
 		int secs = config_gc->tiempo_retardo_operacion;
 		log_info(logger,"No se puede acceder a este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
 		sleep(secs);
-		funcionHiloNewPokemon(newpoke,socket);
+		funcion_hilo_new_pokemon(newpoke,socket);
 
 	} else {
 
@@ -726,7 +749,7 @@ void verificarAperturaPokemon(t_new_pokemon* newpoke,int socket){
 		}
 	}
 
-char* obtenerPathMetaFile(t_new_pokemon* pokemon){
+char* obtener_path_metafile(t_new_pokemon* pokemon){
 	punto_montaje = config_gc->punto_montaje_tallgrass;
 	char* path  = concatenar (punto_montaje,"/Files/");
 	char* path2 = concatenar (path,pokemon->pokemon); //terrible negrada esto, pero anda o no anda?
@@ -734,7 +757,7 @@ char* obtenerPathMetaFile(t_new_pokemon* pokemon){
 	return path3;
 }
 
-char* obtenerPathDirPokemon(t_new_pokemon* pokemon){
+char* obtener_path_dir_pokemon(t_new_pokemon* pokemon){
 	punto_montaje = config_gc->punto_montaje_tallgrass;
 	char* path = concatenar(punto_montaje,"/Files/");
 	char* path2 = concatenar(path,pokemon->pokemon);
@@ -742,7 +765,7 @@ char* obtenerPathDirPokemon(t_new_pokemon* pokemon){
 }
 
 bool existePokemonEnPosicion(t_new_pokemon* pokemon){
-	char* meta_file_path = obtenerPathMetaFile(pokemon);
+	char* meta_file_path = obtener_path_metafile(pokemon);
 
 }
 
