@@ -59,7 +59,7 @@ uint32_t seleccionar_proceso(char * parametros[]) {
 		  break;
 		case CATCH_POKEMON:
 		  tamanio_mensaje = size_mensaje(armar_mensaje_catch_pokemon(parametros), CATCH_POKEMON);
-		  mensaje = malloc(tamanio_mensaje);
+		  //mensaje = malloc(tamanio_mensaje);
 		  mensaje = armar_mensaje_catch_pokemon(parametros);
 		  enviar_mensaje(CATCH_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
@@ -241,16 +241,17 @@ t_get_pokemon* armar_mensaje_get_pokemon(char * parametros[]) {
 }
 
 t_catch_pokemon* armar_mensaje_catch_pokemon(char * parametros[]) {
-  uint32_t tamanio = sizeof(uint32_t) * 3 + strlen(parametros[3]) + 1;
-  t_catch_pokemon* a_enviar = malloc(tamanio);
+  uint32_t tamanio = strlen(parametros[3]) + 1;
+  t_catch_pokemon* a_enviar = malloc(sizeof(t_catch_pokemon));
+  a_enviar -> pokemon = malloc(tamanio);
 
   a_enviar -> pokemon = parametros[3];
-  a_enviar -> posicion[0] = (uint32_t) parametros[4];
-  a_enviar -> posicion[1] = (uint32_t) parametros[5];
+  a_enviar -> posicion[0] = *(uint32_t*) parametros[4];
+  a_enviar -> posicion[1] = *(uint32_t*) (parametros[5]);
   if(parametros[6] != NULL){
-	  a_enviar -> id_mensaje = (uint32_t) parametros[6];
+	  a_enviar -> id_mensaje = *(uint32_t*) (parametros[6]);
   } else {
-	  a_enviar -> id_mensaje = (uint32_t) 0; ///A LABURAR A FUTURO
+	  a_enviar -> id_mensaje = 0; ///A LABURAR A FUTURO
   }
 
   return a_enviar;
@@ -258,9 +259,9 @@ t_catch_pokemon* armar_mensaje_catch_pokemon(char * parametros[]) {
 
 t_caught_pokemon* armar_mensaje_caught_pokemon(char * parametros[]) {
 
-  t_caught_pokemon* a_enviar = malloc((sizeof(uint32_t)*3));
+  t_caught_pokemon* a_enviar = malloc(sizeof(t_caught_pokemon));
 
-  a_enviar -> id_mensaje = (uint32_t) 0;
+  a_enviar -> id_mensaje = 0;
   a_enviar -> id_mensaje_correlativo = (uint32_t) parametros[3];
   a_enviar -> resultado = (uint32_t) parametros[4];
 
@@ -268,15 +269,16 @@ t_caught_pokemon* armar_mensaje_caught_pokemon(char * parametros[]) {
 }
 
 t_appeared_pokemon* armar_mensaje_appeared_pokemon(char * parametros[]) {
-  uint32_t tamanio = sizeof(uint32_t) * 4 + strlen(parametros[3]) + 1;
-  t_appeared_pokemon* a_enviar = malloc(tamanio);
+  uint32_t tamanio = strlen(parametros[3]) + 1;
+  t_appeared_pokemon* a_enviar = malloc(sizeof(t_appeared_pokemon));
+  a_enviar -> pokemon = malloc(tamanio);
 
   a_enviar -> pokemon = parametros[3];
-  a_enviar -> posicion[0] = (uint32_t) parametros[4];
-  a_enviar -> posicion[1] = (uint32_t) parametros[5];
-  a_enviar -> id_mensaje = (uint32_t) 0;
+  a_enviar -> posicion[0] = *(uint32_t*) parametros[4];
+  a_enviar -> posicion[1] = *(uint32_t*) parametros[5];
+  a_enviar -> id_mensaje = 0;
   if(parametros[6] != NULL){
-	  a_enviar -> id_mensaje_correlativo = (uint32_t) parametros[6];
+	  a_enviar -> id_mensaje_correlativo = *(uint32_t*) parametros[6];
   }
 
   return a_enviar;
