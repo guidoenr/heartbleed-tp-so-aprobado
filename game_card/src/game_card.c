@@ -27,7 +27,7 @@ int main(void) {
 	simple->posicion[0]= 16;
 	simple->posicion[1] = 51;
 
-	funcion_hilo_new_pokemon(simple, socket_br);
+	//funcion_hilo_new_pokemon(simple, socket_br);
 
 	laboratorio_de_pruebas();
 
@@ -39,6 +39,19 @@ int main(void) {
 
 
 void laboratorio_de_pruebas(){
+
+
+	t_config* config = config_create("/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/config_prueba.bin");
+
+	char** blocks = config_get_array_value(config,"BLOCKS");
+
+	char* a = blocks[0];
+	char* b = blocks[1];
+	char* c = blocks[2];
+
+
+	int len = strlen(blocks);
+	config_destroy(config);
 
 }
 
@@ -654,20 +667,8 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 
 	log_info(logger,"Llego un NEW_POKEMON %s en (%d,%d) con cantidad %d",new_pokemon->pokemon,new_pokemon->posicion[0],new_pokemon->posicion[1],new_pokemon->cantidad);
 
-	verificar_existencia_pokemon(new_pokemon);
-	verificar_apertura_pokemon(new_pokemon,socket);
+	verificar_existencia_pokemon(new_pokemon,socket);
 
-	if (existePokemonEnPosicion(new_pokemon)){
-		//agregarAPosicionExistente(new_pokemon);
-
-		log_info(logger,"Existe pokemon ");
-
-		//agregarAPoisiconExistente(); TODO PARA BLOCKS Y FILESYTEM
-	} else {
-		log_info(logger,"No existe pokemon \n");
-
-		//agregarAlFinalDelArchivo(); TODO PARA BLOCKS Y FILESYTEM
-	}
 
 	t_appeared_pokemon* appeared_pokemon = armar_appeared(new_pokemon);
 
@@ -696,13 +697,18 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 }
 
 
-void verificar_existencia_pokemon(t_new_pokemon* newpoke){
+void verificar_existencia_pokemon(t_new_pokemon* newpoke,int socket){
+
 	punto_montaje = config_gc->punto_montaje_tallgrass;
 
 	char* montaje = concatenar(punto_montaje,"/Files/");
 	char* path = concatenar(montaje,newpoke->pokemon);
+
 	if (existe_directorio(path)){
+
 		log_info(logger,"Existe el pokemon %s en : %s y se le van a agregar posiciones",newpoke->pokemon,path);
+		verificar_apertura_pokemon(newpoke, socket);
+		actualizar_pokemon(newpoke);
 
 	} else{
 
@@ -722,6 +728,67 @@ void verificar_existencia_pokemon(t_new_pokemon* newpoke){
 
 }
 
+void actualizar_pokemon(t_new_pokemon* newpoke){
+
+	char* path = obtener_path_metafile(newpoke);
+	char* key = get_key_from_position(newpoke);
+	char* value = get_value_from_position(newpoke);
+
+	if (la_posicion_ya_existe(newpoke,key)){
+
+
+
+
+
+	}else {
+
+
+
+
+
+
+	}
+
+
+
+
+}
+
+int la_posicion_ya_existe(t_new_pokemon* newpoke,char* key){
+
+	char* meta_path = obtener_path_metafile(newpoke);
+
+	t_config* metadata_file = config_create(meta_path);
+
+	char** blocks = config_get_array_value(metadata_file,"BLOCKS");
+
+	int block = block_que_tiene_esa_posicion(blocks);
+
+
+	config_destroy(metadata_file);
+	return block;
+}
+
+int block_que_tiene_esa_posicion(char** blocks){
+
+	for (int i=0; i<strlen(blocks); i++){
+
+
+
+
+	}
+
+
+
+}
+
+char* block_path(char* block){
+	char* path1 = concatenar(config_gc->punto_montaje_tallgrass,"/Blocks/");
+	char* path2 = concatenar(path1,block);
+	char* path3 = concatenar(path2,".bin");
+
+	return path3;
+}
 
 int existe_directorio(char* path){
 	DIR* dir = opendir(path);
@@ -736,14 +803,15 @@ void verificar_apertura_pokemon(t_new_pokemon* newpoke,int socket){
 	bool x = is_open(path);
 
 	if (is_open(path)){
+
 		int secs = config_gc->tiempo_retardo_operacion;
 		log_info(logger,"No se puede acceder a este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
 		sleep(secs);
-		funcion_hilo_new_pokemon(newpoke,socket);
+		verificar_existencia_pokemon(newpoke,socket);
 
 	} else {
 
-		log_info(logger,"Se puede acceder al pokemon, lockeo el archivo %s",newpoke->pokemon);
+		log_info(logger,"Se puede acceder al pokemon %s, lockeo el archivo",newpoke->pokemon);
 		lock_file(path);
 
 		}
