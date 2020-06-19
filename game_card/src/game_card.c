@@ -41,16 +41,11 @@ int main(void) {
 void laboratorio_de_pruebas(){
 
 
-	t_config* config = config_create("/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/config_prueba.bin");
+	t_config* config = config_create("/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/prueba.bin");
 
 	char** blocks = config_get_array_value(config,"BLOCKS");
 
-	char* a = blocks[0];
-	char* b = blocks[1];
-	char* c = blocks[2];
-
-
-	int len = strlen(blocks);
+	int len = size_char_doble(blocks);
 	config_destroy(config);
 
 }
@@ -98,7 +93,6 @@ void iniciar_tall_grass(){
 		log_info(logger, "Tallgrass ya existente en %s",punto_montaje);
 	}
 }
-
 
 void suscribirme_a_colas() {
 	suscribirse_a(NEW_POKEMON);
@@ -485,7 +479,7 @@ t_metadata leer_fs_metadata(char* path){
 
 
 
-int fileSize(char* path){
+int file_size(char* path){
 	FILE* f = fopen(path,"r");
 	fseek(f, 0L, SEEK_END);
 	int i = ftell(f);
@@ -494,7 +488,7 @@ int fileSize(char* path){
 }
 
 bool archivoVacio(char* path){
-	return fileSize(path) == 0;
+	return file_size(path) == 0;
 }
 
 bool isFile(char* path){
@@ -704,7 +698,7 @@ void verificar_existencia_pokemon(t_new_pokemon* newpoke,int socket){
 	char* montaje = concatenar(punto_montaje,"/Files/");
 	char* path = concatenar(montaje,newpoke->pokemon);
 
-	if (existe_directorio(path)){
+	if (existe_pokemon(path)){
 
 		log_info(logger,"Existe el pokemon %s en : %s y se le van a agregar posiciones",newpoke->pokemon,path);
 		verificar_apertura_pokemon(newpoke, socket);
@@ -730,18 +724,47 @@ void verificar_existencia_pokemon(t_new_pokemon* newpoke,int socket){
 
 void actualizar_pokemon(t_new_pokemon* newpoke){
 
-	char* path = obtener_path_metafile(newpoke);
-	char* key = get_key_from_position(newpoke);
-	char* value = get_value_from_position(newpoke);
+	char* metadatapath = obtener_path_metafile(newpoke); //ej
+	char* key = get_key_from_position(newpoke); // 2-2
+	char* value = get_value_from_position(newpoke); // 4
 
-	if (la_posicion_ya_existe(newpoke,key)){
+	int pos = la_posicion_ya_existe(newpoke,key);
 
+	if (pos){
 
+		char* blockpath = block_path(string_itoa(pos));
+		t_config* block_config = config_create(blockpath);
 
-
+		config_set_value(block_config, key, value);
+		config_save(block_config);
+		config_destroy(block_config);
 
 	}else {
 
+		t_config* config_poke = config_create(metadatapath);
+		char** blocks = config_get_array_value(config_poke,"BLOCKS");
+		config_destroy(config_poke);
+		int size = size_char_doble(blocks);
+		int pos_ultimo_block = blocks[size];
+		char* ultimo_block_path = block_path(string_itoa(pos_ultimo_block));
+
+		if (el_ultimo_bloque_tiene_espacio(newpoke,key,value,ultimo_block_path)){
+
+			t_config* ultimo_block_config = config_create(ultimo_block_path);
+
+			config_set_value(ultimo_block_config,key,value);
+
+			config_save(ultimo_block_config);
+
+			config_destroy(ultimo_block_config);
+
+
+		} else {
+
+
+
+
+		}
 
 
 
@@ -752,35 +775,54 @@ void actualizar_pokemon(t_new_pokemon* newpoke){
 
 
 
+}
+
+bool el_ultimo_bloque_tiene_espacio(t_new_pokemon* newpoke,char* key,char* value,char* ultimo_block_path){
+	char* size_key_y_value = strlen(key) + strlen(value) + 1 ;
+	return file_size(ultimo_block_path) >= size_key_y_value;
 }
 
 int la_posicion_ya_existe(t_new_pokemon* newpoke,char* key){
 
 	char* meta_path = obtener_path_metafile(newpoke);
-
 	t_config* metadata_file = config_create(meta_path);
 
 	char** blocks = config_get_array_value(metadata_file,"BLOCKS");
 
-	int block = block_que_tiene_esa_posicion(blocks);
-
+	int block = block_que_tiene_esa_posicion(blocks,key);
 
 	config_destroy(metadata_file);
+
 	return block;
 }
 
-int block_que_tiene_esa_posicion(char** blocks){
+int block_que_tiene_esa_posicion(char** blocks,char* key){
 
-	for (int i=0; i<strlen(blocks); i++){
+	char* pathblock;
+	int size = size_char_doble(blocks);
 
+	for (int i=0; i<=size; i++){
 
+		pathblock = block_path(blocks[i]);
+		t_config* config = config_create(pathblock);
 
+		if (config_has_property(config,key)){
+			return i;
+			break;
+		}
+
+		config_destroy(config);
 
 	}
 
+	t_config* config = config_create(pathblock);
 
+	if(!config_has_property(config,key)){
+		return -1;
 
+	free(pathblock);
 }
+
 
 char* block_path(char* block){
 	char* path1 = concatenar(config_gc->punto_montaje_tallgrass,"/Blocks/");
@@ -790,7 +832,7 @@ char* block_path(char* block){
 	return path3;
 }
 
-int existe_directorio(char* path){
+int existe_pokemon(char* path){
 	DIR* dir = opendir(path);
 	int x = dir;
 	closedir(dir);
@@ -815,7 +857,7 @@ void verificar_apertura_pokemon(t_new_pokemon* newpoke,int socket){
 		lock_file(path);
 
 		}
-	}
+}
 
 char* obtener_path_metafile(t_new_pokemon* pokemon){
 	punto_montaje = config_gc->punto_montaje_tallgrass;
@@ -830,11 +872,6 @@ char* obtener_path_dir_pokemon(t_new_pokemon* pokemon){
 	char* path = concatenar(punto_montaje,"/Files/");
 	char* path2 = concatenar(path,pokemon->pokemon);
 	return path2;
-}
-
-bool existePokemonEnPosicion(t_new_pokemon* pokemon){
-	char* meta_file_path = obtener_path_metafile(pokemon);
-
 }
 
 //void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente) {
@@ -919,4 +956,16 @@ uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon){
 }
 
 
+int size_char_doble(char** array){
+
+	int i = 0;
+	int size = 0;
+
+	while(array[i] != NULL ){
+		i++;
+		size++;
+	}
+
+	return size;
+}
 
