@@ -68,15 +68,36 @@ t_list* memoria_con_particiones;
 t_config* config;
 t_config_broker* config_broker;
 t_log* logger;
+uint32_t particiones_liberadas;
 
+//---hilos---//
+
+pthread_t hilo_algoritmo_memoria;
+pthread_t hilo_mensaje;
+
+//---semaforos---//
 sem_t semaforo;
 sem_t mutex_id;
+sem_t  mx_cola_get;
+sem_t mx_cola_catch;
+sem_t mx_cola_localized;
+sem_t mx_cola_caught;
+sem_t mx_cola_appeared;
+sem_t mx_cola_new;
+sem_t mx_suscrip_get;
+sem_t mx_suscrip_catch;
+sem_t mx_suscrip_localized;
+sem_t mx_suscrip_caught;
+sem_t mx_suscrip_appeared;
+sem_t mx_suscrip_new;
+sem_t mx_memoria_cache;
+sem_t mx_copia_memoria;
 
 uint32_t id_mensaje_univoco;
 
 //Funciones generales
 void iniciar_programa			 (void);
-void iniciar_semaforos			 (void);
+void iniciar_semaforos_broker    (void);
 void reservar_memoria			 (void);
 void leer_config				 (void);
 void terminar_programa			 (t_log*);
@@ -85,7 +106,15 @@ void crear_colas_de_mensajes 	 (void);
 void crear_listas_de_suscriptores(void);
 void liberar_listas				 (void);
 void liberar_memoria_cache		 (void);
-void destruir_semaforos			 (void);
+void crear_hilo_segun_algoritmo  (void);
+void crear_hilo_por_mensaje		 (void);
+void gestionar_mensaje			 (void);
+void terminar_hilos_broker		 (void);
+void liberar_semaforos_broker	 (void);
+
+
+
+
 
 //Administracion de mensajes
 void 	 encolar_mensaje			       			   (t_mensaje*, op_code);
@@ -119,6 +148,8 @@ void 		   destruir_suscripcion 	   (void*);
 t_list*		   encontrar_suscriptores	   (void);
 void 		   actualizar_suscriptores     (t_mensaje*);
 void 		   eliminar_suscriptor		   (void*);
+void enviar_mensajes_cacheados_en_particiones(op_code tipo_mensaje, uint32_t socket);
+void enviar_mensajes_cacheados_en_buddy_system(op_code tipo_mensaje, uint32_t socket);
 //Para team y game_card
 //t_ack* 		   armar_confirmacion_de_recepcion(t_paquete*);
 
@@ -139,6 +170,10 @@ uint32_t encontrar_primer_ajuste(uint32_t);
 uint32_t encontrar_mejor_ajuste(uint32_t);
 void destruir_particion(void*);
 uint32_t encontrar_indice(t_memoria_dinamica*);
+void consolidar_particiones_dinamicas(void);
+bool existen_particiones_contiguas_vacias(t_list* memoria_cache);
+void compactar_memoria_cache(t_list*);
+void compactar_particiones_dinamicas(void);
 
 
 
