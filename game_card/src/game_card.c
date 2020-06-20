@@ -24,13 +24,12 @@ int main(void) {
 	simple->cantidad= 42;
 	simple->id_mensaje= 124;
 	simple->pokemon= "Simple";
-	simple->posicion[0]= 1;
-	simple->posicion[1] = 2;
+	simple->posicion[0]= 21;
+	simple->posicion[1] = 31;
+
+
 
 	funcion_hilo_new_pokemon(simple, socket_br);
-
-	laboratorio_de_pruebas();
-
 
 	terminar_programa(socket,config_gc);
 }
@@ -39,14 +38,12 @@ int main(void) {
 
 
 void laboratorio_de_pruebas(){
+	//TODO
 
 
-	t_config* config = config_create("/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/prueba.bin");
 
-	char** blocks = config_get_array_value(config,"BLOCKS");
 
-	int len = size_char_doble(blocks);
-	config_destroy(config);
+
 
 }
 
@@ -255,9 +252,10 @@ void crear_bitmap(char* path){
 	}
 
 	config_destroy(config_bitmap);
-
+	destrozar_fs_metadata(fs_metadata);
 	free(bitmapPath);
 	free(metadataPath);
+	free(a);
 
 	log_info(logger,"Se creo el bitarray de %d posiciones, con un tamaño de %d bytes",fs_metadata.blocks,size_in_bytes);
 
@@ -276,16 +274,15 @@ void create_file_with_size(char* path,int size) {
 
 
 
-void crear_pokemon(t_new_pokemon* newPoke){
-
-	char* meta_file_path = obtener_path_metafile(newPoke);
+void crear_pokemon(t_new_pokemon* newPoke,char* path){
 
 	t_file_metadata metadata = generar_file_metadata(newPoke);
 
 	escribir_block_inicial(metadata,newPoke);
 
-	grabar_metadata_file(metadata, meta_file_path);
+	grabar_metadata_file(metadata,path);
 
+	destrozar_metadata_file(metadata);
 
 }
 
@@ -535,6 +532,8 @@ t_bitarray* obtener_bitmap(){
 
 	t_bitarray* bitarray = bitarray_create_with_mode(data, size_in_bytes, LSB_FIRST);
 
+	free(bitmapPath);
+	free(data);
 	return bitarray;
 
 }
@@ -555,11 +554,19 @@ void actualizar_bitmap(t_bitarray* bitarray){
 }
 
 int bitarray_default_size(){
+
 	char* path = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Metadata.bin");
+
 	t_metadata metadata = leer_fs_metadata(path);
-	return (metadata.blocks/8);
+	int tam = (metadata.blocks/8);
+
+	free(path);
+
+	return tam;
 
 }
+
+
 
 
 bool isDirectory(char* path){
@@ -655,71 +662,86 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 
 	log_info(logger,"Llego un NEW_POKEMON %s en (%d,%d) con cantidad %d",new_pokemon->pokemon,new_pokemon->posicion[0],new_pokemon->posicion[1],new_pokemon->cantidad);
 
-	verificar_existencia_pokemon(new_pokemon,socket);
+	char* path_metafile = obtener_path_metafile(new_pokemon);
+	char* dir_path_newpoke = obtener_path_dir_pokemon(new_pokemon);
 
-	char* path = obtener_path_metafile(new_pokemon);
-	unlock_file(path);
+	if (el_pokemon_esta_creado(dir_path_newpoke)){
+
+		log_info(logger,"El pokemon %s ya existe",new_pokemon->pokemon);
+		bool esta_en_uso = is_open(path_metafile);
+
+		if (esta_en_uso){
+				int secs = config_gc->tiempo_retardo_operacion;
+				log_info(logger,"No se puede leer ni escribir este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
+				sleep(secs);
+				esta_en_uso = is_open(path_metafile);
+
+			} else {
+				log_info(logger,"Se puede acceder al pokemon %s, lockeo el archivo",new_pokemon->pokemon);
+				lock_file(path_metafile);
+
+				}
+
+		char* key = get_key_from_position(new_pokemon);
+		char* value = get_value_from_position(new_pokemon);
+
+		int block_number = existe_la_posicion(new_pokemon,path_metafile);
+
+		if (block_number != -1){ // porque arranca de 0 a 5192, la funcion retorna -1 si no existia la posicion
+
+			log_info(logger,"Ya se encontraba la posicion %s en el pokemon %s en el block %d, se le va actualizar su cantidad",key, new_pokemon->pokemon, block_number);
+
+			actualizar_pokemon(new_pokemon,path_metafile,key,value,block_number);
+
+			} else {
+				log_info(logger,"No se encontraba esta posicion del pokemon %s",new_pokemon->pokemon);
+				agregar_nueva_posicion(new_pokemon,path_metafile,key,value);
+			}
+
+			free(key);
+			free(value);
+
+		} else { // NO EXISTIA EL POKEMON
+
+			log_info(logger,"No existia el pokemon %s",new_pokemon->pokemon);
+
+			mkdir(dir_path_newpoke, 0777);
+			log_info(logger,"Se creo el directorio %s en %s",new_pokemon->pokemon,dir_path_newpoke);
+
+			FILE* f = fopen(path_metafile,"wb");
+			fclose(f);
+			log_info(logger,"Se creo el archivo metafile del pokemon %s vacio",new_pokemon->pokemon);
+
+			crear_pokemon(new_pokemon, path_metafile);
+			log_info(logger,"Se creo por completo el pokemon %s",new_pokemon->pokemon);
+		}
+
+	log_info(logger,"THREAD FINISHED , unlockeo el pokemon");
+	unlock_file(path_metafile);
+
+	//t_appeared_pokemon* appeared = armar_appeared(new_pokemon);
+	//enviar_appeared POKKEMON TODO serializacion
+
+	free(path_metafile);
+	free(dir_path_newpoke);
+	destrozar_new_pokemon(new_pokemon);
 
 }
 
-t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
-
-	//TODO
-		t_appeared_pokemon* appeared_pokemon = malloc(sizeof(t_appeared_pokemon));
-
-		appeared_pokemon->posicion[0] = new_pokemon->posicion[0];
-		appeared_pokemon->posicion[1] = new_pokemon->posicion[1];
-		appeared_pokemon->pokemon = new_pokemon->pokemon;
-		appeared_pokemon->id_mensaje_correlativo = 0;
-		appeared_pokemon->id_mensaje = new_pokemon->id_mensaje;
-		return appeared_pokemon;
-}
-
-
-void verificar_existencia_pokemon(t_new_pokemon* newpoke,int socket){
-
-	punto_montaje = config_gc->punto_montaje_tallgrass;
-
-	char* montaje = concatenar(punto_montaje,"/Files/");
-	char* path = concatenar(montaje,newpoke->pokemon);
-
-	if (existe_pokemon(path)){
-
-		log_info(logger,"Existe el pokemon %s en : %s y se le van a agregar posiciones",newpoke->pokemon,path);
-		verificar_apertura_pokemon(newpoke, socket);
-		actualizar_pokemon(newpoke);
-
-	} else{
-
-		mkdir(path, 0777);
-		log_info(logger,"Se creo el directorio %s en %s",newpoke->pokemon,path);
-
-		FILE* f = fopen(obtener_path_metafile(newpoke),"wb");
-		fclose(f);
-
-		log_info(logger,"Se creo el file_metadata de %s vacio",newpoke->pokemon);
-
-
-		crear_pokemon(newpoke);
-		log_info(logger,"Se creo por completo el pokemon %s ",newpoke->pokemon);
-
-	}
-
-}
-
-void actualizar_pokemon(t_new_pokemon* newpoke){
-
-	char* path_newpoke_metadata = obtener_path_metafile(newpoke); //ej
+int existe_la_posicion(t_new_pokemon* newpoke,char* path){
 	char* key = get_key_from_position(newpoke); // 2-2
-	char* value = get_value_from_position(newpoke); // 4
+	return la_posicion_ya_existe(newpoke,path,key);
+}
 
-	int pos = la_posicion_ya_existe(newpoke,key);
 
-	if (pos != -1){
+bool el_pokemon_esta_creado(char* path){
+	return es_directorio(path);
+}
 
-		log_info(logger,"Ya se encontraba la posicion %s en el pokemon %s, se le va actualizar su cantidad",key,newpoke->pokemon);
 
-		char* blockpath = block_path(string_itoa(pos));
+void actualizar_pokemon(t_new_pokemon* new_pokemon,char* path_metafile,char* key,char* value,int block_number){
+
+		char* blockpath = block_path(string_itoa(block_number));
 		t_config* block_config = config_create(blockpath);
 
 		int nueva_cantidad = config_get_int_value(block_config,key);
@@ -727,20 +749,29 @@ void actualizar_pokemon(t_new_pokemon* newpoke){
 
 		config_set_value(block_config,key,string_itoa(nueva_cantidad));
 		config_save(block_config);
-		log_info(logger,"Se actualizo la posicion del pokemon %s",newpoke->pokemon);
 		config_destroy(block_config);
 
-	}else {
+		log_info(logger,"Se actualizo la posicion del pokemon %s",new_pokemon->pokemon);
 
-		t_config* config_poke = config_create(path_newpoke_metadata);
+		free(blockpath);
+
+}
+
+
+void agregar_nueva_posicion(t_new_pokemon* newpoke,char* path,char* key,char* value){
+
+		t_config* config_poke = config_create(path);
+
 		char** blocks = config_get_array_value(config_poke,"BLOCKS");
 		config_destroy(config_poke);
 
 		int size = size_char_doble(blocks);
 		int pos_ultimo_block = blocks[size];
+
 		char* ultimo_block_path = block_path(string_itoa(pos_ultimo_block));
 
 		if (el_ultimo_bloque_tiene_espacio(key,value,ultimo_block_path)){
+			log_info(logger,"El ultimo bloque tenia espacio, agrego la posicion en el mismo");
 
 			t_config* ultimo_block_config = config_create(ultimo_block_path);
 
@@ -750,23 +781,11 @@ void actualizar_pokemon(t_new_pokemon* newpoke){
 
 			config_destroy(ultimo_block_config);
 
-
-		} else {
-
-			int block = asignar_nuevo_bloque(newpoke,key,value);
-			escribir_data_en_block(key,value,block);
-
-		}
-
-
-
-
-
-	}
-
-
-
-
+			} else {
+				log_info(logger,"Asigno un nuevo bloque, los que tenian estan llenos");
+				int block = asignar_nuevo_bloque(newpoke,key,value);
+				escribir_data_en_block(key,value,block);
+			}
 }
 
 
@@ -786,22 +805,20 @@ void escribir_data_en_block(char* key,char* value,int block){
 
 
 }
-int asignar_nuevo_bloque(t_new_pokemon* newpoke,char* key, char* value){
 
-	char* newpokepath = obtener_path_metafile(newpoke);
+int asignar_nuevo_bloque(t_new_pokemon* newpoke,char* path,char* key, char* value){
 
 	t_bitarray* bitarray = obtener_bitmap();
 
 	int block = buscar_block_libre(bitarray);
 	actualizar_bitmap(bitarray);
 
-	t_file_metadata newpoke_metadata_file = leer_file_metadata(newpokepath);
+	t_file_metadata newpoke_metadata_file = leer_file_metadata(path);
 
 	list_add(newpoke_metadata_file.blocks,block);
 
-	grabar_metadata_file(newpoke_metadata_file,newpokepath);
+	grabar_metadata_file(newpoke_metadata_file,path);
 
-	free(newpokepath);
 	bitarray_destroy(bitarray);
 
 	return block;
@@ -831,12 +848,12 @@ bool el_ultimo_bloque_tiene_espacio(char* key,char* value,char* ultimo_block_pat
 
 }
 
-int la_posicion_ya_existe(t_new_pokemon* newpoke,char* key_posicion){
+int la_posicion_ya_existe(t_new_pokemon* newpoke,char* meta_path, char* key_posicion){
 
-	char* meta_path = obtener_path_metafile(newpoke);
 	t_config* metadata_file = config_create(meta_path);
 
 	char** blocks = config_get_array_value(metadata_file,"BLOCKS");
+
 	config_destroy(metadata_file);
 
 	return block_que_tiene_esa_posicion(blocks, key_posicion);
@@ -844,13 +861,12 @@ int la_posicion_ya_existe(t_new_pokemon* newpoke,char* key_posicion){
 
 int block_que_tiene_esa_posicion(char** blocks,char* key){
 
-
 	int cantidad_blocks = size_char_doble(blocks);
 	int i = 0;
 
-	while(i<=cantidad_blocks){
 
-		char* pathblock= block_path(blocks[i]);
+	while(i < cantidad_blocks){
+		char* pathblock = block_path(blocks[i]);
 		t_config* config = config_create(pathblock);
 
 		if (config_has_property(config,key)){
@@ -862,22 +878,9 @@ int block_que_tiene_esa_posicion(char** blocks,char* key){
 		i++;
 		free(pathblock);
 	}
-
-	char* pathblock= block_path(blocks[i]);
-
-	t_config* config = config_create(pathblock);
-
-	if(!config_has_property(config,key)){
-		config_destroy(config);
-		return -1;
-	} else {
-		config_destroy(config);
-		return i;
-	}
-
-
-
-	free(pathblock);
+	free(key);
+	free(blocks);
+	return -1;
 }
 
 
@@ -885,35 +888,16 @@ char* block_path(char* block){
 	char* path1 = concatenar(config_gc->punto_montaje_tallgrass,"/Blocks/");
 	char* path2 = concatenar(path1,block);
 	char* path3 = concatenar(path2,".bin");
-
+	free(path1);
+	free(path2);
 	return path3;
 }
 
-int existe_pokemon(char* path){
+bool es_directorio(char* path){
 	DIR* dir = opendir(path);
 	int x = dir;
 	closedir(dir);
 	return x;
-}
-
-void verificar_apertura_pokemon(t_new_pokemon* newpoke,int socket){
-
-	char* path = obtener_path_metafile(newpoke);
-	bool x = is_open(path);
-
-	if (is_open(path)){
-
-		int secs = config_gc->tiempo_retardo_operacion;
-		log_info(logger,"No se puede acceder a este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
-		sleep(secs);
-		verificar_existencia_pokemon(newpoke,socket);
-
-	} else {
-
-		log_info(logger,"Se puede acceder al pokemon %s, lockeo el archivo",newpoke->pokemon);
-		lock_file(path);
-
-		}
 }
 
 char* obtener_path_metafile(t_new_pokemon* pokemon){
@@ -1012,6 +996,18 @@ uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 }
 
+t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
+
+	//TODO
+		t_appeared_pokemon* appeared_pokemon = malloc(sizeof(t_appeared_pokemon));
+
+		appeared_pokemon->posicion[0] = new_pokemon->posicion[0];
+		appeared_pokemon->posicion[1] = new_pokemon->posicion[1];
+		appeared_pokemon->pokemon = new_pokemon->pokemon;
+		appeared_pokemon->id_mensaje_correlativo = 0;
+		appeared_pokemon->id_mensaje = new_pokemon->id_mensaje;
+		return appeared_pokemon;
+}
 
 int size_char_doble(char** array){
 
@@ -1027,3 +1023,18 @@ int size_char_doble(char** array){
 
 }
 
+void destrozar_new_pokemon(t_new_pokemon* new_pokemon){
+	free(new_pokemon->pokemon);
+	free(new_pokemon);
+}
+
+void destrozar_metadata_file(t_file_metadata metadata){
+	free(metadata.directory);
+	free(metadata.open);
+	free(metadata.size);
+	list_destroy(metadata.blocks);
+}
+
+void destrozar_fs_metadata(t_metadata metadata){
+	free(metadata.magic);
+}
