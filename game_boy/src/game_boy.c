@@ -53,36 +53,31 @@ uint32_t seleccionar_proceso(char * parametros[]) {
     switch (cod_op) {
 		case GET_POKEMON:
 		  tamanio_mensaje = size_mensaje(armar_mensaje_get_pokemon(parametros), GET_POKEMON);
-		  mensaje = malloc(tamanio_mensaje);
 		  mensaje = armar_mensaje_get_pokemon(parametros);
 		  enviar_mensaje(GET_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
 		case CATCH_POKEMON:
 		  tamanio_mensaje = size_mensaje(armar_mensaje_catch_pokemon(parametros), CATCH_POKEMON);
-		  //mensaje = malloc(tamanio_mensaje);
 		  mensaje = armar_mensaje_catch_pokemon(parametros);
 		  enviar_mensaje(CATCH_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
 		case CAUGHT_POKEMON:
 		  tamanio_mensaje = size_mensaje(armar_mensaje_caught_pokemon(parametros), CAUGHT_POKEMON);
-		  mensaje = malloc(tamanio_mensaje);
 		  mensaje = armar_mensaje_caught_pokemon(parametros);
 		  enviar_mensaje(CAUGHT_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
 		case APPEARED_POKEMON:
 		  tamanio_mensaje = size_mensaje(armar_mensaje_appeared_pokemon(parametros), APPEARED_POKEMON);
-		  mensaje = malloc(tamanio_mensaje);
 		  mensaje = armar_mensaje_appeared_pokemon(parametros);
 		  enviar_mensaje(APPEARED_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
 		case NEW_POKEMON:
 		  tamanio_mensaje = size_mensaje(armar_mensaje_new_pokemon(parametros), NEW_POKEMON);
-		  mensaje = malloc(tamanio_mensaje);
 		  mensaje = armar_mensaje_new_pokemon(parametros);
 		  enviar_mensaje(NEW_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
 		default:
-		  log_info(logger, "Ingrese un codigo de operacion valido");
+		  log_error(logger, "Ingrese un codigo de operacion valido");
 		  exit(-6);
 		  break;
     }
@@ -93,24 +88,21 @@ uint32_t seleccionar_proceso(char * parametros[]) {
     switch (cod_op) {
        case GET_POKEMON:
 		  tamanio_mensaje = size_mensaje(armar_mensaje_get_pokemon(parametros), GET_POKEMON);
-		  mensaje = malloc(tamanio_mensaje);
 		  mensaje = armar_mensaje_get_pokemon(parametros);
 		  enviar_mensaje(GET_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
        case CATCH_POKEMON:
 		  tamanio_mensaje = size_mensaje(armar_mensaje_catch_pokemon(parametros), CATCH_POKEMON);
-		  mensaje = malloc(tamanio_mensaje);
 		  mensaje = armar_mensaje_catch_pokemon(parametros);
 		  enviar_mensaje(CATCH_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
        case NEW_POKEMON:
 		  tamanio_mensaje = size_mensaje(armar_mensaje_new_pokemon(parametros), NEW_POKEMON);
-		  mensaje = malloc(tamanio_mensaje);
 		  mensaje = armar_mensaje_new_pokemon(parametros);
 		  enviar_mensaje(NEW_POKEMON, mensaje, conexion, tamanio_mensaje);
 		  break;
 		default:
-		  log_info(logger, "Ingrese un codigo de operacion valido");
+		  log_error(logger, "Ingrese un codigo de operacion valido");
 		  exit(-6);
 		  break;
     }
@@ -119,7 +111,6 @@ uint32_t seleccionar_proceso(char * parametros[]) {
   if (string_equals_ignore_case(proceso, "TEAM")) {
     conexion = crear_conexion(config_game_boy -> ip_team, config_game_boy -> puerto_team);
     tamanio_mensaje = size_mensaje(armar_mensaje_appeared_pokemon(parametros), APPEARED_POKEMON);
-	mensaje = malloc(tamanio_mensaje);
 	mensaje = armar_mensaje_appeared_pokemon(parametros);
 	enviar_mensaje(APPEARED_POKEMON, mensaje, conexion, tamanio_mensaje);
   }
@@ -127,13 +118,12 @@ uint32_t seleccionar_proceso(char * parametros[]) {
   if (string_equals_ignore_case(proceso, "SUSCRIPTOR")) {
     conexion = crear_conexion(config_game_boy -> ip_broker, config_game_boy -> puerto_broker);
     tamanio_mensaje = size_mensaje(armar_mensaje_suscripcion(parametros), SUBSCRIPTION);
-    mensaje = malloc(tamanio_mensaje);
     mensaje = armar_mensaje_suscripcion(parametros);
     enviar_mensaje(SUBSCRIPTION, mensaje, conexion, tamanio_mensaje);
   }
 
   if (conexion < 0) {
-    log_info(logger, "No se puedo realizar la conexion");
+    log_error(logger, "No se puedo realizar la conexion");
     return conexion;
   }
 
@@ -187,8 +177,7 @@ op_code obtener_enum_de_string(char * string) {
 }
 
 t_suscripcion* armar_mensaje_suscripcion(char * parametros[]) {
-  uint32_t tamanio = sizeof(uint32_t) * 3 + sizeof(op_code);
-  t_suscripcion* a_enviar = malloc(tamanio);
+   t_suscripcion* a_enviar = malloc(sizeof(t_suscripcion));
 
   char * cola_a_suscribir = parametros[2];
   a_enviar -> socket = 10000;
@@ -219,6 +208,7 @@ t_suscripcion* armar_mensaje_suscripcion(char * parametros[]) {
 
    //Esto esta setteado, hay que adaptarlo.
   a_enviar -> tiempo_suscripcion = atof(parametros[3]);
+  a_enviar -> id_proceso = 14000;
 
   return a_enviar;
 

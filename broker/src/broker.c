@@ -618,11 +618,70 @@ void agregar_suscriptor_a_enviados_sin_confirmar(t_mensaje* mensaje_enviado, uin
 //--------------MEMORIA-------------//
 void eliminar_particion_de_memoria(){
 	char* algoritmo_de_reemplazo = config_broker -> algoritmo_reemplazo;
-	if(string_equals_ignore_case(algoritmo_de_reemplazo, "FF")){
+	t_memoria_dinamica* particion_a_reemplazar;
+	//ESTO ESTA PENSADO PARA PARTICIONES DINAMICAS, HAY QUE VER BS.
+	if(string_equals_ignore_case(algoritmo_de_reemplazo, "FIFO")){
 		//eliminar con fifo
-	} else {
+		particion_a_reemplazar = seleccionar_victima_de_reemplazo_fifo();
+		//ESTA PARTICION SE TIENE QUE LIBERAR EN EL MALLOC Y EN LA LISTA
+	} else if (string_equals_ignore_case(algoritmo_de_reemplazo, "LRU")){
 		//eliminar con lru
+		particion_a_reemplazar = seleccionar_victima_de_reemplazo_lru();
+		//ESTA PARTICION SE TIENE QUE LIBERAR EN EL MALLOC Y EN LA LISTA
+	} else {
+		log_error(logger, "??? Algoritmo de reemplazo: %s", algoritmo_de_reemplazo);
 	}
+
+	//liberar o reemplazar particion?
+	//PENSAR EN UN SEMAFORO --> deberia haber una funcion que sea liberar la particion?
+	particiones_liberadas++;
+
+
+}
+
+//PENSAR... La lista memoria_con_particiones es fifo o tiene que estar
+//exactamente en el mismo orden que la memoria cache?
+t_memoria_dinamica* seleccionar_victima_de_reemplazo_fifo(){
+	t_memoria_dinamica* particion_victima;// = malloc(sizeof(t_memoria_dinamica));
+	t_list* memoria_duplicada = list_duplicate(memoria_con_particiones);
+
+	bool fue_ubicada_primero(void* una_particion){
+		t_memoria_dinamica* particion = una_particion;
+
+		bool no_hay_particion_anterior(void* otra_particion){
+			t_memoria_dinamica* particion2 = otra_particion;
+			return (particion -> tiempo_de_llegada) <= (particion2 ->tiempo_de_llegada);
+		}
+
+		return list_all_satisfy(memoria_duplicada, no_hay_particion_anterior);
+	}
+
+	//si es fifo la lista...
+	//particion_victima = list_get(memoria_con_particiones, 0);
+	//si es copia exacta de la cache...
+	particion_victima = list_find(memoria_con_particiones, fue_ubicada_primero);
+
+	return particion_victima;
+}
+
+t_memoria_dinamica* seleccionar_victima_de_reemplazo_lru(){
+	t_memoria_dinamica* particion_victima;// = malloc(sizeof(t_memoria_dinamica));
+	t_list* memoria_duplicada = list_duplicate(memoria_con_particiones);
+
+		bool fue_usada_hace_mas_tiempo(void* una_particion){
+			t_memoria_dinamica* particion = una_particion;
+
+			bool no_hay_particion_mas_vieja(void* otra_particion){
+				t_memoria_dinamica* particion2 = otra_particion;
+				return (particion -> ultima_modificacion) >= (particion2 -> ultima_modificacion);
+			}
+
+			return list_all_satisfy(memoria_duplicada, no_hay_particion_mas_vieja);
+		}
+
+	particion_victima = list_find(memoria_con_particiones, fue_usada_hace_mas_tiempo);
+
+	return particion_victima;
 }
 
 void compactar_memoria(){

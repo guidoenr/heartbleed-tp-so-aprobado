@@ -34,6 +34,8 @@ typedef struct {
 	void* 	 payload;
 	uint32_t base;
 	uint32_t ocupado;
+	uint32_t tiempo_de_llegada;
+	uint32_t ultima_modificacion;
 } t_memoria_dinamica;
 
 typedef struct{
@@ -154,26 +156,27 @@ void enviar_mensajes_cacheados_en_buddy_system(op_code tipo_mensaje, uint32_t so
 //t_ack* 		   armar_confirmacion_de_recepcion(t_paquete*);
 
 //Memoria
-void eliminar_particion_de_memoria(void);
-void compactar_memoria 			  (void);
-void guardar_en_memoria			  (t_mensaje*);
-//void firstFit(int blockSize,int processSize);
-uint32_t obtenerPotenciaDe2(uint32_t);
-struct t_node* crear_nodo(uint32_t);
-void arrancar_buddy();
-void asignar_nodo(struct t_node*, void*);
-uint32_t recorrer(struct t_node*,uint32_t ,void*);
-void ubicar_particion(uint32_t, uint32_t, void* );
-void liberar_particion_dinamica(t_memoria_dinamica*);
-void iniciar_memoria_particiones(t_list*);
-uint32_t encontrar_primer_ajuste(uint32_t);
-uint32_t encontrar_mejor_ajuste(uint32_t);
-void destruir_particion(void*);
-uint32_t encontrar_indice(t_memoria_dinamica*);
-void consolidar_particiones_dinamicas(void);
-bool existen_particiones_contiguas_vacias(t_list* memoria_cache);
-void compactar_memoria_cache(t_list*);
-void compactar_particiones_dinamicas(void);
+void 	 	  		eliminar_particion_de_memoria		 (void);
+void 	 	   		compactar_memoria 			  		 (void);
+void 	 	   		guardar_en_memoria			  		 (t_mensaje*);
+uint32_t 	   		obtenerPotenciaDe2					 (uint32_t);
+struct t_node* 		crear_nodo							 (uint32_t);
+void 		   		arrancar_buddy						 (void);
+void 		   		asignar_nodo						 (struct t_node*, void*);
+uint32_t 	   		recorrer							 (struct t_node*,uint32_t ,void*);
+void 		   		ubicar_particion					 (uint32_t, uint32_t, void* );
+void 		   		liberar_particion_dinamica			 (t_memoria_dinamica*);
+void 		   		iniciar_memoria_particiones			 (t_list*);
+uint32_t 	   		encontrar_primer_ajuste				 (uint32_t);
+uint32_t 	   		encontrar_mejor_ajuste			   	 (uint32_t);
+void 		   		destruir_particion					 (void*);
+uint32_t 	   		encontrar_indice				 	 (t_memoria_dinamica*);
+void 		   		consolidar_particiones_dinamicas	 (void);
+bool 		   		existen_particiones_contiguas_vacias (t_list* memoria_cache);
+void 		   		compactar_memoria_cache				 (t_list*);
+void 		   		compactar_particiones_dinamicas		 (void);
+t_memoria_dinamica* seleccionar_victima_de_reemplazo_fifo(void);
+t_memoria_dinamica* seleccionar_victima_de_reemplazo_lru (void);
 
 
 
