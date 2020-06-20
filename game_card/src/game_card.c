@@ -21,13 +21,13 @@ int main(void) {
 	iniciar_tall_grass();
 
 	t_new_pokemon* simple = malloc(sizeof(t_new_pokemon));
-	simple->cantidad= 1;
+	simple->cantidad= 42;
 	simple->id_mensaje= 124;
 	simple->pokemon= "Simple";
-	simple->posicion[0]= 16;
-	simple->posicion[1] = 51;
+	simple->posicion[0]= 1;
+	simple->posicion[1] = 2;
 
-	//funcion_hilo_new_pokemon(simple, socket_br);
+	funcion_hilo_new_pokemon(simple, socket_br);
 
 	laboratorio_de_pruebas();
 
@@ -284,20 +284,8 @@ void crear_pokemon(t_new_pokemon* newPoke){
 
 	escribir_block_inicial(metadata,newPoke);
 
-	char* blocks_array = list_to_string_array(metadata.blocks);
+	grabar_metadata_file(metadata, meta_file_path);
 
-	t_config* meta_file_pokemon = config_create(meta_file_path);
-
-	config_set_value(meta_file_pokemon,"OPEN",metadata.open);
-	config_set_value(meta_file_pokemon,"DIRECTORY",metadata.directory);
-	config_set_value(meta_file_pokemon,"SIZE",metadata.size);
-	config_set_value(meta_file_pokemon,"BLOCKS",blocks_array);
-
-	config_save_in_file(meta_file_pokemon,meta_file_path);
-
-	free(blocks_array);
-	free(meta_file_path);
-	config_destroy(meta_file_pokemon);
 
 }
 
@@ -369,12 +357,12 @@ void escribir_block_inicial(t_file_metadata metadata,t_new_pokemon* newPoke){
 	char* blockPath = concatenar(path,string_itoa(metadata.blocks->head->data));
 	char* finalPath = concatenar(blockPath,".bin");
 
-	char* new_poke_key = get_key_from_position(newPoke);
-	char* new_poke_value = get_value_from_position(newPoke);
+	char* key = get_key_from_position(newPoke);
+	char* value = get_value_from_position(newPoke);
 
 	t_config* block = config_create(finalPath);
 
-	config_set_value(block,new_poke_key,new_poke_value);
+	config_set_value(block,key,value);
 
 	int status = config_save_in_file(block,finalPath);
 
@@ -416,17 +404,33 @@ t_list* asignar_block_inicial(){
 
 t_file_metadata leer_file_metadata(char* path){
 
-	t_file_metadata fmetadata_leido;
+	t_file_metadata file_metadata_leido;
 
+	t_config* meta_config = config_create(path);
 
+	file_metadata_leido.directory = strdup(config_get_string_value(meta_config,"DIRECTORY"));
+	file_metadata_leido.open = strdup(config_get_string_value(meta_config,"OPEN"));
+	file_metadata_leido.size = string_itoa(config_get_int_value(meta_config,"SIZE"));
 
-	// TODO
+	file_metadata_leido.blocks = chardoble_to_tlist(config_get_array_value(meta_config,"BLOCKS"));
 
+	config_destroy(meta_config);
 
-	return fmetadata_leido;
+	return file_metadata_leido;
 }
 
-char* buscar_block_libre(){ //TODO, EL BITARRAY EN UN FILE? PARA QUE
+t_list* chardoble_to_tlist(char** chardoble){
+	int size_chardoble = size_char_doble(chardoble);
+	t_list* lista = list_create();
+
+	for(int i=0; i<=size_chardoble;i++){
+		list_add(lista,atoi(chardoble[i]));
+	}
+
+	return lista;
+}
+
+char* buscar_block_libre(){
 
 	t_bitarray* bitarray = obtener_bitmap();
 
@@ -539,16 +543,6 @@ void actualizar_bitmap(t_bitarray* bitarray){
 	char* bitmapPath = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
 
 	t_config* bitmap_config = config_create(bitmapPath);
-
-	bitarray_set_bit(bitarray,53);
-	bitarray_set_bit(bitarray,521);
-
-	bool x = bitarray_test_bit(bitarray,53);
-	bool y =bitarray_test_bit(bitarray,521);
-	bool z = bitarray_test_bit(bitarray,524);
-	bool zed = bitarray_test_bit(bitarray,24);
-	bool zdqw = bitarray_test_bit(bitarray,4);
-
 
 	config_set_value(bitmap_config,"BITARRAY",bitarray->bitarray);
 
@@ -663,16 +657,6 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 
 	verificar_existencia_pokemon(new_pokemon,socket);
 
-
-	t_appeared_pokemon* appeared_pokemon = armar_appeared(new_pokemon);
-
-//
-//	enviar_appeared_pokemon(appeared_pokemon,socket);
-//	free(appeared_pokemon->id_mensaje);
-//	free(appeared_pokemon->id_mensaje_correlativo);
-//	free(appeared_pokemon->pokemon);
-//	free(appeared_pokemon->posicion);
-
 	char* path = obtener_path_metafile(new_pokemon);
 	unlock_file(path);
 
@@ -680,6 +664,7 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 
 t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 
+	//TODO
 		t_appeared_pokemon* appeared_pokemon = malloc(sizeof(t_appeared_pokemon));
 
 		appeared_pokemon->posicion[0] = new_pokemon->posicion[0];
@@ -724,31 +709,38 @@ void verificar_existencia_pokemon(t_new_pokemon* newpoke,int socket){
 
 void actualizar_pokemon(t_new_pokemon* newpoke){
 
-	char* metadatapath = obtener_path_metafile(newpoke); //ej
+	char* path_newpoke_metadata = obtener_path_metafile(newpoke); //ej
 	char* key = get_key_from_position(newpoke); // 2-2
 	char* value = get_value_from_position(newpoke); // 4
 
 	int pos = la_posicion_ya_existe(newpoke,key);
 
-	if (pos){
+	if (pos != -1){
+
+		log_info(logger,"Ya se encontraba la posicion %s en el pokemon %s, se le va actualizar su cantidad",key,newpoke->pokemon);
 
 		char* blockpath = block_path(string_itoa(pos));
 		t_config* block_config = config_create(blockpath);
 
-		config_set_value(block_config, key, value);
+		int nueva_cantidad = config_get_int_value(block_config,key);
+		nueva_cantidad+= atoi(value);
+
+		config_set_value(block_config,key,string_itoa(nueva_cantidad));
 		config_save(block_config);
+		log_info(logger,"Se actualizo la posicion del pokemon %s",newpoke->pokemon);
 		config_destroy(block_config);
 
 	}else {
 
-		t_config* config_poke = config_create(metadatapath);
+		t_config* config_poke = config_create(path_newpoke_metadata);
 		char** blocks = config_get_array_value(config_poke,"BLOCKS");
 		config_destroy(config_poke);
+
 		int size = size_char_doble(blocks);
 		int pos_ultimo_block = blocks[size];
 		char* ultimo_block_path = block_path(string_itoa(pos_ultimo_block));
 
-		if (el_ultimo_bloque_tiene_espacio(newpoke,key,value,ultimo_block_path)){
+		if (el_ultimo_bloque_tiene_espacio(key,value,ultimo_block_path)){
 
 			t_config* ultimo_block_config = config_create(ultimo_block_path);
 
@@ -761,8 +753,8 @@ void actualizar_pokemon(t_new_pokemon* newpoke){
 
 		} else {
 
-
-
+			int block = asignar_nuevo_bloque(newpoke,key,value);
+			escribir_data_en_block(key,value,block);
 
 		}
 
@@ -777,33 +769,88 @@ void actualizar_pokemon(t_new_pokemon* newpoke){
 
 }
 
-bool el_ultimo_bloque_tiene_espacio(t_new_pokemon* newpoke,char* key,char* value,char* ultimo_block_path){
-	char* size_key_y_value = strlen(key) + strlen(value) + 1 ;
-	return file_size(ultimo_block_path) >= size_key_y_value;
+
+void escribir_data_en_block(char* key,char* value,int block){
+
+	char* path_block = block_path(string_itoa(block));
+
+	t_config* block_config = config_create(path_block);
+
+	config_set_value(block_config,key,value);
+
+	config_save(block_config);
+
+	config_destroy(block_config);
+
+	free(path_block);
+
+
+}
+int asignar_nuevo_bloque(t_new_pokemon* newpoke,char* key, char* value){
+
+	char* newpokepath = obtener_path_metafile(newpoke);
+
+	t_bitarray* bitarray = obtener_bitmap();
+
+	int block = buscar_block_libre(bitarray);
+	actualizar_bitmap(bitarray);
+
+	t_file_metadata newpoke_metadata_file = leer_file_metadata(newpokepath);
+
+	list_add(newpoke_metadata_file.blocks,block);
+
+	grabar_metadata_file(newpoke_metadata_file,newpokepath);
+
+	free(newpokepath);
+	bitarray_destroy(bitarray);
+
+	return block;
 }
 
-int la_posicion_ya_existe(t_new_pokemon* newpoke,char* key){
+void grabar_metadata_file(t_file_metadata metadata,char* path){
+
+	char* blocks_array = list_to_string_array(metadata.blocks);
+
+	t_config* meta_file_pokemon = config_create(path);
+
+	config_set_value(meta_file_pokemon,"OPEN",metadata.open);
+	config_set_value(meta_file_pokemon,"DIRECTORY",metadata.directory);
+	config_set_value(meta_file_pokemon,"SIZE",metadata.size);
+	config_set_value(meta_file_pokemon,"BLOCKS",blocks_array);
+
+	config_save(meta_file_pokemon);
+
+	config_destroy(meta_file_pokemon);
+	free(blocks_array);
+}
+
+bool el_ultimo_bloque_tiene_espacio(char* key,char* value,char* ultimo_block_path){
+
+	char* size_key_y_value = strlen(key) + strlen(value) + 1 ;
+	return file_size(ultimo_block_path) >= size_key_y_value;
+
+}
+
+int la_posicion_ya_existe(t_new_pokemon* newpoke,char* key_posicion){
 
 	char* meta_path = obtener_path_metafile(newpoke);
 	t_config* metadata_file = config_create(meta_path);
 
 	char** blocks = config_get_array_value(metadata_file,"BLOCKS");
-
-	int block = block_que_tiene_esa_posicion(blocks,key);
-
 	config_destroy(metadata_file);
 
-	return block;
+	return block_que_tiene_esa_posicion(blocks, key_posicion);
 }
 
 int block_que_tiene_esa_posicion(char** blocks,char* key){
 
-	char* pathblock;
-	int size = size_char_doble(blocks);
 
-	for (int i=0; i<=size; i++){
+	int cantidad_blocks = size_char_doble(blocks);
+	int i = 0;
 
-		pathblock = block_path(blocks[i]);
+	while(i<=cantidad_blocks){
+
+		char* pathblock= block_path(blocks[i]);
 		t_config* config = config_create(pathblock);
 
 		if (config_has_property(config,key)){
@@ -812,13 +859,23 @@ int block_que_tiene_esa_posicion(char** blocks,char* key){
 		}
 
 		config_destroy(config);
-
+		i++;
+		free(pathblock);
 	}
+
+	char* pathblock= block_path(blocks[i]);
 
 	t_config* config = config_create(pathblock);
 
 	if(!config_has_property(config,key)){
+		config_destroy(config);
 		return -1;
+	} else {
+		config_destroy(config);
+		return i;
+	}
+
+
 
 	free(pathblock);
 }
@@ -961,11 +1018,12 @@ int size_char_doble(char** array){
 	int i = 0;
 	int size = 0;
 
-	while(array[i] != NULL ){
+	while(array[i] != NULL){
 		i++;
 		size++;
 	}
 
 	return size;
+
 }
 

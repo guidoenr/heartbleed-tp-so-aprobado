@@ -101,5 +101,6 @@ char* get_key_from_position(t_new_pokemon* newpoke);
 char* list_to_string_array(t_list* blocks);
 int la_posicion_ya_existe(t_new_pokemon* newpoke,char* key);
 char* block_path(char* block);
-bool el_ultimo_bloque_tiene_espacio(t_new_pokemon* newpoke,char* key,char* value,char* ultimo_block_path);
+bool el_ultimo_bloque_tiene_espacio(char* key,char* value,char* ultimo_block_path);
 int size_char_doble(char** array);
+t_list* chardoble_to_tlist(char** chardoble);
