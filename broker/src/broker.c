@@ -1136,4 +1136,32 @@ bool existen_particiones_contiguas_vacias(t_list* memoria_cache){
 }
 
 
+void concatenacion_buddy_systeam(nodo)
+{
+
+      if(nodo== NULL)
+      {
+          return;
+      }
+      if(nodo -> izquiera -> libre && nodo -> derecha-> libre)
+      [
+          nodo -> payload =NULL;
+          nodo-> ocupado = 1;
+          nodo->izquiera =NULL;
+          nodo->derecha =NULL;
+          concatenacion_buddy_systeam();///principop el de 4096
+      ]
+      if(nodo -> izquiera)
+      {
+          concatenacion_buddy_systeam(nodo->izquierda);
+      }
+      if(nodo-> derecha])
+      {
+          concatenacion_buddy_systeam(nodo->derecha);
+      }
+
+
+}
+
+
 
