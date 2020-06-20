@@ -27,6 +27,7 @@ typedef struct {
 	t_list*  suscriptor_enviado;
 	t_list*  suscriptor_recibido;
 	op_code  codigo_operacion;
+	uint32_t tamanio_mensaje;
 } t_mensaje;
 
 typedef struct {
@@ -177,6 +178,8 @@ void 		   		compactar_memoria_cache				 (t_list*);
 void 		   		compactar_particiones_dinamicas		 (void);
 t_memoria_dinamica* seleccionar_victima_de_reemplazo_fifo(void);
 t_memoria_dinamica* seleccionar_victima_de_reemplazo_lru (void);
+void guardar_particion(t_mensaje*);
+
 
 
 

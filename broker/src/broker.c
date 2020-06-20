@@ -200,6 +200,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 	mensaje_a_agregar -> codigo_operacion    = cod_op;
 	mensaje_a_agregar -> suscriptor_enviado  = list_create();
 	mensaje_a_agregar -> suscriptor_recibido = list_create();
+	mensaje_a_agregar -> tamanio_mensaje = size;
 
 
 	sem_post(&mutex_id);
@@ -208,7 +209,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 
 
 	// En memori deberia guardarse solo el contenido, no todo el mensaje.
-	//guardar_en_memoria(mensaje);
+	guardar_en_memoria(mensaje);
 
 	sem_wait(&semaforo);
 	encolar_mensaje(mensaje, cod_op);
@@ -696,25 +697,26 @@ void guardar_en_memoria(t_mensaje* mensaje){
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
 	   uint32_t exponente = 0;
-	   if(sizeof(mensaje -> payload) > config_broker -> size_min_memoria)
-		   exponente = obtenerPotenciaDe2(sizeof(mensaje -> payload));
+	   if(mensaje->tamanio_mensaje > config_broker -> size_min_memoria)
+		   exponente = obtenerPotenciaDe2(mensaje->tamanio_mensaje);
 	   else
 		   exponente = config_broker -> size_min_memoria;
 
-	  uint32_t pudoGuardarlo = recorrer(memoria_cache, exponente, mensaje -> payload);
+	  uint32_t pudoGuardarlo = recorrer(memoria_cache, exponente, mensaje -> tamanio_mensaje);
 	  if(pudoGuardarlo)
 	  {
 		  log_info(logger,"no hay memoria suficiente para guardarlo");
 		  exit(-7);
 	  }
 	}
-
+    uint32_t indice = 0 ;
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
-
-
+		if(list_size(memoria_con_particiones) > 1){
+          guardar_particion(mensaje);
+     }else{
+    	  ubicar_particion(0,mensaje->tamanio_mensaje, mensaje->payload);
+     }
 	}
-
-
 }
 
 uint32_t obtenerPotenciaDe2(uint32_t tamanio_proceso)
@@ -784,7 +786,7 @@ uint32_t recorrer(struct t_node* nodo, uint32_t exponente, void* payload){
     	    }
         asignado = recorrer(nodo -> derecha,exponente, payload);
     }
-
+    log_info(logger,"paso por recorrer, varias veces");
     return asignado;
 }
 
@@ -823,30 +825,29 @@ void iniciar_memoria_particiones(t_list* memoria_de_particiones){
 }
 //DEBERIA ARMAR UNA PARTICION PARA GUARDAR ANTES O CHEQUEARLO A PARTIR DEL MENSAJE?
 void guardar_particion(t_mensaje* un_mensaje){
-    uint32_t tamanio = size_mensaje(un_mensaje -> payload, un_mensaje -> codigo_operacion);
     uint32_t posicion_a_ubicar = 0;
     if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
         //ENCONTRAR EL PRIMER AJUSTE DEBERIA DEVOLVERME EL INDICE DEL PRIMER ELEMENTO DE LA LISTA
         //EN EL CUAL HAY UNA PARTICION DISPONIBLE, Y -1 EN CASO DE QUE NO HAYA LUGAR SUFICIENTE.
-        posicion_a_ubicar = encontrar_primer_ajuste(tamanio);
+        posicion_a_ubicar = encontrar_primer_ajuste(un_mensaje->tamanio_mensaje);
 
         if(posicion_a_ubicar == -1){
             log_error(logger, "No hay suficiente tamaño para ubicar el mensaje en memoria.");
             exit(-20);
         }
 
-        ubicar_particion(posicion_a_ubicar, tamanio, un_mensaje->payload);
+        ubicar_particion(posicion_a_ubicar, un_mensaje->tamanio_mensaje, un_mensaje->payload);
 
     }
     if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"BF")){
-        posicion_a_ubicar = encontrar_mejor_ajuste(tamanio);
+        posicion_a_ubicar = encontrar_mejor_ajuste(un_mensaje->tamanio_mensaje);
 
         if(posicion_a_ubicar == -1){
             log_error(logger, "No hay suficiente tamaño para ubicar el mensaje en memoria.");
             exit(-21);
         }
 
-        ubicar_particion(posicion_a_ubicar, tamanio, un_mensaje->payload);
+        ubicar_particion(posicion_a_ubicar, un_mensaje->tamanio_mensaje, un_mensaje->payload);
     }
 
 }
@@ -878,7 +879,7 @@ void ubicar_particion(uint32_t posicion_a_ubicar, uint32_t tamanio, void* payloa
 
         list_add_in_index(memoria_con_particiones, posicion_a_ubicar + 1, nueva_particion_vacia);
         }
-
+        log_info(logger, "se guardo en la particion");
         liberar_particion_dinamica(particion_reemplazada);
 
 }
@@ -942,7 +943,7 @@ uint32_t encontrar_indice(t_memoria_dinamica* posible_particion){
 
     void* obtener_indices(void* particion){
         t_memoria_dinamica* particion_a_transformar = particion;
-        t_indice* un_indice;
+        t_indice* un_indice = malloc(sizeof(t_indice));
         un_indice -> indice = indice_buscador + 1;
         un_indice -> tamanio = particion_a_transformar -> tamanio_mensaje;
         return un_indice;
