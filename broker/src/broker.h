@@ -50,6 +50,8 @@ struct t_node{
 	struct t_node *izquierda;
 	struct t_node *derecha;
 };
+struct t_node;
+typedef struct t_node t_node;
 
 t_list* cola_catch;
 t_list* cola_caught;
@@ -72,6 +74,7 @@ t_config* config;
 t_config_broker* config_broker;
 t_log* logger;
 uint32_t particiones_liberadas;
+uint32_t asignado = 0;
 
 //---hilos---//
 

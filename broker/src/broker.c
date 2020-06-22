@@ -73,14 +73,14 @@ void leer_config() {
 
 	config_broker = malloc(sizeof(t_config_broker));
 
-	config = config_create("broker.config");
+	config = config_create("Debug/broker.config");
 
 	if(config == NULL){
 		    	printf("No se pudo encontrar el path del config.");
 		    	exit(-2);
 	}
 	config_broker -> size_memoria 			   = config_get_int_value(config, "TAMANO_MEMORIA");
-	config_broker -> size_min_memoria 		   = config_get_int_value(config, "TAMANO_MEMORIA");
+	config_broker -> size_min_memoria 		   = config_get_int_value(config, "TAMANO_MINIMO_PARTICION");
 	config_broker -> algoritmo_memoria 		   = config_get_string_value(config, "ALGORITMO_MEMORIA");
 	config_broker -> algoritmo_reemplazo 	   = config_get_string_value(config, "ALGORITMO_REEMPLAZO");
 	config_broker -> algoritmo_particion_libre = config_get_string_value(config, "ALGORITMO_PARTICION_LIBRE");
@@ -203,13 +203,13 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 	mensaje_a_agregar -> tamanio_mensaje = size;
 
 
-	sem_post(&mutex_id);
+	sem_wait(&mutex_id);
 	send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
 	sem_post(&mutex_id);
 
 
 	// En memori deberia guardarse solo el contenido, no todo el mensaje.
-	guardar_en_memoria(mensaje);
+	guardar_en_memoria(mensaje_a_agregar);
 
 	sem_wait(&semaforo);
 	encolar_mensaje(mensaje, cod_op);
@@ -701,12 +701,11 @@ void guardar_en_memoria(t_mensaje* mensaje){
 		   exponente = obtenerPotenciaDe2(mensaje->tamanio_mensaje);
 	   else
 		   exponente = config_broker -> size_min_memoria;
-
-	  uint32_t pudoGuardarlo = recorrer(memoria_cache, exponente, mensaje -> tamanio_mensaje);
-	  if(pudoGuardarlo)
+      t_node* primer_nodo = (t_node*) memoria_cache->head->data;
+	  uint32_t pudoGuardarlo = recorrer(primer_nodo, exponente, mensaje -> payload);
+	  if(!pudoGuardarlo)
 	  {
-		  log_info(logger,"no hay memoria suficiente para guardarlo");
-		  exit(-7);
+		  log_error(logger,"no hay memoria suficiente para guardarlo");
 	  }
 	}
     uint32_t indice = 0 ;
@@ -729,10 +728,10 @@ uint32_t obtenerPotenciaDe2(uint32_t tamanio_proceso)
 }
 
 
-struct t_node* crear_nodo(uint32_t tamanio)
+t_node* crear_nodo(uint32_t tamanio)
 {
   // Allocate memory for new node
-  struct t_node* node = (struct t_node*)malloc(sizeof(struct t_node));
+  t_node* node = (t_node*)malloc(sizeof(t_node));
 
   // Assign data to this node
   node -> bloque = malloc(sizeof(t_memoria_buddy));
@@ -748,26 +747,31 @@ struct t_node* crear_nodo(uint32_t tamanio)
 
 
 void arrancar_buddy(){
-	struct node *root = crear_nodo(config_broker -> size_memoria);
+	memoria_cache = list_create();
+	t_node* root = crear_nodo(config_broker -> size_memoria);
 	list_add(memoria_cache, root);
 }
 
 
 
-void asignar_nodo(struct t_node* node,void* payload){
+void asignar_nodo(t_node* node,void* payload){
     node -> bloque -> payload = payload;
     node ->  bloque -> libre = 0;
     list_add(memoria_cache, node);
 }
 
 
-uint32_t recorrer(struct t_node* nodo, uint32_t exponente, void* payload){
+uint32_t recorrer(t_node* nodo, uint32_t exponente, void* payload){
     if(nodo == NULL && exponente < config_broker -> size_min_memoria) {
         return 0;
     }
 
+    if(asignado == 1)
+    	return 1;
+
     if (nodo->bloque->tamanio == exponente && nodo->bloque->libre == 1) {
         asignar_nodo(nodo, payload);
+        asignado = 1;
         return 1;
     }
 
@@ -776,10 +780,10 @@ uint32_t recorrer(struct t_node* nodo, uint32_t exponente, void* payload){
     }
 
     if (nodo -> izquierda -> bloque -> tamanio > exponente) {
-        return 0;
+      recorrer(nodo->izquierda, exponente,payload);
     }
 
-    int asignado = recorrer(nodo -> izquierda, exponente, payload);
+    asignado = recorrer(nodo -> izquierda, exponente, payload);
     if(asignado == 0) {
     	if (nodo -> derecha == NULL) {
     	        nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio / 2);
@@ -1136,26 +1140,26 @@ bool existen_particiones_contiguas_vacias(t_list* memoria_cache){
 }
 
 
-void concatenacion_buddy_systeam(nodo)
+void concatenacion_buddy_systeam(t_node*  nodo)
 {
 
       if(nodo== NULL)
       {
           return;
       }
-      if(nodo -> izquiera -> libre && nodo -> derecha-> libre)
-      [
-          nodo -> payload =NULL;
-          nodo-> ocupado = 1;
-          nodo->izquiera =NULL;
+      if(nodo -> izquierda -> bloque-> libre && nodo -> derecha-> bloque-> libre && nodo)
+      {
+          nodo -> bloque ->payload =NULL;
+          nodo-> bloque -> libre = 1;
+          nodo->izquierda =NULL;
           nodo->derecha =NULL;
-          concatenacion_buddy_systeam();///principop el de 4096
-      ]
-      if(nodo -> izquiera)
+          //concatenacion_buddy_systeam();///principop el de 4096
+      }
+      if(nodo -> izquierda)
       {
           concatenacion_buddy_systeam(nodo->izquierda);
       }
-      if(nodo-> derecha])
+      if(nodo-> derecha)
       {
           concatenacion_buddy_systeam(nodo->derecha);
       }
