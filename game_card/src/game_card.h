@@ -99,7 +99,7 @@ char* get_value_from_position(t_new_pokemon* newpoke);
 char* get_key_from_position(t_new_pokemon* newpoke);
 char* list_to_string_array(t_list* blocks);
 char* block_path(char* block);
-bool el_ultimo_bloque_tiene_espacio(char* key,char* value,char* ultimo_block_path);
+bool el_ultimo_bloque_tiene_espacio_justo(char* key,char* value,char* ultimo_block_path);
 int size_char_doble(char** array);
 t_list* chardoble_to_tlist(char** chardoble);
 bool es_directorio(char* path);
@@ -107,3 +107,6 @@ int la_posicion_ya_existe(t_new_pokemon* newpoke,char* meta_path, char* key_posi
 bool el_pokemon_esta_creado(char* path);
 void actualizar_pokemon(t_new_pokemon* new_pokemon,char* path_metafile,char* key,char* value,int block_number);
 existe_la_posicion(new_pokemon,path_metafile);
+char* rand_string(int length);
+char* generar_string_desde_blocks(char** blocks);
+bool esta_la_posicion_mal_grabada(char* key,char** blocks);

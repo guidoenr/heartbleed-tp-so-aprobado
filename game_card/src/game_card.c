@@ -28,8 +28,8 @@ int main(void) {
 	simple->posicion[1] = 31;
 
 
-
-	funcion_hilo_new_pokemon(simple, socket_br);
+	laboratorio_de_pruebas();
+	//funcion_hilo_new_pokemon(simple, socket_br);
 
 	terminar_programa(socket,config_gc);
 }
@@ -39,11 +39,9 @@ int main(void) {
 
 void laboratorio_de_pruebas(){
 	//TODO
-
-
-
-
-
+	char* blockpath = concatenar(config_gc->punto_montaje_tallgrass,"/Blocks/1.bin");
+	int blocksize = file_size(blockpath);
+	log_info(logger,"espacio: %d",blocksize);
 
 }
 
@@ -703,17 +701,19 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 
 		} else { // NO EXISTIA EL POKEMON
 
-			log_info(logger,"No existia el pokemon %s",new_pokemon->pokemon);
+				log_info(logger,"No existia el pokemon %s",new_pokemon->pokemon);
 
-			mkdir(dir_path_newpoke, 0777);
-			log_info(logger,"Se creo el directorio %s en %s",new_pokemon->pokemon,dir_path_newpoke);
+				mkdir(dir_path_newpoke, 0777);
+				log_info(logger,"Se creo el directorio %s en %s",new_pokemon->pokemon,dir_path_newpoke);
 
-			FILE* f = fopen(path_metafile,"wb");
-			fclose(f);
-			log_info(logger,"Se creo el archivo metafile del pokemon %s vacio",new_pokemon->pokemon);
+				FILE* f = fopen(path_metafile,"wb");
+				fclose(f);
+				log_info(logger,"Se creo el archivo metafile del pokemon %s vacio",new_pokemon->pokemon);
 
-			crear_pokemon(new_pokemon, path_metafile);
-			log_info(logger,"Se creo por completo el pokemon %s",new_pokemon->pokemon);
+				crear_pokemon(new_pokemon, path_metafile);
+				log_info(logger,"Se creo por completo el pokemon %s",new_pokemon->pokemon);
+
+
 		}
 
 	log_info(logger,"THREAD FINISHED , unlockeo el pokemon");
@@ -770,7 +770,7 @@ void agregar_nueva_posicion(t_new_pokemon* newpoke,char* path,char* key,char* va
 
 		char* ultimo_block_path = block_path(string_itoa(pos_ultimo_block));
 
-		if (el_ultimo_bloque_tiene_espacio(key,value,ultimo_block_path)){
+		if (el_ultimo_bloque_tiene_espacio_justo(key,value,ultimo_block_path)){
 			log_info(logger,"El ultimo bloque tenia espacio, agrego la posicion en el mismo");
 
 			t_config* ultimo_block_config = config_create(ultimo_block_path);
@@ -782,10 +782,22 @@ void agregar_nueva_posicion(t_new_pokemon* newpoke,char* path,char* key,char* va
 			config_destroy(ultimo_block_config);
 
 			} else {
-				log_info(logger,"Asigno un nuevo bloque, los que tenian estan llenos");
-				int block = asignar_nuevo_bloque(newpoke,key,value);
-				escribir_data_en_block(key,value,block);
+				int size_last_block = el_ultimo_block_tiene_espacio(ultimo_block_path);
+
+				if(size_last_block != 63){
+
+
+				} else{
+					log_info(logger,"Asigno un nuevo bloque, los que tenian estan llenos");
+					int block = asignar_nuevo_bloque(newpoke,key,value);
+					escribir_data_en_block(key,value,block);
+
+				}
+
 			}
+}
+int el_ultimo_block_tiene_espacio(char* path){
+	return file_size(path);
 }
 
 
@@ -841,7 +853,7 @@ void grabar_metadata_file(t_file_metadata metadata,char* path){
 	free(blocks_array);
 }
 
-bool el_ultimo_bloque_tiene_espacio(char* key,char* value,char* ultimo_block_path){
+bool el_ultimo_bloque_tiene_espacio_justo(char* key,char* value,char* ultimo_block_path){
 
 	char* size_key_y_value = strlen(key) + strlen(value) + 1 ;
 	return file_size(ultimo_block_path) >= size_key_y_value;
@@ -878,12 +890,63 @@ int block_que_tiene_esa_posicion(char** blocks,char* key){
 		i++;
 		free(pathblock);
 	}
+
+	if(esta_la_posicion_mal_grabada(key,blocks)){
+		return -2;
+	}
+
+
+
 	free(key);
 	free(blocks);
 	return -1;
 }
 
+bool esta_la_posicion_mal_grabada(char* key,char** blocks){
 
+	char* random_filename = rand_string(sizeof(blocks));
+
+	FILE*f = fopen(random_filename,"wb");
+
+
+
+	fclose(f);
+
+	int size_blocks = size_char_doble(blocks);
+
+	char* toda_la_data;
+
+
+
+	return true;
+
+}
+
+
+char* generar_string_desde_blocks(char** blocks){
+
+	char* data;
+
+	for (int i = 0; i<= size_char_doble(blocks); i++){ //RECORRO TODOS LOS BLOQUES
+
+		char* pathblock = block_path(*blocks[i]);
+		FILE* block  = fopen(pathblock,"rb");
+
+		int n = 0;
+
+		while (!feof(block)){
+			fread(data[i],1,1,block);
+			n++;
+		}
+
+		free(pathblock);
+		fclose(block);
+
+	}
+
+	return data;
+
+}
 char* block_path(char* block){
 	char* path1 = concatenar(config_gc->punto_montaje_tallgrass,"/Blocks/");
 	char* path2 = concatenar(path1,block);
@@ -1038,3 +1101,28 @@ void destrozar_metadata_file(t_file_metadata metadata){
 void destrozar_fs_metadata(t_metadata metadata){
 	free(metadata.magic);
 }
+
+char* rand_string(int length) {
+
+    static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    char *randomString = NULL;
+
+
+
+    if (length) {
+        randomString = malloc(sizeof(char) * (length +1));
+
+        if (randomString) {
+            for (int n = 0;n < length;n++) {
+                int key = rand() % (int)(sizeof(charset) -1);
+                randomString[n] = charset[key];
+            }
+
+            randomString[length] = '\0';
+        }
+    }
+    char* rand = concatenar(randomString,".bin");
+    free(randomString);
+    return rand;
+}
+
