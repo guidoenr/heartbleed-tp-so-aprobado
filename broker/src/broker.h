@@ -182,7 +182,6 @@ void 		   		compactar_particiones_dinamicas		 (void);
 t_memoria_dinamica* seleccionar_victima_de_reemplazo_fifo(void);
 t_memoria_dinamica* seleccionar_victima_de_reemplazo_lru (void);
 void guardar_particion(t_mensaje*);
-
-
+uint32_t chequear_espacio_memoria_particiones(uint32_t);
 
 

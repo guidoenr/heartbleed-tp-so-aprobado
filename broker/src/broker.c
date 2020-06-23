@@ -208,7 +208,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 	sem_post(&mutex_id);
 
 
-	// En memori deberia guardarse solo el contenido, no todo el mensaje.
+
 	guardar_en_memoria(mensaje_a_agregar);
 
 	sem_wait(&semaforo);
@@ -702,13 +702,12 @@ void guardar_en_memoria(t_mensaje* mensaje){
 	   else
 		   exponente = config_broker -> size_min_memoria;
       t_node* primer_nodo = (t_node*) memoria_cache->head->data;
-	  uint32_t pudoGuardarlo = recorrer(primer_nodo, exponente, mensaje -> payload);
+      uint32_t pudoGuardarlo = recorrer(primer_nodo, exponente, mensaje -> payload);
 	  if(!pudoGuardarlo)
 	  {
 		  log_error(logger,"no hay memoria suficiente para guardarlo");
 	  }
 	}
-    uint32_t indice = 0 ;
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
 		if(list_size(memoria_con_particiones) > 1){
           guardar_particion(mensaje);
@@ -762,16 +761,12 @@ void asignar_nodo(t_node* node,void* payload){
 
 
 uint32_t recorrer(t_node* nodo, uint32_t exponente, void* payload){
-    if(nodo == NULL && exponente < config_broker -> size_min_memoria) {
+    if(nodo == NULL || nodo->bloque->tamanio < config_broker -> size_min_memoria) {
         return 0;
     }
-
-    if(asignado == 1)
-    	return 1;
-
+    asignado  = 0;
     if (nodo->bloque->tamanio == exponente && nodo->bloque->libre == 1) {
         asignar_nodo(nodo, payload);
-        asignado = 1;
         return 1;
     }
 
@@ -789,6 +784,8 @@ uint32_t recorrer(t_node* nodo, uint32_t exponente, void* payload){
     	        nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio / 2);
     	    }
         asignado = recorrer(nodo -> derecha,exponente, payload);
+    } else {
+    	return 1;
     }
     log_info(logger,"paso por recorrer, varias veces");
     return asignado;
@@ -830,6 +827,9 @@ void iniciar_memoria_particiones(t_list* memoria_de_particiones){
 //DEBERIA ARMAR UNA PARTICION PARA GUARDAR ANTES O CHEQUEARLO A PARTIR DEL MENSAJE?
 void guardar_particion(t_mensaje* un_mensaje){
     uint32_t posicion_a_ubicar = 0;
+    if(!chequear_espacio_memoria_particiones(un_mensaje->tamanio_mensaje)){
+			log_error(logger, "no hay memoria");
+	}
     if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
         //ENCONTRAR EL PRIMER AJUSTE DEBERIA DEVOLVERME EL INDICE DEL PRIMER ELEMENTO DE LA LISTA
         //EN EL CUAL HAY UNA PARTICION DISPONIBLE, Y -1 EN CASO DE QUE NO HAYA LUGAR SUFICIENTE.
@@ -860,8 +860,25 @@ void liberar_particion_dinamica(t_memoria_dinamica* particion_vacia){
     free(particion_vacia -> payload);
     free(particion_vacia);
 }
+
+uint32_t chequear_espacio_memoria_particiones(uint32_t tamanio_mensaje){
+	uint32_t tamanio_ocupado = 0;
+	void sumar(void* particion){
+		t_memoria_dinamica* una_particion = particion;
+		if(una_particion->ocupado != 0)
+		tamanio_ocupado += una_particion->tamanio_mensaje;
+	}
+	list_iterate(memoria_con_particiones, sumar);
+	if(tamanio_ocupado == config_broker->size_memoria || tamanio_ocupado + tamanio_mensaje >= config_broker->size_memoria){
+		return 0;
+	}
+	return tamanio_ocupado;
+
+}
 // EN ubicar_particion FALTA UBICAR EN LA MEMORIA DEL MALLOC ENORME EL MENSAJE COMO CORRESPONDE.
 void ubicar_particion(uint32_t posicion_a_ubicar, uint32_t tamanio, void* payload){
+
+
         uint32_t size_particion = sizeof(uint32_t) * 3 + (tamanio);
         t_memoria_dinamica* nueva_particion = malloc(size_particion);
         nueva_particion -> tamanio_mensaje  = tamanio;
@@ -1166,6 +1183,82 @@ void concatenacion_buddy_systeam(t_node*  nodo)
 
 
 }
+/*
+
+//--------------------------------CONSOLIDACION--------------------------------//
+//ESTO SIRVE PARA LA LISTA QUE SIMULA LA MEMORIA, PERO FALTA ADAPTARLO PARA QUE HAGA LO MISMO EN EL MALLOC
+//ENORME.
+void consolidar_particiones_dinamicas(void);
+void consolidar_particiones_dinamicas(){
+
+void consolidar_particiones_contiguas(void* particion){
+        t_memoria_dinamica* una_particion = particion;
+        //OBTENGO EL PRIMER ELEMENTO QUE SEA CONSOLIDABLE Y PROCEDO A CONSOLIDARLO --> falta hacer
+        uint32_t indice = encontrar_indice(memoria_con_particiones, particion);
+        //SIEMPRE ASUMO QUE ES CONSOLIDABLE PORQUE TIENE UN VALOR A LA DERECHA QUE TAMBIEN ES VACIO
+        consolidar_particiones(indice, indice+1);
+    }
+
+    list_iterate(memoria_con_particiones, consolidar_particiones_contiguas);
+
+    if(existen_particiones_contiguas_vacias(memoria_con_particiones)){
+         consolidar_particiones_dinamicas();
+    }
+
+    //TENDRIA QUE LLAMAR RECURSIVAMENTE --> revisar
+}
+
+//ESTO FUNCIONA PARA LAS LISTAS PERO NO FUNCIONA PARA EL MALLOC ENORME (sobreescribirla entera llevaria mucho tiempo?).
+//PIENSO EN UN HILO PARA ESO?
+void consolidar_particiones(uint32_t primer_elemento, uint32_t elemento_siguiente){
+    t_memoria_dinamica* una_particion = list_remove(memoria_con_particiones, primer_elemento);
+    t_memoria_dinamica* particion_siguiente = list_remove(memoria_con_particiones, elemento_siguiente);
+
+    uint32_t tamanio_particion_consolidada = (una_particion -> tamanio_mensaje) + (particion_siguiente -> tamanio_mensaje);
+
+    t_memoria_dinamica* particion_consolidada    = malloc(sizeof(t_memoria_dinamica));
+    particion_consolidada -> tamanio_mensaje     = tamanio_particion_consolidada;
+    //FALTA EL MALLOC PARA EL PAYLOAD (que no tiene nada)
+    particion_consolidada -> payload             = ;
+    particion_consolidada -> base                = (una_particion -> base);
+    particion_consolidada -> ocupado             = 0;
+    //pensar en estos ultimos dos campos
+    particion_consolidada -> tiempo_de_llegada   = ;
+    particion_consolidada -> ultima_modificacion = ;
+
+    list_add_in_index(memoria_con_particiones, primer_elemento, particion_consolidada);
+
+    //actualizar memoria malloc enorme.
+
+    destruir_particion(una_particion);
+    destruir_particion(particion_siguiente);
+
+}
+
+//REVISAR PERO MUY POLENTA
+bool existen_particiones_contiguas_vacias(t_list* memoria_cache){
+    //SI EL PRIMER ELEMENTO DE CADA LISTA ESTA VACIO, HAY UNA PARTICION A CONSOLIDAR.
+
+    t_list* memoria_duplicada = list_duplicate(memoria_cache);
+    t_memoria_dinamica* particion = list_remove(memoria_duplicada, 0);
+    t_memoria_dinamica* segunda_particion = list_get(memoria_duplicada, 0);
+    bool segunda_particion_libre;
+
+    if(segunda_particion != NULL){
+        segunda_particion_libre = segunda_particion -> ocupado;
+    } else {
+        segunda_particion_libre = 0;
+    }
+
+    bool primer_particion_libre = particion -> ocupado;
+
+    if(!list_is_empty(memoria_duplicada)){
+        existen_particiones_contiguas_vacias(memoria_duplicada);
+    }
+
+    return primer_particion_libre && segunda_particion_libre;
+}*/
+
 
 
 
