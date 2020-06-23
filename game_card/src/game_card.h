@@ -109,4 +109,7 @@ void actualizar_pokemon(t_new_pokemon* new_pokemon,char* path_metafile,char* key
 existe_la_posicion(new_pokemon,path_metafile);
 char* rand_string(int length);
 char* generar_string_desde_blocks(char** blocks);
-bool esta_la_posicion_mal_grabada(char* key,char** blocks);
+bool esta_la_posicion_mal_grabada(char* key,char* temporary_file);
+char* generar_archivo_temporal(char* metapath_file);
+void re_grabar_temporary_en_blocks(char* temporary_file,char* path_metafile);
+bool existe_la_key_mal_grabada(char* key,char* temporary_file);

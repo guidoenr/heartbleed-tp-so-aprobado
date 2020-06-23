@@ -38,13 +38,38 @@ int main(void) {
 
 
 void laboratorio_de_pruebas(){
-	//TODO
-	char* blockpath = concatenar(config_gc->punto_montaje_tallgrass,"/Blocks/1.bin");
-	int blocksize = file_size(blockpath);
-	log_info(logger,"espacio: %d",blocksize);
+
+	t_config* metadatac = config_create("metadata_prueba.bin");
+	char** blocks = config_get_array_value(metadatac,"BLOCKS");
+	config_destroy(metadatac);
+
+
+	t_config* block0 = config_create("/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje/Blocks/0.bin");
+
+	config_set_value(block0,"1-1","2");
+	config_set_value(block0,"11-11","22");
+	config_set_value(block0,"22-22","33");
+	config_set_value(block0,"44-44","55");
+
+	config_save_in_file(block0,"/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje/Blocks/0.bin");
+	config_destroy(block0);
+
+	t_config* block1 = config_create("/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje/Blocks/1.bin");
+
+	config_set_value(block0,"3-1","2");
+	config_set_value(block0,"5-16","2");
+	config_set_value(block0,"8-2","3");
+	config_set_value(block0,"4-94","6");
+
+	config_save_in_file(block0,"/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje/Blocks/1.bin");
+	config_destroy(block0);
+
+
+
+	char* path = generar_archivo_temporal(blocks);
+	re_grabar_temporary_en_blocks(path, blocks);
 
 }
-
 
 void conectarse(int socket){
 	socket = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
@@ -666,38 +691,38 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 	if (el_pokemon_esta_creado(dir_path_newpoke)){
 
 		log_info(logger,"El pokemon %s ya existe",new_pokemon->pokemon);
-		bool esta_en_uso = is_open(path_metafile);
 
-		if (esta_en_uso){
-				int secs = config_gc->tiempo_retardo_operacion;
-				log_info(logger,"No se puede leer ni escribir este pokemon porque esta en uso (OPEN=Y), reintentando en: %d",secs);
-				sleep(secs);
-				esta_en_uso = is_open(path_metafile);
-
-			} else {
-				log_info(logger,"Se puede acceder al pokemon %s, lockeo el archivo",new_pokemon->pokemon);
-				lock_file(path_metafile);
-
-				}
+		verificar_apertura_new_pokemon(path_metafile,new_pokemon->pokemon);
 
 		char* key = get_key_from_position(new_pokemon);
 		char* value = get_value_from_position(new_pokemon);
-
 		int block_number = existe_la_posicion(new_pokemon,path_metafile);
 
-		if (block_number != -1){ // porque arranca de 0 a 5192, la funcion retorna -1 si no existia la posicion
+		if (block_number == -1){
 
-			log_info(logger,"Ya se encontraba la posicion %s en el pokemon %s en el block %d, se le va actualizar su cantidad",key, new_pokemon->pokemon, block_number);
+			log_info(logger,"No se encontraba la posicion del pokemon %s o no estaba bien grabada, ejecutando DISASTER_FILE_SYSTEM",new_pokemon->pokemon);
 
-			actualizar_pokemon(new_pokemon,path_metafile,key,value,block_number);
+			char* temporary_file = generar_archivo_temporal(new_pokemon);
 
+			if (esta_la_posicion_mal_grabada(key, temporary_file)){
+				log_info(logger,"DISASTER_FILE_SYSTEM: Existe la posicion pero esta mal grabada");
+				re_grabar_temporary_en_blocks(temporary_file, new_pokemon);
+																								//TODO CHEATS AIMWARE.NET
 			} else {
-				log_info(logger,"No se encontraba esta posicion del pokemon %s",new_pokemon->pokemon);
+				log_info(logger,"DISASTER_FILE_SYSTEM:[FINALIZADO] No existe la posicion definitivamente");
 				agregar_nueva_posicion(new_pokemon,path_metafile,key,value);
 			}
 
-			free(key);
-			free(value);
+			free(temporary_file);
+
+
+			} else { // existia la posiicon en un block
+				log_info(logger,"Ya se encontraba la posicion %s en el pokemon %s en el block %d, se le va actualizar su cantidad",key, new_pokemon->pokemon, block_number);
+				actualizar_pokemon(new_pokemon,path_metafile,key,value,block_number);
+				}
+
+		free(key);
+		free(value);
 
 		} else { // NO EXISTIA EL POKEMON
 
@@ -738,6 +763,23 @@ bool el_pokemon_esta_creado(char* path){
 	return es_directorio(path);
 }
 
+void verificar_apertura_new_pokemon(char* path_metafile,char* nombre_pokemon){
+
+	bool esta_en_uso = is_open(path_metafile);
+
+	while (esta_en_uso){
+		int secs = config_gc->tiempo_retardo_operacion;
+		log_info(logger,"No se puede leer ni escribir este pokemon porque esta en uso OPEN=Y, reintentando en: %d",secs);
+		sleep(secs);
+		esta_en_uso = is_open(path_metafile);
+	}
+
+
+	log_info(logger,"Se puede acceder al pokemon %s, lockeo el archivo",nombre_pokemon);
+	lock_file(path_metafile);
+
+
+}
 
 void actualizar_pokemon(t_new_pokemon* new_pokemon,char* path_metafile,char* key,char* value,int block_number){
 
@@ -782,10 +824,9 @@ void agregar_nueva_posicion(t_new_pokemon* newpoke,char* path,char* key,char* va
 			config_destroy(ultimo_block_config);
 
 			} else {
+
 				int size_last_block = el_ultimo_block_tiene_espacio(ultimo_block_path);
-
 				if(size_last_block != 63){
-
 
 				} else{
 					log_info(logger,"Asigno un nuevo bloque, los que tenian estan llenos");
@@ -891,35 +932,14 @@ int block_que_tiene_esa_posicion(char** blocks,char* key){
 		free(pathblock);
 	}
 
-	if(esta_la_posicion_mal_grabada(key,blocks)){
-		return -2;
-	}
-
-
 
 	free(key);
 	free(blocks);
 	return -1;
 }
 
-bool esta_la_posicion_mal_grabada(char* key,char** blocks){
-
-	char* random_filename = rand_string(sizeof(blocks));
-
-	FILE*f = fopen(random_filename,"wb");
-
-
-
-	fclose(f);
-
-	int size_blocks = size_char_doble(blocks);
-
-	char* toda_la_data;
-
-
-
-	return true;
-
+bool esta_la_posicion_mal_grabada(char* key,char* temporary_file){
+	return existe_la_key_mal_grabada(key, temporary_file);
 }
 
 
@@ -947,6 +967,117 @@ char* generar_string_desde_blocks(char** blocks){
 	return data;
 
 }
+
+char* generar_archivo_temporal(char* metapath_file){
+
+	t_config* metapath = config_create(metapath_file);
+	char** blocks = config_get_array_value(metapath,"BLOCKS");
+	config_destroy(metapath);
+
+	char* blockpath;
+	int cantidad_blocks = size_char_doble(blocks);
+	char* a = malloc(1);
+	char* random_path = rand_string(sizeof(blocks));
+	FILE* temporary = fopen(random_path,"wb");
+
+	int n = 0;
+	for(int i = 0; i < cantidad_blocks; i++){
+
+		blockpath = block_path(blocks[i]);
+		FILE* block = fopen(blockpath,"rb");
+		int filesize = file_size(blockpath);
+
+		while (n < filesize){
+			fread(a,1,1,block);
+			fwrite(a,1,1,temporary);
+			n++;
+		}
+		n=0;
+		fclose(block);
+	}
+
+	fclose(temporary);
+
+	free(blockpath);
+	free(a);
+
+	return random_path;
+}
+
+bool existe_la_key_mal_grabada(char* key,char* temporary_file){
+
+	t_config* config = config_create(temporary_file);
+
+	bool x = config_has_property(config,key);
+
+	config_destroy(config);
+
+	free(key);
+	free(temporary_file);
+	return x;
+
+}
+
+void re_grabar_temporary_en_blocks(char* temporary_file,char* path_metafile){
+
+	t_config* config_meta = config_create(path_metafile);
+	char** blocks = config_get_array_value(config_meta,"BLOCKS");
+	config_destroy(config_meta);
+
+
+	int cantidad_blocks = size_char_doble(blocks);
+	int size_temporary = file_size(temporary_file);
+	limpiar_blocks(blocks);
+
+	char* blockpath;
+	char* a = malloc(1);
+
+	int i =0;
+	int b =0;
+
+	FILE* temporary = fopen(temporary_file,"rb");
+
+	while(b < cantidad_blocks){
+
+		blockpath = block_path(blocks[b]);
+		FILE* block = fopen(blockpath,"wb");
+		int current_size = file_current_size(block);
+
+		while(current_size!=0 && i<size_temporary){
+
+			fread(a,1,1,temporary);
+			fwrite(a,1,1,block);
+			i++;
+			current_size = file_current_size(block);
+
+		}
+
+		fclose(block);
+		b++;
+	}
+
+	fclose(temporary);
+	remove(temporary_file);
+	free(blockpath);
+	free(a);
+
+}
+
+void limpiar_blocks(char** blocks){
+
+	char* pathblock;
+
+	for (int i =0; i<size_char_doble(blocks); i++){
+
+		pathblock = block_path(blocks[i]);
+		FILE* block = fopen(pathblock,"wb");
+		fclose(block);
+	}
+
+	free(pathblock);
+
+}
+
 char* block_path(char* block){
 	char* path1 = concatenar(config_gc->punto_montaje_tallgrass,"/Blocks/");
 	char* path2 = concatenar(path1,block);
