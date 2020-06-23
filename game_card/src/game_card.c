@@ -29,7 +29,8 @@ int main(void) {
 
 
 	laboratorio_de_pruebas();
-	//funcion_hilo_new_pokemon(simple, socket_br);
+	funcion_hilo_new_pokemon(simple, socket_br);
+
 
 	terminar_programa(socket,config_gc);
 }
@@ -39,35 +40,6 @@ int main(void) {
 
 void laboratorio_de_pruebas(){
 
-	t_config* metadatac = config_create("metadata_prueba.bin");
-	char** blocks = config_get_array_value(metadatac,"BLOCKS");
-	config_destroy(metadatac);
-
-
-	t_config* block0 = config_create("/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje/Blocks/0.bin");
-
-	config_set_value(block0,"1-1","2");
-	config_set_value(block0,"11-11","22");
-	config_set_value(block0,"22-22","33");
-	config_set_value(block0,"44-44","55");
-
-	config_save_in_file(block0,"/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje/Blocks/0.bin");
-	config_destroy(block0);
-
-	t_config* block1 = config_create("/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje/Blocks/1.bin");
-
-	config_set_value(block0,"3-1","2");
-	config_set_value(block0,"5-16","2");
-	config_set_value(block0,"8-2","3");
-	config_set_value(block0,"4-94","6");
-
-	config_save_in_file(block0,"/home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje/Blocks/1.bin");
-	config_destroy(block0);
-
-
-
-	char* path = generar_archivo_temporal(blocks);
-	re_grabar_temporary_en_blocks(path, blocks);
 
 }
 
@@ -304,8 +276,6 @@ void crear_pokemon(t_new_pokemon* newPoke,char* path){
 	escribir_block_inicial(metadata,newPoke);
 
 	grabar_metadata_file(metadata,path);
-
-	destrozar_metadata_file(metadata);
 
 }
 
@@ -556,7 +526,6 @@ t_bitarray* obtener_bitmap(){
 	t_bitarray* bitarray = bitarray_create_with_mode(data, size_in_bytes, LSB_FIRST);
 
 	free(bitmapPath);
-	free(data);
 	return bitarray;
 
 }
@@ -749,7 +718,7 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 
 	free(path_metafile);
 	free(dir_path_newpoke);
-	destrozar_new_pokemon(new_pokemon);
+	//destrozar_new_pokemon(new_pokemon);
 
 }
 
@@ -813,7 +782,8 @@ void agregar_nueva_posicion(t_new_pokemon* newpoke,char* path,char* key,char* va
 		char* ultimo_block_path = block_path(string_itoa(pos_ultimo_block));
 
 		if (el_ultimo_bloque_tiene_espacio_justo(key,value,ultimo_block_path)){
-			log_info(logger,"El ultimo bloque tenia espacio, agrego la posicion en el mismo");
+
+			log_info(logger,"El ultimo bloque tenia espacio justo, agrego la posicion en el mismo");
 
 			t_config* ultimo_block_config = config_create(ultimo_block_path);
 
@@ -823,24 +793,39 @@ void agregar_nueva_posicion(t_new_pokemon* newpoke,char* path,char* key,char* va
 
 			config_destroy(ultimo_block_config);
 
-			} else {
+			} else if (el_ultimo_block_tiene_espacio(ultimo_block_path)){
 
-				int size_last_block = el_ultimo_block_tiene_espacio(ultimo_block_path);
-				if(size_last_block != 63){
+				log_info(logger,"El ultimo bloque tiene un poco de espacio, lo grabo para evitar fragmentacion interna");
+				char* a_grabar = posicion_into_string(key, value);
+				int espaciodisponible = file_size(ultimo_block_path);
+				FILE* block = fopen(ultimo_block_path,"ab");
 
-				} else{
-					log_info(logger,"Asigno un nuevo bloque, los que tenian estan llenos");
-					int block = asignar_nuevo_bloque(newpoke,key,value);
-					escribir_data_en_block(key,value,block);
+				int i = 0;
+				while(espaciodisponible < 63 && i<strlen(a_grabar)+1){
+					fwrite(a_grabar[i],1,1,block);
+					i++;
+					}
 
-				}
+						} else{
+							log_info(logger,"Asigno un nuevo bloque, los que tenian estan llenos");
+							int block = asignar_nuevo_bloque(newpoke,key,value);
+							escribir_data_en_block(key,value,block);
+							}
 
-			}
 }
+
+
 int el_ultimo_block_tiene_espacio(char* path){
-	return file_size(path);
+	return file_size(path) < 64;
 }
 
+
+char* posicion_into_string(char*key,char*value){
+	char* posicion = concatenar(key,"-");
+	char* posicion2 = concatenar(posicion,value);
+	free(posicion);
+	return posicion2;
+}
 
 void escribir_data_en_block(char* key,char* value,int block){
 
@@ -890,8 +875,10 @@ void grabar_metadata_file(t_file_metadata metadata,char* path){
 
 	config_save(meta_file_pokemon);
 
+	log_info(logger,"Se creo el Metadata.bin con valores OPEN= %s, DIRECTORY=%s, SIZE=%s, BLOCKS=%s",metadata.open,metadata.directory,metadata.size,blocks_array);
 	config_destroy(meta_file_pokemon);
 	free(blocks_array);
+
 }
 
 bool el_ultimo_bloque_tiene_espacio_justo(char* key,char* value,char* ultimo_block_path){
@@ -1219,7 +1206,6 @@ int size_char_doble(char** array){
 
 void destrozar_new_pokemon(t_new_pokemon* new_pokemon){
 	free(new_pokemon->pokemon);
-	free(new_pokemon);
 }
 
 void destrozar_metadata_file(t_file_metadata metadata){
