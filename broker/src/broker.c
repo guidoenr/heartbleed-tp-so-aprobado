@@ -709,7 +709,7 @@ void guardar_en_memoria(t_mensaje* mensaje){
 	  }
 	}
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
-		if(list_size(memoria_con_particiones) > 1){
+		if(list_size(memoria_con_particiones) > 1 && list_size(memoria_con_particiones) != 1){
           guardar_particion(mensaje);
      }else{
     	  ubicar_particion(0,mensaje->tamanio_mensaje, mensaje->payload);
@@ -819,7 +819,7 @@ void iniciar_memoria_particiones(t_list* memoria_de_particiones){
     /*tamanio_mensaje+payload+base+ocupado+base*/
     uint32_t size_particion = sizeof(uint32_t) * 3 + (config_broker ->size_memoria);
     t_memoria_dinamica* particion_de_memoria = malloc(size_particion);
-    particion_de_memoria -> tamanio_mensaje = 0;
+    particion_de_memoria -> tamanio_mensaje = config_broker->size_memoria;
     particion_de_memoria -> payload         = memoria_cache;
     particion_de_memoria -> base            = 0;
     list_add(memoria_de_particiones, particion_de_memoria);
@@ -879,14 +879,16 @@ uint32_t chequear_espacio_memoria_particiones(uint32_t tamanio_mensaje){
 void ubicar_particion(uint32_t posicion_a_ubicar, uint32_t tamanio, void* payload){
 
 
-        uint32_t size_particion = sizeof(uint32_t) * 3 + (tamanio);
-        t_memoria_dinamica* nueva_particion = malloc(size_particion);
+        t_memoria_dinamica* nueva_particion = malloc(sizeof(t_memoria_dinamica));
         nueva_particion -> tamanio_mensaje  = tamanio;
         nueva_particion -> base             = posicion_a_ubicar;
+        nueva_particion-> payload           = malloc(tamanio);
         nueva_particion -> payload          = payload ;
         nueva_particion -> ocupado          = 1; // CUANDO = 0 ESTA VACIO Y CUANDO ES !=0 ESTA OCUPADO
 
-        t_memoria_dinamica* particion_reemplazada = list_replace(memoria_con_particiones, posicion_a_ubicar, nueva_particion);
+
+        void* particion_libre = list_replace(memoria_con_particiones, posicion_a_ubicar, nueva_particion);
+        t_memoria_dinamica* particion_reemplazada = particion_libre;
 
         uint32_t total = particion_reemplazada -> tamanio_mensaje;
         if(tamanio < total)
@@ -940,32 +942,32 @@ uint32_t encontrar_mejor_ajuste(uint32_t tamanio){
         return tamanio <= (una_particion -> tamanio_mensaje) && una_particion -> ocupado == 0 ;
     }
 
-    t_list* particiones_en_orden_creciente = list_create();
-    particiones_en_orden_creciente = list_sorted(memoria_con_particiones, es_de_menor_tamanio);
+    t_list* particiones_en_orden_creciente = list_duplicate(memoria_con_particiones);
+    list_sort(particiones_en_orden_creciente, es_de_menor_tamanio);
 
     t_memoria_dinamica* posible_particion = list_find(particiones_en_orden_creciente, tiene_tamanio_suficiente);
     indice_seleccionado = encontrar_indice(posible_particion);
     //REVISAR ESTO
-    list_destroy_and_destroy_elements(particiones_en_orden_creciente, destruir_particion);
+    list_destroy(particiones_en_orden_creciente);
 
     return indice_seleccionado;
 }
 
 void destruir_particion(void* una_particion){
     t_memoria_dinamica* particion = una_particion;
-    free(particion -> payload);
+   free(particion -> payload);
     free(particion);
-    free((t_memoria_dinamica*) una_particion);
+   // free(una_particion);
 }
 
 uint32_t encontrar_indice(t_memoria_dinamica* posible_particion){
     uint32_t indice_disponible = 0;
     uint32_t indice_buscador = -1;
-
     void* obtener_indices(void* particion){
+    	indice_buscador += 1;
         t_memoria_dinamica* particion_a_transformar = particion;
         t_indice* un_indice = malloc(sizeof(t_indice));
-        un_indice -> indice = indice_buscador + 1;
+        un_indice -> indice = indice_buscador;
         un_indice -> tamanio = particion_a_transformar -> tamanio_mensaje;
         return un_indice;
     }
