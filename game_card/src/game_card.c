@@ -21,9 +21,9 @@ int main(void) {
 	iniciar_tall_grass();
 
 	t_new_pokemon* simple = malloc(sizeof(t_new_pokemon));
-	simple->posicion[0]= 13131231;
-	simple->posicion[1] = 413131232;
-	simple->cantidad=23121232;
+	simple->posicion[0]= 15225;
+	simple->posicion[1] = 5321;
+	simple->cantidad=3310;
 	simple->id_mensaje = 124;
 	simple->pokemon= "Simple";
 
@@ -37,9 +37,6 @@ int main(void) {
 }
 
 void laboratorio_de_pruebas(){
-
-	//punto_montaje = /home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje
-
 
 
 
@@ -93,16 +90,29 @@ void informarAlBroker(int socket,op_code codigo){
 	enviar_mensaje(codigo,aviso,socket,tamanioAviso);
 }
 
-void conectarse(int socket){
+void conectarse_a_br(int socket){
 	socket = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
 	int time = config_gc->tiempo_reintento_conexion;
 	if (socket == -1 ){
 		log_info(logger,"imposible conectar con broker, reintento en: %d",time);
 		sleep(time);
 		socket=0;
-		conectarse(socket); //terrible negrada, pero anda o no nada?
+		conectarse_a_br(socket); //terrible negrada, pero anda o no nada?
 	} else {
 		log_info(logger,"conexion exitosa con broker ");
+	}
+}
+
+void conectarse_a_gb(int socket){
+	socket = crear_conexion(config_gc->ip_gameBoy, config_gc->puerto_gameBoy);
+	int time = config_gc->tiempo_reintento_conexion;
+	if (socket == -1 ){
+		log_info(logger,"imposible conectar con gameboy, reintento en: %d",time);
+		sleep(time);
+		socket=0;
+		conectarse_a_gb(socket); //terrible negrada, pero anda o no nada?
+	} else {
+		log_info(logger,"conexion exitosa con gameboy ");
 	}
 }
 
@@ -583,7 +593,7 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 }
 
 bool el_block_tiene_espacio_justo(char* key,char* value,char* ultimo_block_path){
-	char* size_key_y_value = strlen(key) + strlen(value) + 1 ;
+	int size_key_y_value = strlen(key) + strlen(value) + 1 ;
 	return (64 - file_size(ultimo_block_path)) >= size_key_y_value; //file_size = tamaño que estoy ocupando
 }
 

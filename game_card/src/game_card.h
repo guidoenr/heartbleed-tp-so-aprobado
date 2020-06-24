@@ -116,3 +116,6 @@ bool existe_la_key_mal_grabada(char* key,char* temporary_file);
 void destrozar_metadata_file(t_file_metadata metadata);
 void destrozar_new_pokemon(t_new_pokemon* new_pokemon);
 bool el_block_tiene_espacio_pero_no_alcanza(char* blockpath);
+void escribir_data_sin_fragmentacion_interna(char* block_nuevo,char* block_viejo, char*key, char*value);
+void conectarse_a_br(int socket);
+void conectarse_a_gb(int socket);
