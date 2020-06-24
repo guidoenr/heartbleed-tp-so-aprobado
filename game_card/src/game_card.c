@@ -36,10 +36,11 @@ int main(void) {
 	terminar_programa(socket,config_gc);
 }
 
-//punto_montaje = /home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje
-
-
 void laboratorio_de_pruebas(){
+
+	//punto_montaje = /home/utnso/workspace/tp-2020-1c-heartbleed/game_card/Montaje
+
+
 
 
 }
@@ -273,25 +274,16 @@ void crear_bitmap(char* path){
 	t_metadata fs_metadata = leer_fs_metadata(metadataPath);
 
 	int size_in_bytes = (fs_metadata.blocks/8);
-	char* a = string_repeat('0',(size_in_bytes*8));
+	char* data = string_repeat('0',(size_in_bytes*8));
 
 	FILE* file = fopen(bitmapPath,"wb");
+	fwrite(data,649,1,file);
 	fclose(file);
 
-	t_config* config_bitmap = config_create(bitmapPath);
-
-	config_set_value(config_bitmap,"BITARRAY",a);
-
-	int result = config_save(config_bitmap);
-	if (result != 1 ){
-		log_info(logger,"Error en la creacion de bitarray al estilo tall_gd3_grass");
-	}
-
-	config_destroy(config_bitmap);
 	destrozar_fs_metadata(fs_metadata);
 	free(bitmapPath);
 	free(metadataPath);
-	free(a);
+	free(data);
 
 	log_info(logger,"Se creo el bitarray de %d posiciones, con un tamaño de %d bytes",fs_metadata.blocks,size_in_bytes);
 
@@ -312,12 +304,14 @@ t_bitarray* obtener_bitmap(){
 
 	char* bitmapPath = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
 	int size_in_bytes = bitarray_default_size();
+	char* data = malloc(649);
 
-	t_config* bitarray_config = config_create(bitmapPath);
 
-	char* data = config_get_string_value(bitarray_config,"BITARRAY");
+	FILE* bitmap = fopen(bitmapPath,"rb");
 
-	config_destroy(bitarray_config);
+	fread(data,649,1,bitmap);
+
+	fclose(bitmap);
 
 	t_bitarray* bitarray = bitarray_create_with_mode(data, size_in_bytes, LSB_FIRST);
 
@@ -329,13 +323,10 @@ t_bitarray* obtener_bitmap(){
 void actualizar_bitmap(t_bitarray* bitarray){
 	char* bitmapPath = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
 
-	t_config* bitmap_config = config_create(bitmapPath);
+	FILE* bitmap = fopen(bitmapPath,"wb");
+	fwrite(bitarray->bitarray,649,1,bitmap);
+	fclose(bitmap);
 
-	config_set_value(bitmap_config,"BITARRAY",bitarray->bitarray);
-
-	int status = config_save(bitmap_config);
-
-	config_destroy(bitmap_config);
 	bitarray_destroy(bitarray);
 	free(bitmapPath);
 
