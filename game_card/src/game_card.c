@@ -833,7 +833,6 @@ void agregar_nueva_posicion(t_new_pokemon* newpoke,char* pathmeta_poke,char* key
 void escribir_data_sin_fragmentacion_interna(char* block_nuevo,char* block_viejo, char*key, char*value){
 
 	char* a_escribir = posicion_into_string(key, value);
-
 	int size_viejo_block = file_size(block_viejo);
 
 	FILE* file_block_viejo = fopen(block_viejo,"ab");
