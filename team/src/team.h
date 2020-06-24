@@ -22,6 +22,7 @@ typedef struct {
 	uint32_t resultado_caught;
 	sem_t esperar_caught;
 	uint32_t estimacion;
+	uint32_t ciclos_cpu;
 } t_entrenador;
 
 typedef struct {
@@ -55,10 +56,16 @@ typedef struct {
 	char* puerto_broker;
 	uint32_t estimacion_inicial;
 	char* log_file;
+	uint32_t id_proceso;
 } t_config_team;
 
 t_config_team* config;
 t_log* logger;
+
+uint32_t deadlocks_totales;
+uint32_t deadlocks_resueltos;
+uint32_t ciclos_cpu_totales;
+uint32_t cambios_de_contexto;
 
 // utils
 char* append(const char*, char);
@@ -152,6 +159,8 @@ sem_t mx_desalojo_exec;
 sem_t entrenadores_ready;
 sem_t sem_cont_mapa;
 sem_t sem_cont_entrenadores_a_replanif;
+sem_t mx_contexto;
+sem_t mx_paquete;
 
 
 // mapa
@@ -187,6 +196,7 @@ bool comparar_pokemon(void*, void*);
 
 
 // terminar
+void loggear_resultados();
 void liberar_config();
 void liberar_lista_de_lista_de_strings(t_list*);
 void liberar_entrenadores();

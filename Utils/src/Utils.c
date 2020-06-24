@@ -93,9 +93,9 @@ void* deserealizar_paquete(void* stream, op_code codigo_operacion, uint32_t tama
         case CATCH_POKEMON:
         mensaje_deserializado = deserealizar_catch_pokemon(stream, tamanio_mensaje);
         break;
-        /*case LOCALIZED_POKEMON:
+        case LOCALIZED_POKEMON:
         mensaje_deserializado = deserealizar_localized_pokemon(stream, tamanio_mensaje);
-        break;*/
+        break;
         case CAUGHT_POKEMON:
         mensaje_deserializado = deserealizar_caught_pokemon(stream, tamanio_mensaje);
         break;
@@ -149,6 +149,8 @@ uint32_t size_caught_pokemon(t_caught_pokemon* pokemon){
     return sizeof(uint32_t) * 3;
 }
 
+// y localized?
+
 uint32_t size_mensaje(void* mensaje, op_code codigo){
 	uint32_t tamanio = 0;
 	switch(codigo){
@@ -158,9 +160,9 @@ uint32_t size_mensaje(void* mensaje, op_code codigo){
 	case CATCH_POKEMON:
 		tamanio = size_catch_pokemon(mensaje);
 		break;
-	/*case LOCALIZED_POKEMON:
+	case LOCALIZED_POKEMON:
 		tamanio = size_localized_pokemon(mensaje);
-		break;*/
+		break;
 	case CAUGHT_POKEMON:
 		tamanio = size_caught_pokemon(mensaje);
 		break;
@@ -232,9 +234,6 @@ void esperar_cliente(uint32_t socket_servidor) {
 void serve_client(uint32_t* socket) {
 	uint32_t cod_op;
 
-	//if(recv(*socket, &cod_op, sizeof(uint32_t), MSG_WAITALL) == -1)
-		cod_op = -1;
-
 	log_info(logger,"Se conecto un cliente con socket: %d",*socket);
 	process_request(cod_op, *socket);
 	close(*socket);
@@ -273,9 +272,9 @@ void* serializar_paquete(void* mensaje, uint32_t size_mensaje, op_code codigo, u
         case CATCH_POKEMON:
         paquete_a_enviar = serializar_catch_pokemon(mensaje, size_mensaje, size_serializado);
         break;
-        /*case LOCALIZED_POKEMON:
+        case LOCALIZED_POKEMON:
         paquete_a_enviar = serializar_localized_pokemon(mensaje, size_mensaje, size_serializado);
-        break;*/
+        break;
         case CAUGHT_POKEMON:
         paquete_a_enviar = serializar_caught_pokemon(mensaje, size_mensaje, size_serializado);
         break;
