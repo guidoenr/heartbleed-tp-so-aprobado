@@ -21,9 +21,9 @@ int main(void) {
 	iniciar_tall_grass();
 
 	t_new_pokemon* simple = malloc(sizeof(t_new_pokemon));
-	simple->posicion[0]= 118;
-	simple->posicion[1] = 21;
-	simple->cantidad=15;
+	simple->posicion[0]= 11;
+	simple->posicion[1] = 41;
+	simple->cantidad=25;
 	simple->id_mensaje = 124;
 	simple->pokemon= "Simple";
 
@@ -34,14 +34,21 @@ int main(void) {
 	luken->id_mensaje = 1242;
 	luken->pokemon= "Luken";
 
-	funcion_hilo_new_pokemon(luken, socket_br);
+	t_new_pokemon* meyern = malloc(sizeof(t_new_pokemon));
+	meyern->posicion[0]= 1012;
+	meyern->posicion[1] = 1031;
+	meyern->cantidad=1225;
+	meyern->id_mensaje = 1242;
+	meyern->pokemon= "Meeyerno";
 
+
+	unlock_file(obtener_path_metafile(simple));
+	funcion_hilo_new_pokemon(simple, socket_br);
+	laboratorio_de_pruebas();
 	terminar_programa(socket,config_gc);
 }
 
 void laboratorio_de_pruebas(){
-
-
 
 
 
@@ -784,6 +791,7 @@ void verificar_apertura_new_pokemon(char* path_metafile,char* nombre_pokemon){
 void actualizar_pokemon(char* temporary_path,char* path_metafile,char* key,char* value){
 
 	int nueva_cantidad;
+	int length_posicion;
 
 	t_config* temporary_config = config_create(temporary_path);
 
@@ -797,6 +805,24 @@ void actualizar_pokemon(char* temporary_path,char* path_metafile,char* key,char*
 
 	re_grabar_temporary_en_blocks(temporary_path, path_metafile);
 
+	length_posicion = strlen(posicion_into_string(key, value)) +1 ;
+	actualizar_size_new_pokemon(path_metafile,length_posicion);
+
+}
+
+void actualizar_size_new_pokemon(char* pathmetafile,int lengtposicion){
+
+	int nuevo_size;
+
+	t_config* configmeta = config_create(pathmetafile);
+
+	int size_actual = config_get_int_value(configmeta,"SIZE");
+	nuevo_size = lengtposicion + size_actual;
+
+	config_set_value(configmeta,"SIZE",string_itoa(nuevo_size));
+	config_save(configmeta);
+	config_destroy(configmeta);
+	log_info(logger,"Se actualizo el size del pokemon, su nuevo size es :%d",nuevo_size);
 }
 
 
@@ -807,9 +833,9 @@ void agregar_nueva_posicion(t_new_pokemon* newpoke,char* pathmeta_poke,char* key
 		config_destroy(config_poke);
 
 		int cantidad_blocks = size_char_doble(blocks);
-		int ultimo_block = blocks[cantidad_blocks];
+		char* ultimo_block = blocks[cantidad_blocks-1];
 
-		char* path_last_block = block_path(string_itoa(ultimo_block));
+		char* path_last_block = block_path(ultimo_block);
 
 		if (el_block_tiene_espacio_justo(key, value,path_last_block)){
 
@@ -824,6 +850,10 @@ void agregar_nueva_posicion(t_new_pokemon* newpoke,char* pathmeta_poke,char* key
 
 			free(nuevo_block_path);
 		}
+
+
+		int longitud = strlen(posicion_into_string(key,value))+1;
+		actualizar_size_new_pokemon(pathmeta_poke,longitud);
 
 		free(path_last_block);
 }
@@ -928,6 +958,24 @@ char* get_value_from_position(t_new_pokemon* newpoke){
 	return value;
 }
 
+/*-------------------------------------------------------------------------- CAUGHT POKEMON ----------------------------------------------------------------------------- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /*-------------------------------------------------------------------------- TOOLS ----------------------------------------------------------------------------- */
 
@@ -1006,7 +1054,7 @@ int file_current_size(FILE* f){
 
 }
 
-char* posicion_into_string(char*key,char*value){
+char* posicion_into_string(char* key,char*value){
 	char* posicion = concatenar(key,"=");
 	char* posicion2 = concatenar(posicion,value);
 	free(posicion);
@@ -1070,8 +1118,9 @@ int size_char_doble(char** array){
 
 	int i = 0;
 	int size = 0;
-
+	int a;
 	while(array[i] != NULL){
+		a=array[i];
 		i++;
 		size++;
 	}
