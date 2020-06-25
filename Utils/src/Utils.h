@@ -131,7 +131,7 @@ void* serializar_paquete(void* mensaje, uint32_t size_mensaje, op_code codigo, u
 void* serializar_new_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_get_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_appeared_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
-void* serializar_localized_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
+t_localized_pokemon* serializar_localized_pokemon(void* mensaje_new, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_catch_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_caught_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_suscripcion(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
@@ -145,6 +145,7 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_
 t_caught_pokemon* deserealizar_caught_pokemon(void* stream, uint32_t size_mensaje);
 t_appeared_pokemon* deserealizar_appeared_pokemon(void* stream, uint32_t size_mensaje);
 t_new_pokemon* deserealizar_new_pokemon(void* stream, uint32_t size_mensaje);
+t_localized_pokemon* deserealizar_localized_pokemon(void*,uint32_t);
 
 
 void iniciar_logger(char* file, char* program_name);

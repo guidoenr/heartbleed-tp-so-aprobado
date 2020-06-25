@@ -86,7 +86,7 @@ uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon);
 char* obtener_path_metafile(t_new_pokemon* pokemon);
 char* obtener_path_dir_pokemon(t_new_pokemon* pokemon);
 void conectarse(int socket);
-bool is_open(char* path);
+bool esta_lockeado(char* path);
 bool isDir(const char* name);
 bool existeElFileSystem(char* puntoMontaje);
 t_list* asignar_block_inicial();

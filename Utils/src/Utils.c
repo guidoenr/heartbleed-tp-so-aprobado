@@ -131,7 +131,9 @@ uint32_t size_appeared_pokemon(t_appeared_pokemon* pokemon){
 uint32_t size_get_pokemon(t_get_pokemon* pokemon){
     return sizeof(uint32_t) + strlen(pokemon -> pokemon) + 1;
 }
-
+uint32_t size_localized_pokemon(t_localized_pokemon* pokemon){
+    return sizeof(uint32_t) + strlen(pokemon -> pokemon) + 1;
+}
 
 uint32_t size_ack(t_ack* confirmacion){
     return sizeof(uint32_t) * 2 + sizeof(op_code);
@@ -667,6 +669,21 @@ t_caught_pokemon* deserealizar_caught_pokemon(void* stream, uint32_t size_mensaj
 	stream += sizeof(uint32_t);
 
     return mensaje_caught_pokemon;
+
+}
+
+t_localized_pokemon* deserealizar_localized_pokemon(void*stream, uint32_t size_mensaje){
+	t_localized_pokemon* asd;
+	return asd;
+
+
+}
+
+
+t_localized_pokemon* serializar_localized_pokemon(void* mensaje_new, uint32_t size_mensaje, uint32_t* size_serializado){
+
+	t_localized_pokemon* asd;
+	return asd;
 
 }
 

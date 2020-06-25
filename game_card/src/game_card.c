@@ -21,22 +21,27 @@ int main(void) {
 	iniciar_tall_grass();
 
 	t_new_pokemon* simple = malloc(sizeof(t_new_pokemon));
-	simple->posicion[0]= 15225;
-	simple->posicion[1] = 5321;
-	simple->cantidad=3310;
+	simple->posicion[0]= 118;
+	simple->posicion[1] = 21;
+	simple->cantidad=15;
 	simple->id_mensaje = 124;
 	simple->pokemon= "Simple";
 
+	t_new_pokemon* luken = malloc(sizeof(t_new_pokemon));
+	luken->posicion[0]= 10;
+	luken->posicion[1] = 10;
+	luken->cantidad=125;
+	luken->id_mensaje = 1242;
+	luken->pokemon= "Luken";
 
-
-	laboratorio_de_pruebas();
-	funcion_hilo_new_pokemon(simple, socket_br);
-
+	funcion_hilo_new_pokemon(luken, socket_br);
 
 	terminar_programa(socket,config_gc);
 }
 
 void laboratorio_de_pruebas(){
+
+
 
 
 
@@ -394,19 +399,13 @@ t_list* asignar_block_inicial(){
 
 int asignar_nuevo_bloque(t_new_pokemon* newpoke,char* path,char* key, char* value){
 
-	t_bitarray* bitarray = obtener_bitmap();
-
-	int block = buscar_block_libre(bitarray);
-
-	actualizar_bitmap(bitarray);
+	int block = buscar_block_libre();
 
 	t_file_metadata newpoke_metadata_file = leer_file_metadata(path);
 
 	list_add(newpoke_metadata_file.blocks,block);
 
 	grabar_metadata_file(newpoke_metadata_file,path);
-
-	bitarray_destroy(bitarray);
 
 	return block;
 }
@@ -495,15 +494,14 @@ bool is_directory(char* path){
 
 }
 
-bool is_open(char* path){
+bool esta_lockeado(char* path){
 
 	t_config* file_meta_config = config_create(path);
 
 	char* open = strdup(config_get_string_value(file_meta_config,"OPEN"));
-
 	config_destroy(file_meta_config);
 
-	return open == "Y";
+	return open[0] == 'Y';
 }
 
 void lock_file(char* path){
@@ -512,7 +510,7 @@ void lock_file(char* path){
 
 	config_set_value(file_config,"OPEN","Y");
 
-	config_save(path);
+	config_save(file_config);
 
 	config_destroy(file_config);
 
@@ -524,7 +522,7 @@ void unlock_file(char* path){
 
 	config_set_value(file_config,"OPEN","N");
 
-	config_save(path);
+	config_save(file_config);
 
 	config_destroy(file_config);
 }
@@ -536,7 +534,7 @@ void unlock_file(char* path){
 /*-------------------------------------------------------------------------- NEW-POKEMON ----------------------------------------------------------------------------- */
 
 void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
-
+	log_info(logger,"THREAD NEW POKEMON");
 	log_info(logger,"Llego un NEW_POKEMON %s en (%d,%d) con cantidad %d",new_pokemon->pokemon,new_pokemon->posicion[0],new_pokemon->posicion[1],new_pokemon->cantidad);
 
 	char* path_metafile = obtener_path_metafile(new_pokemon);
@@ -556,6 +554,7 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 
 			log_info(logger,"Existia la posicion %s del pokemon %s, se va a actualizar",key,new_pokemon->pokemon);
 			actualizar_pokemon(temporary_file, path_metafile, key, value);
+			log_info(logger,"Se actualizo la posicion %s del pokemon %s",key,new_pokemon->pokemon);
 
 			} else{
 				log_info(logger,"No existia la posicion %s del pokemon %s , se agrega",key,new_pokemon->pokemon);
@@ -766,13 +765,13 @@ bool el_pokemon_esta_creado(char* path){
 
 void verificar_apertura_new_pokemon(char* path_metafile,char* nombre_pokemon){
 
-	bool esta_en_uso = is_open(path_metafile);
+	bool esta_en_uso = esta_lockeado(path_metafile);
 
 	while (esta_en_uso){
 		int secs = config_gc->tiempo_retardo_operacion;
 		log_info(logger,"No se puede leer ni escribir este pokemon porque esta en uso OPEN=Y, reintentando en: %d",secs);
 		sleep(secs);
-		esta_en_uso = is_open(path_metafile);
+		esta_en_uso = esta_lockeado(path_metafile);
 	}
 
 
@@ -832,24 +831,30 @@ void agregar_nueva_posicion(t_new_pokemon* newpoke,char* pathmeta_poke,char* key
 
 void escribir_data_sin_fragmentacion_interna(char* block_nuevo,char* block_viejo, char*key, char*value){
 
-	char* a_escribir = posicion_into_string(key, value);
-	int size_viejo_block = file_size(block_viejo);
 
-	FILE* file_block_viejo = fopen(block_viejo,"ab");
+	char* a_escribir = posicion_into_string(key, value);
+	int leng =strlen(a_escribir)+1;
 	int i = 0;
 
-	while (file_size(block_viejo)<64){
-		fwrite(a_escribir[i],1,1,file_block_viejo);
+	FILE* file_block_viejo = fopen(block_viejo,"ab");
+
+	int size_block_viejo = file_current_size(file_block_viejo);
+
+	while (size_block_viejo > 0){
+		fwrite(&a_escribir[i],1,1,file_block_viejo);
+		size_block_viejo = file_current_size(file_block_viejo);
 		i++;
 	}
+
 	fclose(file_block_viejo);
 
-	FILE* file_block_nuevo = fopen(block_nuevo,"ab");
+	FILE* file_block_nuevo = fopen(block_nuevo,"wb");
 
-	while( i<= strlen(a_escribir)+1){
-		fwrite(a_escribir[i],1,1,file_block_nuevo);
+	while(i<leng){
+		fwrite(&a_escribir[i],1,1,file_block_nuevo);
 		i++;
 	}
+
 	fclose(file_block_nuevo);
 
 	free(a_escribir);
