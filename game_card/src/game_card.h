@@ -119,4 +119,4 @@ void escribir_data_sin_fragmentacion_interna(char* block_nuevo,char* block_viejo
 void conectarse_a_br(int socket);
 void conectarse_a_gb(int socket);
 void verificar_apertura_pokemon(char* path_metafile,char* nombre_pokemon);
-bool los_blocks_estan_llenos(char** blocks);
+bool los_blocks_estan_llenos(char** blocks,int cantidad_blocks);

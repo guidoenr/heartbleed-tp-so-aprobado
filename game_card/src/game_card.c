@@ -42,7 +42,8 @@ int main(void) {
 	meyern->pokemon= "Meeyerno";
 
 
-	unlock_file(obtener_path_metafile(simple));
+	//unlock_file(obtener_path_metafile(simple->pokemon));
+
 	funcion_hilo_new_pokemon(simple, socket_br);
 	laboratorio_de_pruebas();
 	terminar_programa(socket,config_gc);
@@ -219,9 +220,6 @@ void crear_directorios(char* path){
 	char* metadata = concatenar(path,"/Metadata");
 	char* files = concatenar(path,"/Files");
 
-	//podria verificar si existen los directorios pero ni idea TODO
-	//aclaro que esta terrible negrada es porque el fopen(w+b) no te crea directorios, python si obvio porque es mejor
-
 	mkdir(path,0777);
 	mkdir(metadata,0777);
 	mkdir(files,0777);
@@ -395,7 +393,7 @@ t_list* asignar_block_inicial(){
 	return lista;
 }
 
-int asignar_nuevo_bloque(t_new_pokemon* newpoke,char* path,char* key, char* value){
+int asignar_nuevo_bloque(char* path){
 
 	int block = buscar_block_libre();
 
@@ -536,7 +534,7 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 	log_info(logger,"Llego un NEW_POKEMON %s en (%d,%d) con cantidad %d",new_pokemon->pokemon,new_pokemon->posicion[0],new_pokemon->posicion[1],new_pokemon->cantidad);
 
 	char* path_metafile = obtener_path_metafile(new_pokemon->pokemon);
-	char* dir_path_newpoke = obtener_path_dir_pokemon(new_pokemon);
+	char* dir_path_newpoke = obtener_path_dir_pokemon(new_pokemon->pokemon);
 
 	if (el_pokemon_esta_creado(dir_path_newpoke)){
 
@@ -593,7 +591,7 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 
 void crear_pokemon(t_new_pokemon* newPoke,char* path){
 
-	t_file_metadata metadata = generar_file_metadata(newPoke);
+	t_file_metadata metadata = generar_file_metadata(newPoke->pokemon);
 
 	escribir_block_inicial(metadata,newPoke);
 
@@ -738,9 +736,19 @@ void re_grabar_temporary_en_blocks(char* temporary_file,char* path_metafile){
 		b++;
 	}
 
-	if (i < size_temporary && los_blocks_estan_llenos(blocks)){
+	if (i < size_temporary && los_blocks_estan_llenos(blocks,cantidad_blocks)){
 		log_info(logger,"No alcanzaron los blocks para grabar todo, asigno un nuevo bloque");
 
+		char* block = asignar_nuevo_bloque(path_metafile);
+		char* blockpath = block_path(block);
+		FILE* blockf = fopen(blockpath,"wb");
+
+		while (i <size_temporary){
+			fread(a,1,1,temporary);
+			fwrite(a,1,1,blockf);
+		}
+		fclose(blockf);
+		free(blockpath);
 
 	}
 
@@ -750,12 +758,26 @@ void re_grabar_temporary_en_blocks(char* temporary_file,char* path_metafile){
 
 }
 
-bool los_blocks_estan_llenos(char** blocks){
+bool los_blocks_estan_llenos(char** blocks,int cantidad_blocks){
 
+	int cantidad_llenos;
+	char* blockpath;
+	for(int i = 0; i<cantidad_blocks; i++){
 
+		blockpath = block_path(blocks[i]);
 
-	return true;
+		if (file_size(blockpath) >=63){
+			cantidad_llenos++;
+		}
+
+	}
+
+	free(blockpath);
+
+	return cantidad_llenos == cantidad_blocks;
 }
+
+
 
 void limpiar_blocks(char** blocks){
 
@@ -818,7 +840,6 @@ void actualizar_pokemon(char* temporary_path,char* path_metafile,char* key,char*
 
 	int longitud_nueva = strlen(nueva_cantidad);
 
-	//TODO FALTA UNCASITO
 
 	config_set_value(temporary_config, key, string_itoa(nueva_cantidad));
 
@@ -865,8 +886,8 @@ void agregar_nueva_posicion(t_new_pokemon* newpoke,char* pathmeta_poke,char* key
 
 		}else if (el_block_tiene_espacio_pero_no_alcanza(path_last_block)){ // el ultimo cluster tiene espacio pero no alcanza
 
-			int nuevo_cluster = asignar_nuevo_bloque(newpoke,pathmeta_poke,key,value);
-			char* nuevo_block_path = block_path(string_itoa(nuevo_cluster));
+			char* nuevo_cluster = asignar_nuevo_bloque(pathmeta_poke);
+			char* nuevo_block_path = block_path(nuevo_cluster);
 
 			escribir_data_sin_fragmentacion_interna(nuevo_block_path,path_last_block,key,value);
 
@@ -1008,6 +1029,7 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,int socket_br){
 		}
 
 		remove(temporaryfile);
+		verificar_espacio_en_blocks(meta_path);
 
 	}else{
 		log_info(logger,"No se encuentra este pokemon creado");
@@ -1039,13 +1061,94 @@ void remover_posicion(char* temporarypath,char* key){
 
 }
 
+void verificar_espacio_en_blocks(char* metapath){
+
+	t_config* metaconfig = config_create(metapath);
+
+	char** blocks = config_get_array_value(metaconfig,"BLOCKS");
+
+	int block_vacio = hay_algun_block_vacio(blocks);
+
+	if (block_vacio != -1){
+
+		liberar_block_del_bitmap(string_itoa(block_vacio));
+		liberar_block_de_la_indextable(metapath,block_vacio);
+	}
+
+	config_save(metaconfig);
+	config_destroy(metaconfig);
+	free(blocks);
+}
+
+int hay_algun_block_vacio(char** blocks){
+
+	int cantidad_blocks = size_char_doble(blocks);
+	char* blockpath;
+
+	for(int i=0; i<cantidad_blocks; i++){
+		blockpath = block_path(blocks[i]);
+
+		if (file_size(blockpath) >= 63){
+			return blocks[i];
+			break;
+		}
+
+	}
+
+	free(blockpath);
+	return -1;
+
+}
+
+void liberar_block_del_bitmap(char* numero_block){
+	t_bitarray* bitarray = obtener_bitmap();
+
+	int numero = atoi(numero_block);
+
+	bitarray_clean_bit(bitarray,numero);
+
+	actualizar_bitmap(bitarray);
+	log_info(logger,"Este pokemon libero el block %s",numero_block);
+}
+
+void liberar_block_de_la_indextable(char* metapath,char* block_vacio){
+
+	t_config* metaconfig = config_create(metapath);
+
+	char** blocks = config_get_array_value(metaconfig,"BLOCKS");
+
+	int posicion_bloque_vacio = posicion_block_vacio(blocks,block_vacio);
+
+	t_list* list_blocks = chardoble_to_tlist(blocks);
+
+	list_remove(list_blocks,posicion_bloque_vacio);
+
+	char* nueva_tabla_indices = list_to_string_array(list_blocks);
+
+	config_set_value(metaconfig,"BLOCKS",nueva_tabla_indices);
+
+	config_save(metaconfig);
+	config_destroy(metaconfig);
+	free(blocks);
+	list_destroy(list_blocks);
+
+}
 
 
+int posicion_block_vacio(char** blocks, char* block_vacio){
 
+	int cantidad_blocks = size_char_doble(blocks);
 
+	for(int i=0; i<cantidad_blocks; i++){
 
+		if (blocks[i] == block_vacio){
+			return i;
+			break;
+		}
 
+	}
 
+}
 
 
 
