@@ -56,13 +56,22 @@ void laboratorio_de_pruebas(){
 
 /*-------------------------------------------------------------------------- CONEXIONES ----------------------------------------------------------------------------- */
 
-void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende del que toque ese modulo.
-	uint32_t* size;
-	void* msg;
+void process_request(uint32_t cod_op, uint32_t cliente_fd){
 
-	log_info(logger,"Codigo de operacion %d",cod_op);
+	uint32_t size;
+	op_code* codigo_op = malloc(sizeof(op_code));
+	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
+	cod_op = (*codigo_op);
+	log_info(logger,"Codigo de operacion %d", cod_op);
+	void* mensaje = deserealizar_paquete(stream, *codigo_op, size);
 
 	switch (cod_op) {
+		case NEW_POKEMON:
+			log_info(logger,"LLEGO UN NEW_POKEMON");
+			informarAlBroker(cliente_fd, NEW_POKEMON);
+			funcion_hilo_new_pokemon(mensaje,cliente_fd);
+			free(mensaje);
+			break;
 		case GET_POKEMON:
 //			msg = malloc(sizeof(t_get_pokemon));
 //			msg = recibir_mensaje(cliente_fd, &size);
@@ -77,16 +86,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){ // Cada case depende
 //			agregar_mensaje(CATCH_POKEMON, size, msg, cliente_fd);
 //			free(msg);
 			break;
-		case NEW_POKEMON:
-			//void* recibir_mensaje(uint32_t socket_cliente, uint32_t* size);
-			msg = malloc(sizeof(t_new_pokemon));
-			//msg = recibir_new_pokemon(cliente_fd,size); // retorna un t_new_pokemon
-			informarAlBroker(cliente_fd, NEW_POKEMON);
-			funcion_hilo_new_pokemon(msg,cliente_fd);
 
-			//agregar_mensaje(NEW_POKEMON, size, msg, cliente_fd); ??
-			free(msg);
-			break;
 
 		case 0:
 			log_info(logger,"No se encontro el tipo de mensaje");
@@ -311,15 +311,6 @@ void crear_bitmap(char* path){
 
 }
 
-void crear_pokemon(t_new_pokemon* newPoke,char* path){
-
-	t_file_metadata metadata = generar_file_metadata(newPoke);
-
-	escribir_block_inicial(metadata,newPoke);
-
-	grabar_metadata_file(metadata,path);
-
-}
 /*------------------------------------------------------------------------- BITMAP/BITARRAY ----------------------------------------------------------------------------- */
 
 t_bitarray* obtener_bitmap(){
@@ -544,17 +535,17 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 	log_info(logger,"THREAD NEW POKEMON");
 	log_info(logger,"Llego un NEW_POKEMON %s en (%d,%d) con cantidad %d",new_pokemon->pokemon,new_pokemon->posicion[0],new_pokemon->posicion[1],new_pokemon->cantidad);
 
-	char* path_metafile = obtener_path_metafile(new_pokemon);
+	char* path_metafile = obtener_path_metafile(new_pokemon->pokemon);
 	char* dir_path_newpoke = obtener_path_dir_pokemon(new_pokemon);
 
 	if (el_pokemon_esta_creado(dir_path_newpoke)){
 
 		log_info(logger,"El pokemon %s ya existe",new_pokemon->pokemon);
 
-		verificar_apertura_new_pokemon(path_metafile,new_pokemon->pokemon);
+		verificar_apertura_pokemon(path_metafile,new_pokemon->pokemon);
 
-		char* key = get_key_from_position(new_pokemon);
-		char* value = get_value_from_position(new_pokemon);
+		char* key = get_key_from_position(new_pokemon->posicion);
+		char* value = get_value_from_cantidad(new_pokemon->cantidad);
 		char* temporary_file = generar_archivo_temporal(path_metafile);
 
 		if (existe_la_posicion(key,temporary_file)){
@@ -568,6 +559,8 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 				agregar_nueva_posicion(new_pokemon,path_metafile, key, value);
 
 			}
+
+		remove(temporary_file);
 
 		}else{ // NO EXISTIA EL POKEMON
 
@@ -595,6 +588,16 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 	free(path_metafile);
 	free(dir_path_newpoke);
 	//destrozar_new_pokemon(new_pokemon);
+
+}
+
+void crear_pokemon(t_new_pokemon* newPoke,char* path){
+
+	t_file_metadata metadata = generar_file_metadata(newPoke);
+
+	escribir_block_inicial(metadata,newPoke);
+
+	grabar_metadata_file(metadata,path);
 
 }
 
@@ -735,11 +738,23 @@ void re_grabar_temporary_en_blocks(char* temporary_file,char* path_metafile){
 		b++;
 	}
 
+	if (i < size_temporary && los_blocks_estan_llenos(blocks)){
+		log_info(logger,"No alcanzaron los blocks para grabar todo, asigno un nuevo bloque");
+
+
+	}
+
 	fclose(temporary);
-	remove(temporary_file);
 	free(blockpath);
 	free(a);
 
+}
+
+bool los_blocks_estan_llenos(char** blocks){
+
+
+
+	return true;
 }
 
 void limpiar_blocks(char** blocks){
@@ -770,7 +785,7 @@ bool el_pokemon_esta_creado(char* path){
 	return es_directorio(path);
 }
 
-void verificar_apertura_new_pokemon(char* path_metafile,char* nombre_pokemon){
+void verificar_apertura_pokemon(char* path_metafile,char* nombre_pokemon){
 
 	bool esta_en_uso = esta_lockeado(path_metafile);
 
@@ -780,7 +795,6 @@ void verificar_apertura_new_pokemon(char* path_metafile,char* nombre_pokemon){
 		sleep(secs);
 		esta_en_uso = esta_lockeado(path_metafile);
 	}
-
 
 	log_info(logger,"Se puede acceder al pokemon %s, lockeo el archivo",nombre_pokemon);
 	lock_file(path_metafile);
@@ -792,11 +806,19 @@ void actualizar_pokemon(char* temporary_path,char* path_metafile,char* key,char*
 
 	int nueva_cantidad;
 	int length_posicion;
+	int cantidad_vieja;
 
 	t_config* temporary_config = config_create(temporary_path);
 
-	nueva_cantidad = config_get_int_value(temporary_config,key);
-	nueva_cantidad += atoi(value);
+	cantidad_vieja = config_get_int_value(temporary_config,key);
+
+	int longitud_vieja = strlen(cantidad_vieja);
+
+	nueva_cantidad = cantidad_vieja + atoi(value);
+
+	int longitud_nueva = strlen(nueva_cantidad);
+
+	//TODO FALTA UNCASITO
 
 	config_set_value(temporary_config, key, string_itoa(nueva_cantidad));
 
@@ -907,7 +929,7 @@ int calcular_size_inicial(t_new_pokemon* newPoke){
 	int size;
 
 	char* key = get_key_from_position(newPoke);
-	char* value = get_value_from_position(newPoke);
+	char* value = get_value_from_cantidad(newPoke->cantidad);
 
 
 	size = strlen(key) + strlen(value) + 1;
@@ -926,7 +948,7 @@ void escribir_block_inicial(t_file_metadata metadata,t_new_pokemon* newPoke){
 	char* finalPath = concatenar(blockPath,".bin");
 
 	char* key = get_key_from_position(newPoke);
-	char* value = get_value_from_position(newPoke);
+	char* value = get_value_from_cantidad(newPoke->cantidad);
 
 	t_config* block = config_create(finalPath);
 
@@ -945,20 +967,82 @@ void escribir_block_inicial(t_file_metadata metadata,t_new_pokemon* newPoke){
 }
 
 
-char* get_key_from_position(t_new_pokemon* newpoke){
-	char* pos_x = string_itoa(newpoke->posicion[0]);
-	char* pos_y = string_itoa(newpoke->posicion[1]);
+char* get_key_from_position(uint32_t posicion[2]){
+
+	char* pos_x = string_itoa(posicion[0]);
+	char* pos_y = string_itoa(posicion[1]);
 	char* key = concatenar(pos_x,"-");
 	char* final_key = concatenar(key,pos_y);
 	return final_key;
 }
 
-char* get_value_from_position(t_new_pokemon* newpoke){
-	char* value = string_itoa(newpoke->cantidad);
+char* get_value_from_cantidad(uint32_t cantidad){
+	char* value = string_itoa(cantidad);
 	return value;
 }
 
-/*-------------------------------------------------------------------------- CAUGHT POKEMON ----------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------- CATCH-POKEMON ----------------------------------------------------------------------------- */
+void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,int socket_br){
+
+	log_info(logger,"THREAD CATCH POKEMON");
+	log_info(logger,"LLEGO UN CATCH %s en la posicion %d-%d ",catch_pokemon->pokemon,catch_pokemon->posicion[0],catch_pokemon->posicion[1]);
+
+	char* meta_path = obtener_path_metafile(catch_pokemon->pokemon);
+	char* dir_path = obtener_path_dir_pokemon(catch_pokemon->pokemon);
+	char* key = get_key_from_position(catch_pokemon->posicion);
+
+	if (el_pokemon_esta_creado(dir_path)){
+
+		verificar_apertura_pokemon(meta_path, catch_pokemon->pokemon);
+		log_info(logger,"Existia el pokemon, ahi te lo actualizo del mapa kpo");
+
+
+		char* temporaryfile = generar_archivo_temporal(meta_path);
+
+		if (existe_la_posicion(key, temporaryfile)){
+			remover_posicion(temporaryfile,key);
+			re_grabar_temporary_en_blocks(temporaryfile,meta_path);
+
+		} else{
+			log_info(logger,"Error, no existe esta posicion en el mapa");
+		}
+
+		remove(temporaryfile);
+
+	}else{
+		log_info(logger,"No se encuentra este pokemon creado");
+	}
+
+
+
+	unlock_file(meta_path);
+
+
+}
+
+void remover_posicion(char* temporarypath,char* key){
+	int cantidad;
+	int nueva_cantidad;
+	t_config* temporaryconfig = config_create(temporarypath);
+
+	cantidad = config_get_int_value(temporaryconfig,key);
+
+	if (cantidad == 1){
+		config_remove_key(temporaryconfig,key);
+	}else {
+		nueva_cantidad = cantidad - 1;
+		config_set_value(temporaryconfig, key, nueva_cantidad);
+	}
+
+	config_save(temporaryconfig);
+	config_destroy(temporaryconfig);
+
+}
+
+
+
+
+
 
 
 
@@ -1077,18 +1161,18 @@ bool es_directorio(char* path){
 	return x;
 }
 
-char* obtener_path_metafile(t_new_pokemon* pokemon){
+char* obtener_path_metafile(char* nombre_pokemon){
 	punto_montaje = config_gc->punto_montaje_tallgrass;
 	char* path  = concatenar (punto_montaje,"/Files/");
-	char* path2 = concatenar (path,pokemon->pokemon); //terrible negrada esto, pero anda o no anda?
+	char* path2 = concatenar (path,nombre_pokemon); //terrible negrada esto, pero anda o no anda?
 	char* path3 = concatenar(path2,"/Metadata.bin");
 	return path3;
 }
 
-char* obtener_path_dir_pokemon(t_new_pokemon* pokemon){
+char* obtener_path_dir_pokemon(char* nombre_pokemon){
 	punto_montaje = config_gc->punto_montaje_tallgrass;
 	char* path = concatenar(punto_montaje,"/Files/");
-	char* path2 = concatenar(path,pokemon->pokemon);
+	char* path2 = concatenar(path,nombre_pokemon);
 	return path2;
 }
 
@@ -1203,5 +1287,6 @@ t_list* chardoble_to_tlist(char** chardoble){
 	}
 	return lista;
 }
+
 
 
