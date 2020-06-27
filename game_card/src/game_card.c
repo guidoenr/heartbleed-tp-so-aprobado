@@ -20,32 +20,15 @@ int main(void) {
 	//conectarse(socket_br);
 	iniciar_tall_grass();
 
+	//pruebas_new_pokemon(socket_br);
+	pruebas_catch_pokemon();
 
-	//laboratorio_de_pruebas(socket_br);
-	terminar_programa(socket,config_gc);
-
-	t_new_pokemon* simple = malloc(sizeof(t_new_pokemon));
-		simple->posicion[0]= 4444;
-		simple->posicion[1] = 1254;
-		simple->cantidad=61;
-		simple->id_mensaje = 124;
-		simple->pokemon= "Simple";
-
-
-		char* random_path = generar_archivo_temporal(obtener_path_metafile(simple->pokemon));
-
-
-		t_config* random_config = config_create(random_path);
-
-		int cantidad_keys = config_keys_amount(random_config);
-
-
-
-		config_destroy(random_config);
+	terminar_programa(socket_br, config_gc);
 
 }
 
-void laboratorio_de_pruebas(int socket){
+void pruebas_new_pokemon(int socket){
+
 
 /*
 
@@ -63,12 +46,47 @@ void laboratorio_de_pruebas(int socket){
 	meyern->id_mensaje = 1242;
 	meyern->pokemon= "Meeyerno";
 
-	unlock_file(obtener_path_metafile(simple->pokemon));
+
 
 	funcion_hilo_new_pokemon(simple,socket);
 
 */
 
+
+	t_new_pokemon* Luca = malloc(sizeof(t_new_pokemon));
+	Luca->posicion[0]=888;
+	Luca->posicion[1] = 888;
+	Luca->cantidad=1;
+	Luca->id_mensaje = 124;
+	Luca->pokemon= "Luca";
+	//unlock_file(obtener_path_metafile(simple->pokemon));
+	funcion_hilo_new_pokemon(Luca, socket);
+//
+//	char* random_path = generar_archivo_temporal(obtener_path_metafile(simple->pokemon));
+//
+//
+//	t_config* random_config = config_create(random_path);
+//
+//	int cantidad_keys = config_keys_amount(random_config);
+//
+//
+//
+//	config_destroy(random_config);
+
+
+
+}
+void pruebas_catch_pokemon(int socket){
+
+	t_catch_pokemon* simple = malloc(sizeof(t_catch_pokemon));
+	simple->pokemon="Simple";
+	simple->posicion[0] = 5555;
+	simple->posicion[1] = 5555;
+	simple->id_mensaje = 123;
+
+
+
+	funcion_hilo_catch_pokemon(simple, socket);
 
 
 
