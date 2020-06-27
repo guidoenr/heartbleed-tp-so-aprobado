@@ -4,7 +4,6 @@ int main(void) {
 
 	iniciar_programa();
 
-
 	t_pokemon_mapa* pikachu = malloc(sizeof(t_pokemon_mapa));
 	pikachu -> nombre = "Pikachu";
 	pikachu -> posicion[0] = 1;
@@ -314,6 +313,7 @@ void* conexion_con_game_boy() {
 
 	iniciar_servidor("127.0.0.2", "5662"); // puerto robado de la config de gameboy
 
+	return NULL;
 }
 
 // ------------------------------- ENTRENADORES -------------------------------//
@@ -329,6 +329,8 @@ void iniciar_entrenadores() {
 		entrenador -> tire_accion = 0;
 		entrenador -> estimacion = config -> estimacion_inicial;
 		entrenador -> ciclos_cpu = 0;
+		//entrenador -> socket_mensaje_catch = 0;
+		//entrenador ->
 		sem_init(&(entrenador -> sem_binario), 0, 0);
 		sem_init(&(entrenador -> esperar_caught), 0, 0);
 
@@ -575,7 +577,8 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 		pedido -> distancia --;
 		log_info(logger, "El entrenador %d se mueve a [%d,%d]", pedido -> entrenador -> id, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 	} else {
-		// tirar el catch (agarrar)
+		enviar_mensaje_catch(pedido);
+
 		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_block, pedido -> entrenador);
 		log_info(logger, "El entrenador %d tiro el catch para un %s en la posicion [%d,%d]",
@@ -583,13 +586,23 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 				pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 		log_info(logger, "El entrenador %d se mueve a block para esperar la respuesta del catch", pedido -> entrenador -> id);
 		sem_post(&mx_estados);
-		pedido -> entrenador -> tire_accion = 1;
+
 		//sleep(config -> retardo_cpu * 4); //dsp decomentar CREO
 	}
 
 	pedido -> entrenador -> ciclos_cpu ++;
 	sleep(config -> retardo_cpu);// RETARDO_CICLO_CPU
 	pedido -> entrenador -> pasos_a_moverse --;
+}
+
+void recibir_id_de_mensaje_enviado(uint32_t socket_cliente, uint32_t id_mensaje_enviado) {
+  uint32_t id = 0;
+
+  recv(socket_cliente, & id, sizeof(uint32_t), MSG_WAITALL);
+  id_mensaje_enviado = id;
+  log_info(logger, "El ID de mensaje enviado es: %d", id_mensaje_enviado);
+
+  close(socket_cliente);
 }
 
 void tradear_pokemon(t_pedido_intercambio* pedido){
@@ -1275,10 +1288,35 @@ bool esta_en_estado(t_list* estado, t_entrenador* entrenador) {
 	return 0;
 }
 
+// ------------------------------- MENSAJES ------------------------------- //
+
+void enviar_mensaje_catch(t_pedido_captura* pedido) {
+
+	t_catch_pokemon* mensaje = malloc(sizeof(t_catch_pokemon));
+
+	mensaje -> pokemon = pedido -> pokemon -> nombre;
+	mensaje -> posicion[0] = pedido -> pokemon -> posicion[0];
+	mensaje -> posicion[1] = pedido -> pokemon -> posicion[1];
+	mensaje -> id_mensaje = 0;
+
+	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+
+	uint32_t tamanio_mensaje = size_mensaje(mensaje, CATCH_POKEMON);
+
+	enviar_mensaje(CATCH_POKEMON, mensaje, socket, tamanio_mensaje);
+
+	pedido -> entrenador -> tire_accion = 1;
+
+	//pedido -> entrenador -> socket_mensaje_catch = socket; // ver comentario t_entrenador
+
+	recibir_id_de_mensaje_enviado(socket, pedido -> entrenador -> id_espera_catch);
+
+}
+
 //TODO
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 
-	uint32_t size;
+	/*uint32_t size;
 	op_code* codigo_op = malloc(sizeof(op_code));
 
 	sem_wait(&mx_paquete);
@@ -1304,10 +1342,10 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			log_info(logger,"No se encontro el tipo de mensaje");
 			pthread_exit(NULL);
 		case -1:
-			pthread_exit(NULL);
+			pthread_exit(NULL); */
 }
 
-// ------------------------------- TERMINAR -------------------------------//
+// ------------------------------- TERMINAR ------------------------------- //
 
 void liberar_config() {
 	liberar_entrenadores();
@@ -1408,8 +1446,8 @@ void loggear_resultados(){
 }
 
 void terminar_programa(/*uint32_t conexion*/) {
-	loggear_resultados();
 	terminar_hilos();
+	loggear_resultados();
 	free(mapa_pokemons); // ver, se va destruyendo como objetivo global?
 	//liberar_conexion(conexion);
 	liberar_listas();

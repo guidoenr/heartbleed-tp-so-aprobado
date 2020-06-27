@@ -23,6 +23,8 @@ typedef struct {
 	sem_t esperar_caught;
 	uint32_t estimacion;
 	uint32_t ciclos_cpu;
+	uint32_t socket_mensaje_catch; // depende de donde hagamos el recv
+	uint32_t id_espera_catch;
 } t_entrenador;
 
 typedef struct {
@@ -102,14 +104,13 @@ void calcular_estimaciones_ready();
 bool estoy_esperando_trade(t_entrenador*);
 
 // mensajes
+void recibir_id_de_mensaje_enviado(uint32_t, uint32_t);
+void enviar_mensaje_catch(t_pedido_captura*);
+void procesar_caught(t_pedido_captura*);
 
 // segun algoritmo:
 int distancia_segun_algoritmo(t_pedido_captura*);
 void planificar_segun_algoritmo(t_pedido_captura* pedido);
-
-
-void procesar_caught(t_pedido_captura*);
-
 
 // planificacion
 void* planificar_entrenadores();
