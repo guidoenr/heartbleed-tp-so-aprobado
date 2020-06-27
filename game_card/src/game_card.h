@@ -121,4 +121,4 @@ char* posicion_into_string(char*key,char*value);
 t_file_metadata generar_file_metadata(t_new_pokemon* newPoke);
 t_bitarray* obtener_bitmap();
 
-pruebas_catch_pokemon();;
+void pruebas_catch_pokemon(int socket);

@@ -20,8 +20,8 @@ int main(void) {
 	//conectarse(socket_br);
 	iniciar_tall_grass();
 
-	//pruebas_new_pokemon(socket_br);
-	pruebas_catch_pokemon();
+	pruebas_new_pokemon(socket_br);
+	pruebas_catch_pokemon(socket_br);
 
 	terminar_programa(socket_br, config_gc);
 
@@ -29,64 +29,28 @@ int main(void) {
 
 void pruebas_new_pokemon(int socket){
 
+	t_new_pokemon* kennyS = malloc(sizeof(t_new_pokemon));
+	kennyS->posicion[0]=16;
+	kennyS->posicion[1] = 2;
+	kennyS->cantidad=1;
+	kennyS->id_mensaje = 124;
+	kennyS->pokemon= "kennyS";
 
-/*
-
-	t_new_pokemon* luken = malloc(sizeof(t_new_pokemon));
-	luken->posicion[0]= 10;
-	luken->posicion[1] = 10;
-	luken->cantidad=125;
-	luken->id_mensaje = 1242;
-	luken->pokemon= "Luken";
-
-	t_new_pokemon* meyern = malloc(sizeof(t_new_pokemon));
-	meyern->posicion[0]= 122;
-	meyern->posicion[1] = 1231;
-	meyern->cantidad=1255;
-	meyern->id_mensaje = 1242;
-	meyern->pokemon= "Meeyerno";
-
-
-
-	funcion_hilo_new_pokemon(simple,socket);
-
-*/
-
-
-	t_new_pokemon* Luca = malloc(sizeof(t_new_pokemon));
-	Luca->posicion[0]=888;
-	Luca->posicion[1] = 888;
-	Luca->cantidad=1;
-	Luca->id_mensaje = 124;
-	Luca->pokemon= "Luca";
-	//unlock_file(obtener_path_metafile(simple->pokemon));
-	funcion_hilo_new_pokemon(Luca, socket);
-//
-//	char* random_path = generar_archivo_temporal(obtener_path_metafile(simple->pokemon));
-//
-//
-//	t_config* random_config = config_create(random_path);
-//
-//	int cantidad_keys = config_keys_amount(random_config);
-//
-//
-//
-//	config_destroy(random_config);
-
+	funcion_hilo_new_pokemon(kennyS, socket);
 
 
 }
 void pruebas_catch_pokemon(int socket){
 
-	t_catch_pokemon* simple = malloc(sizeof(t_catch_pokemon));
-	simple->pokemon="Simple";
-	simple->posicion[0] = 5555;
-	simple->posicion[1] = 5555;
-	simple->id_mensaje = 123;
+	t_catch_pokemon* kenny = malloc(sizeof(t_catch_pokemon));
+	kenny->pokemon="kennyS";
+	kenny->posicion[0] = 16;
+	kenny->posicion[1] = 2;
+	kenny->id_mensaje = 123;
 
 
-
-	funcion_hilo_catch_pokemon(simple, socket);
+	unlock_file(obtener_path_metafile(kenny->pokemon));
+	funcion_hilo_catch_pokemon(kenny, socket);
 
 
 
@@ -1057,6 +1021,7 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,int socket_br){
 		if (existe_la_posicion(key, temporaryfile)){
 			remover_posicion(temporaryfile,key);
 			re_grabar_temporary_en_blocks(temporaryfile,meta_path);
+			log_info(logger,"Se retiro una cantidad en la posicion %s",key);
 
 		} else{
 			log_info(logger,"Error, no existe esta posicion en el mapa");
@@ -1069,10 +1034,8 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,int socket_br){
 		log_info(logger,"No se encuentra este pokemon creado");
 	}
 
-
-
 	unlock_file(meta_path);
-
+	log_info(logger,"THREAD FINISHED, UNLOCKEO EL POKEMON");
 
 }
 
@@ -1084,10 +1047,11 @@ void remover_posicion(char* temporarypath,char* key){
 	cantidad = config_get_int_value(temporaryconfig,key);
 
 	if (cantidad == 1){
+
 		config_remove_key(temporaryconfig,key);
 	}else {
 		nueva_cantidad = cantidad - 1;
-		config_set_value(temporaryconfig, key, nueva_cantidad);
+		config_set_value(temporaryconfig,key,string_itoa(nueva_cantidad));
 	}
 
 	config_save(temporaryconfig);
@@ -1106,7 +1070,7 @@ void verificar_espacio_en_blocks(char* metapath){
 	if (block_vacio != -1){
 
 		liberar_block_del_bitmap(string_itoa(block_vacio));
-		liberar_block_de_la_indextable(metapath,block_vacio);
+		liberar_block_de_la_indextable(metapath,block_vacio,metaconfig);
 	}
 
 	config_save(metaconfig);
@@ -1120,12 +1084,16 @@ int hay_algun_block_vacio(char** blocks){
 	char* blockpath;
 
 	for(int i=0; i<cantidad_blocks; i++){
+
 		blockpath = block_path(blocks[i]);
 
-		if (file_size(blockpath) >= 63){
-			return blocks[i];
+		int blocksize = file_size(blockpath);
+
+		if (blocksize == 0){
+			return atoi(blocks[i]);
 			break;
 		}
+
 
 	}
 
@@ -1142,12 +1110,10 @@ void liberar_block_del_bitmap(char* numero_block){
 	bitarray_clean_bit(bitarray,numero);
 
 	actualizar_bitmap(bitarray);
-	log_info(logger,"Este pokemon libero el block %s",numero_block);
+	log_info(logger,"Este pokemon libero el block %s porque habia uno solo en esa posicion",numero_block);
 }
 
-void liberar_block_de_la_indextable(char* metapath,char* block_vacio){
-
-	t_config* metaconfig = config_create(metapath);
+void liberar_block_de_la_indextable(char* metapath,char* block_vacio,t_config* metaconfig){
 
 	char** blocks = config_get_array_value(metaconfig,"BLOCKS");
 
@@ -1161,8 +1127,6 @@ void liberar_block_de_la_indextable(char* metapath,char* block_vacio){
 
 	config_set_value(metaconfig,"BLOCKS",nueva_tabla_indices);
 
-	config_save(metaconfig);
-	config_destroy(metaconfig);
 	free(blocks);
 	list_destroy(list_blocks);
 
@@ -1175,7 +1139,7 @@ int posicion_block_vacio(char** blocks, char* block_vacio){
 
 	for(int i=0; i<cantidad_blocks; i++){
 
-		if (blocks[i] == block_vacio){
+		if (atoi(blocks[i]) == block_vacio){
 			return i;
 			break;
 		}
@@ -1238,6 +1202,10 @@ char* list_to_string_array(t_list* blocks){
 	if (blocks->elements_count == 1){
 
 		format = concatenar(format,string_itoa(blocks->head->data));
+
+	} else if (blocks->elements_count == 0){
+
+		log_info(logger,"La tabla de indices del pokemon solamente tenia un cluster, ahora queda vacia");
 
 	} else {
 
