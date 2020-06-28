@@ -672,19 +672,88 @@ t_caught_pokemon* deserealizar_caught_pokemon(void* stream, uint32_t size_mensaj
 
 }
 
-t_localized_pokemon* deserealizar_localized_pokemon(void*stream, uint32_t size_mensaje){
-	t_localized_pokemon* asd;
-	return asd;
+//REVISAR
+void* serializar_localized_pokemon(void* mensaje_localized, uint32_t size_mensaje, uint32_t* size_serializado){
+	t_localized_pokemon* mensaje_a_enviar = malloc(size_mensaje); //REVISAR -> capaz no hace falta reservar todo.
+    mensaje_a_enviar                      = mensaje_localized;
+    uint32_t tamanio_pokemon	          = strlen(mensaje_a_enviar -> pokemon) + 1;
 
+    uint32_t malloc_size = (*size_serializado);
+    
+    void* stream = malloc(malloc_size);
+	uint32_t offset = 0;
 
+    op_code codigo_operacion = LOCALIZED_POKEMON;
+    memcpy(stream + offset, &codigo_operacion, sizeof(op_code));
+    log_info(logger,"Sereliazacion codigo de operacion: %d", *(int*) (stream + offset));
+	offset += sizeof(op_code);
+
+    memcpy(stream + offset, size_serializado, sizeof(uint32_t));
+    log_info(logger,"Sereliazacion size: %d", *(int*) (stream + offset));
+    offset += sizeof(uint32_t);
+
+    memcpy(stream + offset, &(mensaje_a_enviar -> id_mensaje), sizeof(uint32_t));
+    log_info(logger,"Sereliazacion idmensaje: %d", *(int*) (stream + offset));
+	offset += sizeof(uint32_t);
+
+    memcpy(stream + offset, &tamanio_pokemon, sizeof(uint32_t));
+    log_info(logger,"Sereliazacion tamaniopokemon: %d", *(int*) (stream + offset));
+	offset += sizeof(uint32_t);
+    
+    memcpy(stream + offset, mensaje_a_enviar -> pokemon, tamanio_pokemon);
+    log_info(logger,"Sereliazacion pokemon %s:", (char*) stream + offset);
+	offset += tamanio_pokemon;
+
+    uint32_t tamanio_lista = sizeof(t_list) + list_size(mensaje_a_enviar -> posiciones) * sizeof(uint32_t);
+
+    memcpy(stream + offset, &tamanio_lista, sizeof(uint32_t));
+    log_info(logger,"Sereliazacion tamanio lista: %d", *(int*) (stream + offset));
+	offset += sizeof(uint32_t);
+
+    memcpy(stream + offset, mensaje_a_enviar -> posiciones, tamanio_lista);
+    log_info(logger,"Sereliazacion lista de elementos %s:", *(int*) stream + offset);
+    offset += tamanio_lista;
+
+    log_info(logger, "cod op a enviar %d", CATCH_POKEMON);
+	log_info(logger, "tam a enviar %d", malloc_size);
+    liberar_mensaje_localized(mensaje_a_enviar);
+
+	return stream;
 }
 
+//CHEQUEAR CON EL TEMA DE LAS T_LIST
+t_localized_pokemon* deserealizar_localized_pokemon(void* mensaje_localized, uint32_t size_mensaje, uint32_t* size_serializado){
 
-t_localized_pokemon* serializar_localized_pokemon(void* mensaje_new, uint32_t size_mensaje, uint32_t* size_serializado){
+	t_localized_pokemon* mensaje_localized_pokemon = malloc(sizeof(t_localized_pokemon));
+    uint32_t tamanio_pokemon = 0;
+    uint32_t tamanio_lista_posiciones = 0;
+    uint32_t offset = 0 ;
 
-	t_localized_pokemon* asd;
-	return asd;
+    memcpy(&(mensaje_localized_pokemon -> id_mensaje), stream + offset, sizeof(uint32_t));
+    log_info(logger,"deserealizado idmensaje %d:", *(int*) (stream + offset));
+	offset += sizeof(uint32_t);
 
+    memcpy(&tamanio_pokemon, stream + offset, sizeof(uint32_t));
+    log_info(logger,"deserealizado tamanio pokemon: %d", *(int*) (stream+ offset));
+    offset += sizeof(uint32_t);
+
+    mensaje_localized_pokemon -> pokemon = malloc(tamanio_pokemon);
+
+	memcpy(mensaje_localized_pokemon -> pokemon, stream + offset, tamanio_pokemon);
+	log_info(logger, "Se deserializo un mensaje get del pokemon: %s", mensaje_get_pokemon -> pokemon);
+	offset += tamanio_pokemon;
+
+    memcpy(&tamanio_lista_posiciones, stream + offset, sizeof(uint32_t));
+    log_info(logger,"deserealizado tamanio lista: %d", *(int*) (stream+ offset));
+    offset += sizeof(uint32_t);
+
+    mensaje_localized_pokemon -> posiciones = malloc(tamanio_lista_posiciones);
+    //REVISAR
+    memcpy(mensaje_localized_pokemon -> posiciones, stream + offset, tamanio_lista_posiciones);
+    log_info(logger,"deserealizado  lista: %d", *(int*) (stream + offset));
+    offset += tamanio_lista_posiciones;
+
+	return mensaje_localized_pokemon;
 }
 
 void* serializar_ack(void* mensaje_ack, uint32_t size_mensaje, uint32_t* size_serializado){
@@ -837,4 +906,11 @@ void liberar_ack(t_ack* mensaje_ack){
 
 void liberar_suscripcion(t_suscripcion* mensaje_suscripcion){
     free(mensaje_suscripcion);
+}
+
+void liberar_mensaje_localized(t_localized_pokemon* mensaje_localized){
+    //free(mensaje_localized -> pokemon);
+    //list_clear(mensaje_localized -> posiciones);
+    //list_destroy(mensaje_localized -> posiciones);
+    free(mensaje_localized);
 }
