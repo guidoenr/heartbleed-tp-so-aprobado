@@ -125,7 +125,7 @@ void* serializar_paquete(void* mensaje, uint32_t size_mensaje, op_code codigo, u
 void* serializar_new_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_get_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_appeared_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
-t_localized_pokemon* serializar_localized_pokemon(void* mensaje_new, uint32_t size_mensaje, uint32_t* size_serializado);
+void* serializar_localized_pokemon(void* mensaje_new, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_catch_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_caught_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_suscripcion(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);

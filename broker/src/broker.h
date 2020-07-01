@@ -6,7 +6,18 @@
 #include <readline/readline.h>
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 #include <semaphore.h>
+#include <signal.h>
+#include <time.h>
 
+typedef struct {
+    uint32_t indice;
+    uint32_t id_mensaje;
+} t_indice_lru;
+
+typedef struct {
+    uint32_t indice;
+    uint32_t tamanio;
+} t_indice;
 
 typedef struct {
     uint32_t size_memoria;
@@ -18,6 +29,7 @@ typedef struct {
 	char* 	 puerto;
 	uint32_t frecuencia_compactacion;
 	char* 	 log_file;
+	char* 	 memory_log;
 } t_config_broker;
 
 typedef struct {
@@ -35,8 +47,7 @@ typedef struct {
 	void* 	 payload;
 	uint32_t base;
 	uint32_t ocupado;
-	uint32_t tiempo_de_llegada;
-	uint32_t ultima_modificacion;
+	op_code  codigo_operacion; //Ver donde se puede inicializar el op_code
 } t_memoria_dinamica;
 
 typedef struct{
@@ -53,6 +64,10 @@ struct t_node{
 struct t_node;
 typedef struct t_node t_node;
 
+t_list* lista_fifo;
+t_list* pila_lru;
+t_log* logger_memoria;
+
 t_list* cola_catch;
 t_list* cola_caught;
 t_list* cola_get;
@@ -67,7 +82,7 @@ t_list* lista_suscriptores_localized;
 t_list* lista_suscriptores_new;
 t_list* lista_suscriptores_appeared;
 
-//void* memoria_cache;
+void* memoria;
 t_list* memoria_cache;
 t_list* memoria_con_particiones;
 t_config* config;
@@ -75,6 +90,7 @@ t_config_broker* config_broker;
 t_log* logger;
 uint32_t particiones_liberadas;
 uint32_t asignado = 0;
+uint32_t numero_particion;
 
 //---hilos---//
 
@@ -117,7 +133,7 @@ void crear_hilo_por_mensaje		 (void);
 void gestionar_mensaje			 (void);
 void terminar_hilos_broker		 (void);
 void liberar_semaforos_broker	 (void);
-
+void sig_handler				 (int);
 
 
 
@@ -143,6 +159,8 @@ void 	 eliminar_mensajes_confirmados	   			   (void);
 void 	 borrar_mensajes_confirmados	   			   (op_code, t_list*, t_list*);
 void 	 eliminar_mensaje							   (void*);
 bool 	 no_tiene_el_mensaje						   (t_mensaje*, uint32_t);
+void 	 encolar_mensaje_fifo 						   (uint32_t);
+void 	 apilar_mensaje								   (uint32_t);
 
 //Suscripciones
 void 		   recibir_suscripcion         (t_suscripcion*);
@@ -168,7 +186,7 @@ struct t_node* 		crear_nodo							 (uint32_t);
 void 		   		arrancar_buddy						 (void);
 void 		   		asignar_nodo						 (struct t_node*, void*);
 uint32_t 	   		recorrer							 (struct t_node*,uint32_t ,void*);
-void 		   		ubicar_particion					 (uint32_t, uint32_t, void* );
+void 		   		ubicar_particion					 (uint32_t, uint32_t, void*, op_code);
 void 		   		liberar_particion_dinamica			 (t_memoria_dinamica*);
 void 		   		iniciar_memoria_particiones			 (t_list*);
 uint32_t 	   		encontrar_primer_ajuste				 (uint32_t);
@@ -181,7 +199,22 @@ void 		   		compactar_memoria_cache				 (t_list*);
 void 		   		compactar_particiones_dinamicas		 (void);
 t_memoria_dinamica* seleccionar_victima_de_reemplazo_fifo(void);
 t_memoria_dinamica* seleccionar_victima_de_reemplazo_lru (void);
-void guardar_particion(t_mensaje*);
-uint32_t chequear_espacio_memoria_particiones(uint32_t);
-
+void				guardar_particion				 	 (t_mensaje*);
+uint32_t 		 	chequear_espacio_memoria_particiones (uint32_t);
+void 				reemplazar_particion_de_memoria		 (t_mensaje*);
+t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(t_list*);
+void 				liberar_mensaje_de_memoria			 (t_mensaje*);
+void 				dump_de_memoria						 (void);
+uint32_t 			encontrar_indice_de_lru				 (t_memoria_dinamica*);
+void 				consolidar_particiones_dinamicas	 (void);
+bool 				tiene_siguiente						 (uint32_t);
+bool 				ambas_estan_vacias				 	 (uint32_t, uint32_t);
+void 				consolidar_particiones_en_cache		 (uint32_t, uint32_t);
+void 				consolidar_particiones				 (uint32_t, uint32_t );
+void 				dump_info_particion					 (void*);
+uint32_t 			obtener_valor_lru					 (t_memoria_dinamica*);
+char* 				obtener_cola_del_mensaje			 (t_memoria_dinamica*);
+t_memoria_dinamica* armar_particion(uint32_t, uint32_t, void*, uint32_t, op_code);
+uint32_t 			obtener_id							 (void*);
+void* 				armar_payload_mensaje				 (t_mensaje*, op_code, uint32_t);
 

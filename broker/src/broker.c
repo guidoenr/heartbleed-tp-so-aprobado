@@ -3,6 +3,10 @@
 int main(void) {
 	iniciar_programa();
 
+
+	signal(SIGUSR1, sig_handler);
+
+
 	/*enviar_mensajes(cola_get, lista_suscriptores_get);
 	enviar_mensajes(cola_catch, lista_suscriptores_catch);
 	enviar_mensajes(cola_localized, lista_suscriptores_localized);
@@ -16,9 +20,18 @@ int main(void) {
 	return 0;
 }
 
+void sig_handler(int signo) {
+    if(signo == SIGUSR1){
+        dump_de_memoria();
+    }
+}
+
 void iniciar_programa(){
 	id_mensaje_univoco = 0;
 	particiones_liberadas = 0;
+	//Variable global (revisar?).
+	//Es para hacer el dump de la cache.
+	numero_particion = 1;
 	leer_config();
 	iniciar_logger(config_broker->log_file, "broker");
 	reservar_memoria();
@@ -35,7 +48,7 @@ void iniciar_programa(){
 void reservar_memoria(){
 	//La memoria en sí tiene que ser un void*
 	//La memoria_cache sería la lista auxiliar para esa memoria?
-	memoria_cache = malloc(config_broker ->  size_memoria);
+	memoria = malloc(config_broker ->  size_memoria);
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
 		arrancar_buddy();
 	}
@@ -55,6 +68,15 @@ void crear_colas_de_mensajes(){
 	 cola_localized = list_create();
 	 cola_catch 	= list_create();
 	 cola_caught 	= list_create();
+
+	 if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "FIFO")){
+	     lista_fifo = list_create();
+	 } else if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "LRU")){
+	     pila_lru = list_create();
+	 } else {
+	     log_error(logger, "No se reconoce el algoritmo de reemplazo.");
+	 }
+
 }
 
 void crear_listas_de_suscriptores(){
@@ -73,14 +95,14 @@ void leer_config() {
 
 	config_broker = malloc(sizeof(t_config_broker));
 
-	config = config_create("Debug/broker.config");
+	config = config_create("broker.config");
 
 	if(config == NULL){
 		    	printf("No se pudo encontrar el path del config.");
 		    	exit(-2);
 	}
 	config_broker -> size_memoria 			   = config_get_int_value(config, "TAMANO_MEMORIA");
-	config_broker -> size_min_memoria 		   = config_get_int_value(config, "TAMANO_MINIMO_PARTICION");
+	config_broker -> size_min_memoria 		   = config_get_int_value(config, "TAMANO_MEMORIA");
 	config_broker -> algoritmo_memoria 		   = config_get_string_value(config, "ALGORITMO_MEMORIA");
 	config_broker -> algoritmo_reemplazo 	   = config_get_string_value(config, "ALGORITMO_REEMPLAZO");
 	config_broker -> algoritmo_particion_libre = config_get_string_value(config, "ALGORITMO_PARTICION_LIBRE");
@@ -88,7 +110,7 @@ void leer_config() {
 	config_broker -> puerto 				   = config_get_string_value(config, "PUERTO_BROKER");
 	config_broker -> frecuencia_compactacion   = config_get_int_value(config, "FRECUENCIA_COMPACTACION");
 	config_broker -> log_file 				   = config_get_string_value(config, "LOG_FILE");
-
+	config_broker -> memory_log 			   = config_get_string_value(config, "DUMP_CACHE");
 }
 
 void liberar_config(t_config_broker* config) {
@@ -98,6 +120,7 @@ void liberar_config(t_config_broker* config) {
 	free(config -> ip_broker);
 	free(config -> puerto);
 	free(config -> log_file);
+	free(config -> memory_log);
 	free(config);
 }
 
@@ -111,7 +134,7 @@ void terminar_programa(t_log* logger){
 }
 
 void liberar_memoria_cache(){
-	free(memoria_cache);
+	free(memoria);
 }
 
 void liberar_listas(){
@@ -196,24 +219,47 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 
 	//Este id habría que ver como pasarlo al id de un t_get por ejemplo.
 
-	mensaje_a_agregar -> payload   = mensaje;
+	mensaje_a_agregar -> payload   = armar_payload_mensaje(mensaje, (op_code)cod_op, size);
 	mensaje_a_agregar -> codigo_operacion    = cod_op;
 	mensaje_a_agregar -> suscriptor_enviado  = list_create();
 	mensaje_a_agregar -> suscriptor_recibido = list_create();
-	mensaje_a_agregar -> tamanio_mensaje = size;
 
 
-	sem_wait(&mutex_id);
+	sem_post(&mutex_id);
 	send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
 	sem_post(&mutex_id);
 
 
-
-	guardar_en_memoria(mensaje_a_agregar);
+	// En memori deberia guardarse solo el contenido, no todo el mensaje.
+	guardar_en_memoria(mensaje);
 
 	sem_wait(&semaforo);
 	encolar_mensaje(mensaje, cod_op);
 	sem_post(&semaforo);
+}
+
+
+void* armar_payload_mensaje(void* mensaje, op_code codigo, uint32_t size){
+	void* payload;
+
+	switch(codigo){
+		case GET_POKEMON:
+		payload = obtener_payload_get(mensaje);
+		break;
+		case CATCH_POKEMON:
+		payload = obtener_payload_catch(mensaje);
+		break;
+		case LOCALIZED_POKEMON:
+		payload = obtener_payload_localized(mensaje);
+		break;
+		case NEW_POKEMON:
+		payload = obtener_payload_new(mensaje);
+		break;
+		default:
+		log_error(logger, "No se puede obtener el contenido del mensaje.");
+	}
+
+	return payload;
 }
 
 uint32_t generar_id_univoco(){
@@ -551,16 +597,6 @@ void borrar_mensajes_confirmados(op_code tipo_lista, t_list* cola_mensajes, t_li
 	list_destroy(lista_id_suscriptores);
 
 }
-// REVISAR TAMBIÉN
-void eliminar_mensaje(void* mensaje){
-	t_mensaje* un_mensaje = mensaje;
-	list_destroy(un_mensaje -> suscriptor_enviado);
-	list_destroy(un_mensaje -> suscriptor_recibido);
-	free(un_mensaje -> payload);
-	free(un_mensaje);
-	free((t_mensaje*) mensaje);
-}
-
 
 void eliminar_suscriptor_de_enviados_sin_confirmar(t_mensaje* mensaje, uint32_t suscriptor){
 
@@ -617,81 +653,62 @@ void agregar_suscriptor_a_enviados_sin_confirmar(t_mensaje* mensaje_enviado, uin
 }
 
 //--------------MEMORIA-------------//
-void eliminar_particion_de_memoria(){
-	char* algoritmo_de_reemplazo = config_broker -> algoritmo_reemplazo;
-	t_memoria_dinamica* particion_a_reemplazar;
-	//ESTO ESTA PENSADO PARA PARTICIONES DINAMICAS, HAY QUE VER BS.
-	if(string_equals_ignore_case(algoritmo_de_reemplazo, "FIFO")){
-		//eliminar con fifo
-		particion_a_reemplazar = seleccionar_victima_de_reemplazo_fifo();
-		//ESTA PARTICION SE TIENE QUE LIBERAR EN EL MALLOC Y EN LA LISTA
-	} else if (string_equals_ignore_case(algoritmo_de_reemplazo, "LRU")){
-		//eliminar con lru
-		particion_a_reemplazar = seleccionar_victima_de_reemplazo_lru();
-		//ESTA PARTICION SE TIENE QUE LIBERAR EN EL MALLOC Y EN LA LISTA
-	} else {
-		log_error(logger, "??? Algoritmo de reemplazo: %s", algoritmo_de_reemplazo);
-	}
 
-	//liberar o reemplazar particion?
-	//PENSAR EN UN SEMAFORO --> deberia haber una funcion que sea liberar la particion?
-	particiones_liberadas++;
+void dump_de_memoria(){
+
+    //Se tiene que crear un nuevo archivo y loggear ahi todas las cosas.
+    iniciar_logger(config_broker -> memory_log, "broker");
+
+    //Muestra el inicio del dump.
+    time_t t;
+    struct tm *tm;
+    char fechayhora[25];
+
+    t = time(NULL);
+    tm = localtime(&t);
+    strftime(fechayhora, 25, "%d/%m/%Y %H:%M:%S", tm);
+    printf ("Hoy es: %s\n", fechayhora);
+
+    log_info(logger_memoria, "Dump: %s", fechayhora);
+
+    if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
+    //Se empieza a loguear partición por partición --> considero la lista de particiones en memoria ("memoria auxiliar").
+    list_iterate(memoria_con_particiones, dump_info_particion);
+    } else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
+    //Ver que se necesita hacer para el BS
 
 
-}
-
-//PENSAR... La lista memoria_con_particiones es fifo o tiene que estar
-//exactamente en el mismo orden que la memoria cache?
-t_memoria_dinamica* seleccionar_victima_de_reemplazo_fifo(){
-	t_memoria_dinamica* particion_victima;// = malloc(sizeof(t_memoria_dinamica));
-	t_list* memoria_duplicada = list_duplicate(memoria_con_particiones);
-
-	bool fue_ubicada_primero(void* una_particion){
-		t_memoria_dinamica* particion = una_particion;
-
-		bool no_hay_particion_anterior(void* otra_particion){
-			t_memoria_dinamica* particion2 = otra_particion;
-			return (particion -> tiempo_de_llegada) <= (particion2 ->tiempo_de_llegada);
-		}
-
-		return list_all_satisfy(memoria_duplicada, no_hay_particion_anterior);
-	}
-
-	//si es fifo la lista...
-	//particion_victima = list_get(memoria_con_particiones, 0);
-	//si es copia exacta de la cache...
-	particion_victima = list_find(memoria_con_particiones, fue_ubicada_primero);
-
-	return particion_victima;
-}
-
-t_memoria_dinamica* seleccionar_victima_de_reemplazo_lru(){
-	t_memoria_dinamica* particion_victima;// = malloc(sizeof(t_memoria_dinamica));
-	t_list* memoria_duplicada = list_duplicate(memoria_con_particiones);
-
-		bool fue_usada_hace_mas_tiempo(void* una_particion){
-			t_memoria_dinamica* particion = una_particion;
-
-			bool no_hay_particion_mas_vieja(void* otra_particion){
-				t_memoria_dinamica* particion2 = otra_particion;
-				return (particion -> ultima_modificacion) >= (particion2 -> ultima_modificacion);
-			}
-
-			return list_all_satisfy(memoria_duplicada, no_hay_particion_mas_vieja);
-		}
-
-	particion_victima = list_find(memoria_con_particiones, fue_usada_hace_mas_tiempo);
-
-	return particion_victima;
+    } else {
+        log_error(logger_memoria, "(? No se reconoce el algoritmo de memoria a implementar.");
+    }
 }
 
 void compactar_memoria(){
 	//Esto debería ser un hilo que periódicamente haga la compactación?
-	//uint32_t frecuencia_de_compactacion = config_broker -> frecuencia_compactacion;
+	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
+
+    } else if (string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
+        compactar_particiones_dinamicas();
+    } else {
+        log_error(logger, "??? No se reconoce el algoritmo de memoria.");
+    }
 
 }
 
-//Una vez guardado habría que actualizar que el campó del payload del mensaje sea un puntero a
+void arrancar_memoria(){
+    if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
+        //ARMO LA ESTRUCTURA INICIAL DEL BS, SIN GUARDAR NADA TODAVIA. DESPUÉS CUANDO TENGA QUE
+        //GUARDAR ALGO SE REUTILIZA LA ESTRUCTURA QUE SE DEFINIÓ ACÁ.
+    }
+
+    if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
+		t_list* memoria_con_particiones = list_create();
+        iniciar_memoria_particiones(memoria_con_particiones);
+        //Al principio la lista tiene un unico elemento que es la memoria entera.
+	}
+}
+
+//Una vez guardado habría que actualizar que el campo del payload del mensaje sea un puntero a
 // la posición de la memoria_cache donde se encuentra el contenido del mensaje y su tamanio.
 void guardar_en_memoria(t_mensaje* mensaje){
 
@@ -708,14 +725,552 @@ void guardar_en_memoria(t_mensaje* mensaje){
 		  log_error(logger,"no hay memoria suficiente para guardarlo");
 	  }
 	}
-	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
+	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 		if(list_size(memoria_con_particiones) > 1 && list_size(memoria_con_particiones) != 1){
           guardar_particion(mensaje);
      }else{
-    	  ubicar_particion(0,mensaje->tamanio_mensaje, mensaje->payload);
+    	  ubicar_particion(0, mensaje -> tamanio_mensaje, mensaje -> payload, mensaje -> codigo_operacion);
      }
 	}
+
+    if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "FIFO")){
+        encolar_mensaje_fifo(mensaje -> id_mensaje); //--> podria solo guardarse el id y después se usa el matcheo para borrarlo o reemplazarlo.
+    } else if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "LRU")){
+        apilar_mensaje(mensaje -> id_mensaje);
+    } else {
+        log_error(logger, "No se reconoce el algoritmo de reemplazo (?.");
+    }
 }
+
+
+//--------------PARTICIONES-------------//
+
+//ESTO ESTA PENSADO PARA PARTICIONES DINAMICAS, HAY QUE VER BS.
+void reemplazar_particion_de_memoria(t_mensaje* mensaje){
+	//Revisar si necesita malloc.
+    char* algoritmo_de_reemplazo = config_broker -> algoritmo_reemplazo;
+	t_memoria_dinamica* particion_a_reemplazar; //ESTA PARTICION SE TIENE QUE LIBERAR EN EL MALLOC Y EN LA LISTA
+
+    if(string_equals_ignore_case(algoritmo_de_reemplazo, "FIFO")){
+		particion_a_reemplazar = seleccionar_particion_victima_de_reemplazo(lista_fifo);//-->DESTROY? JULI
+	} else if (string_equals_ignore_case(algoritmo_de_reemplazo, "LRU")){
+    	particion_a_reemplazar = seleccionar_particion_victima_de_reemplazo(pila_lru);
+	}
+
+    uint32_t indice = encontrar_indice(particion_a_reemplazar);
+    t_memoria_dinamica* particion_vacia = armar_particion(particion_a_reemplazar -> tamanio_mensaje, particion_a_reemplazar -> base, NULL, 0, 0);
+    //FIJARSE SI ESTO PISA O SI HAY QUE USAR OTRA VARIABLE --> JULI
+    particion_a_reemplazar = list_replace(memoria_con_particiones, indice, particion_vacia);
+    liberar_particion_en_cache(particion_a_reemplazar);
+    //REVISAR --> JULI
+    log_info(logger, "... Se libera una partición y se intenta ubicar nuevamente el mensaje.");
+    guardar_particion(mensaje);
+
+	//JULI
+    //El reemplazo es una cosa. La liberación se va a dar cuando ya se haya enviado a todos los suscriptores.
+    //liberar o reemplazar particion?
+	//PENSAR EN UN SEMAFORO --> deberia haber una funcion que sea liberar la particion?
+	//particiones_liberadas++;
+}
+
+void liberar_particion_en_cache(t_memoria_dinamica* una_particion){
+
+    uint32_t posicion_inicial_a_borrar = una_particion -> base;
+    uint32_t limite                    = una_particion -> tamanio_mensaje;
+
+    //JULI --> ???????????????????????
+    memcpy(memoria + posicion_inicial_a_borrar, NULL, limite);
+    log_info(logger, "El mensaje fue eliminado correctamente: %s", memoria + posicion_inicial_a_borrar);
+
+    liberar_particion_dinamica(una_particion);
+}
+
+t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(t_list* lista_de_reemplazos){
+	//Sabiendo que el payload es el contenido del mensaje incluido el id...
+    uint32_t id_victima = list_get(lista_de_reemplazos, 0);
+
+    bool es_la_particion_indicada(void* una_particion){
+        t_memoria_dinamica* particion = una_particion;
+        uint32_t un_id = obtener_id(particion -> payload);
+        return un_id == id_victima;
+    }
+
+    t_memoria_dinamica* particion_victima =  list_remove_by_condition(memoria_con_particiones, es_la_particion_indicada);
+
+    list_remove(lista_de_reemplazos, 0);
+
+    return particion_victima;
+}
+
+uint32_t obtener_id(void* stream){
+    uint32_t* id = 0;
+    memcpy(id, stream, sizeof(uint32_t));
+    return (*id);
+}
+
+void encolar_mensaje_fifo(uint32_t id_mensaje){
+    list_add(lista_fifo, id_mensaje);
+}
+
+void apilar_mensaje(uint32_t id_mensaje){
+
+    if(list_find(pila_lru, id_mensaje) != NULL){
+
+        bool es_el_mismo_id(void* identificador){
+            uint32_t* un_id = identificador;
+            return (*un_id) == id_mensaje;
+        }
+
+        uint32_t id_a_mover = list_remove_by_condition(id_mensaje, es_el_mismo_id);
+        list_add(pila_lru, id_a_mover);
+
+    } else {
+        list_add(pila_lru, id_mensaje);
+    }
+}
+
+void iniciar_memoria_particiones(t_list* memoria_de_particiones){
+    /*tamanio_mensaje+payload+base+ocupado+base*/
+    //Es la particion inicial, es decir, la memoria entera vacía.
+    t_memoria_dinamica* particion_de_memoria = armar_particion((config_broker -> size_memoria), 0, NULL, 0, 0);
+    list_add(memoria_de_particiones, particion_de_memoria);
+}
+//DEBERIA ARMAR UNA PARTICION PARA GUARDAR ANTES O CHEQUEARLO A PARTIR DEL MENSAJE?
+void guardar_particion(t_mensaje* un_mensaje){
+    uint32_t posicion_a_ubicar = 0;
+    if(!chequear_espacio_memoria_particiones(un_mensaje->tamanio_mensaje)){
+			log_error(logger, "no hay memoria");
+            reemplazar_particion_de_memoria(un_mensaje);
+            //La idea es que se llama recursivamente ya que se liberan particiones hasta que haya suficiente espacio
+            //contiguo para almacenar.
+	}
+
+    if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre, "FF")){
+        //encontrar_primer_ajuste debería devolverme el índice del primer elemento de la lista
+        //en el cual hay una particion disponible, y -1 en caso de que no haya lugar suficiente.
+        posicion_a_ubicar = encontrar_primer_ajuste(un_mensaje->tamanio_mensaje);
+
+        if(posicion_a_ubicar == -1){
+            log_error(logger, "No hay suficiente tamaño para ubicar el mensaje en memoria.");
+            reemplazar_particion_de_memoria(un_mensaje);
+            //exit(-20);
+        }
+
+        ubicar_particion(posicion_a_ubicar, un_mensaje -> tamanio_mensaje, un_mensaje -> payload, un_mensaje -> codigo_operacion);
+
+    }
+    if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"BF")){
+        posicion_a_ubicar = encontrar_mejor_ajuste(un_mensaje->tamanio_mensaje);
+
+        if(posicion_a_ubicar == -1){
+            log_error(logger, "No hay suficiente tamaño para ubicar el mensaje en memoria.");
+            reemplazar_particion_de_memoria(un_mensaje);
+            //exit(-21);
+        }
+
+        ubicar_particion(posicion_a_ubicar, un_mensaje -> tamanio_mensaje, un_mensaje -> payload, un_mensaje -> codigo_operacion);
+    }
+
+}
+
+void liberar_particion_dinamica(t_memoria_dinamica* particion_vacia){
+    free(particion_vacia -> payload);
+    free(particion_vacia);
+}
+
+uint32_t chequear_espacio_memoria_particiones(uint32_t tamanio_mensaje){
+	uint32_t tamanio_ocupado = 0;
+	void sumar(void* particion){
+		t_memoria_dinamica* una_particion = particion;
+		if(una_particion->ocupado != 0)
+		tamanio_ocupado += una_particion->tamanio_mensaje;
+	}
+	list_iterate(memoria_con_particiones, sumar);
+	if(tamanio_ocupado == config_broker -> size_memoria || tamanio_ocupado + tamanio_mensaje >= config_broker -> size_memoria){
+		return 0;
+	}
+	return tamanio_ocupado;
+
+}
+// EN ubicar_particion FALTA UBICAR EN LA MEMORIA DEL MALLOC ENORME EL MENSAJE COMO CORRESPONDE.
+void ubicar_particion(uint32_t posicion_a_ubicar, uint32_t tamanio, void* payload, op_code codigo){
+
+        t_memoria_dinamica* nueva_particion = armar_particion(tamanio, posicion_a_ubicar, payload, 1, codigo);
+
+        t_memoria_dinamica* particion_reemplazada = list_replace(memoria_con_particiones, posicion_a_ubicar, nueva_particion);
+
+        uint32_t total = particion_reemplazada -> tamanio_mensaje;
+        if(tamanio < total) {
+        uint32_t posicion = posicion_a_ubicar + tamanio + 1;
+        t_memoria_dinamica* nueva_particion_vacia = armar_particion(total - tamanio, posicion, NULL, 0, 0);
+
+        list_add_in_index(memoria_con_particiones, posicion_a_ubicar + 1, nueva_particion_vacia);
+        }
+        log_info(logger, "Se guardo en la particion.");
+        liberar_particion_dinamica(particion_reemplazada);
+
+}
+
+t_memoria_dinamica* armar_particion(uint32_t tamanio, uint32_t base, void* payload, uint32_t ocupado, op_code cod_op){
+    t_memoria_dinamica* nueva_particion = malloc(sizeof(t_memoria_dinamica));
+    nueva_particion -> tamanio_mensaje  = tamanio;
+    nueva_particion -> base             = base;
+    nueva_particion -> payload          = malloc(tamanio);
+    nueva_particion -> payload          = payload;
+    nueva_particion -> ocupado          = ocupado; // CUANDO = 0 ESTA VACIO Y CUANDO ES !=0 ESTA OCUPADO
+    nueva_particion -> codigo_operacion = cod_op;
+
+    return nueva_particion;
+}
+//REVISAR MUCHISIMO POSTA
+
+uint32_t encontrar_primer_ajuste(uint32_t tamanio){
+    uint32_t indice_seleccionado = 0;
+
+    bool tiene_tamanio_suficiente(void* particion){
+        t_memoria_dinamica* una_particion = particion;
+        return tamanio <= (una_particion -> tamanio_mensaje) && una_particion -> ocupado == 0;
+    }
+
+    t_memoria_dinamica* posible_particion = list_find(memoria_con_particiones, tiene_tamanio_suficiente);
+    indice_seleccionado = encontrar_indice(posible_particion);
+
+    return indice_seleccionado;
+}
+
+uint32_t encontrar_mejor_ajuste(uint32_t tamanio){
+    uint32_t indice_seleccionado = 0;
+
+    bool es_de_menor_tamanio(void* una_particion, void* otra_particion){
+        t_memoria_dinamica* particion1 = una_particion;
+        t_memoria_dinamica* particion2 = otra_particion;
+        return (particion1 -> tamanio_mensaje) < (particion2 -> tamanio_mensaje);
+    }
+
+    bool tiene_tamanio_suficiente(void* particion){
+        t_memoria_dinamica* una_particion = particion;
+        return tamanio <= (una_particion -> tamanio_mensaje) && una_particion -> ocupado == 0 ;
+    }
+
+    t_list* particiones_en_orden_creciente = list_duplicate(memoria_con_particiones);
+    list_sort(particiones_en_orden_creciente, es_de_menor_tamanio);
+
+    t_memoria_dinamica* posible_particion = list_find(particiones_en_orden_creciente, tiene_tamanio_suficiente);
+    indice_seleccionado = encontrar_indice(posible_particion);
+    //REVISAR ESTO
+    list_destroy(particiones_en_orden_creciente);
+
+    return indice_seleccionado;
+}
+
+void destruir_particion(void* una_particion){
+   t_memoria_dinamica* particion = una_particion;
+   free(particion -> payload);
+   free(particion);
+   // free(una_particion);
+}
+
+uint32_t encontrar_indice(t_memoria_dinamica* posible_particion){
+    uint32_t indice_disponible = 0;
+    uint32_t indice_buscador = -1;
+    void* obtener_indices(void* particion){
+    	indice_buscador += 1;
+        t_memoria_dinamica* particion_a_transformar = particion;
+        t_indice* un_indice = malloc(sizeof(t_indice));
+        un_indice -> indice = indice_buscador;
+        un_indice -> tamanio = particion_a_transformar -> tamanio_mensaje;
+        return un_indice;
+    }
+
+    bool es_el_tamanio_necesario(void* indice){
+        t_indice* otro_indice = indice;
+        return (otro_indice -> tamanio) == (posible_particion -> tamanio_mensaje);
+    }
+
+    t_list* indices = list_create();
+    indices = list_map(memoria_con_particiones, obtener_indices);
+    t_indice* indice_elegido = list_find(indices, es_el_tamanio_necesario);
+    //FIJARSE SI ES UN DESTROY A LOS ELEMENTOS TAMBIEN.
+    list_destroy(indices);
+    indice_disponible = indice_elegido -> indice;
+    //free(indice_elegido;)
+
+    return indice_disponible;
+}
+
+//--------------------------------CONSOLIDACION_P--------------------------------//
+//ESTO SIRVE PARA LA LISTA QUE SIMULA LA MEMORIA, PERO FALTA ADAPTARLO PARA QUE HAGA LO MISMO EN EL MALLOC
+//ENORME.
+
+void consolidar_particiones_dinamicas(){
+
+    void consolidar_particiones_contiguas(void* particion){
+        t_memoria_dinamica* una_particion = particion;
+        uint32_t indice = encontrar_indice(una_particion);
+        if(tiene_siguiente(indice) && ambas_estan_vacias(indice, indice+1)){
+            //Siempre asumo que es consolidable porque tiene un valor a la derecha que también es vacío.
+            consolidar_particiones(indice, indice+1);
+        }
+    }
+
+    list_iterate(memoria_con_particiones, consolidar_particiones_contiguas);
+
+    if(existen_particiones_contiguas_vacias(memoria_con_particiones)){
+             consolidar_particiones_dinamicas();
+    }
+    //Tendría que llamar recursivamente? --> revisar
+}
+
+bool tiene_siguiente(uint32_t posicion){
+    return list_get(memoria_con_particiones, posicion) != NULL;
+}
+
+bool ambas_estan_vacias(uint32_t una_posicion, uint32_t posicion_siguiente){
+
+    t_memoria_dinamica* una_particion       = list_get(memoria_con_particiones, una_posicion);
+    t_memoria_dinamica* particion_siguiente = list_get(memoria_con_particiones, posicion_siguiente);
+
+    return (una_particion -> ocupado) && (particion_siguiente -> ocupado);
+}
+
+void consolidar_particiones_en_cache(uint32_t una_posicion, uint32_t sig_posicion){
+    t_memoria_dinamica* una_particion       = list_get(memoria_con_particiones, una_posicion);
+    t_memoria_dinamica* particion_siguiente = list_get(memoria_con_particiones, sig_posicion);
+
+    memcpy(memoria + (una_particion -> base), (una_particion -> payload), (una_particion -> tamanio_mensaje));
+    memcpy(memoria + (particion_siguiente -> base), (particion_siguiente -> payload), (particion_siguiente -> tamanio_mensaje));
+}
+
+//JULIETA REVISA antes de subir
+//ESTO FUNCIONA PARA LAS LISTAS PERO NO FUNCIONA PARA EL MALLOC ENORME (sobreescribirla entera llevaria mucho tiempo?).
+//PIENSO EN UN HILO PARA ESO?
+void consolidar_particiones(uint32_t primer_elemento, uint32_t elemento_siguiente){
+    t_memoria_dinamica* una_particion = list_remove(memoria_con_particiones, primer_elemento);
+    t_memoria_dinamica* particion_siguiente = list_remove(memoria_con_particiones, elemento_siguiente);
+
+    uint32_t tamanio_particion_consolidada    = (una_particion -> tamanio_mensaje) + (particion_siguiente -> tamanio_mensaje);
+    t_memoria_dinamica* particion_consolidada = armar_particion(tamanio_particion_consolidada, (una_particion -> base), NULL, 0, 0);
+
+    list_add_in_index(memoria_con_particiones, primer_elemento, particion_consolidada);
+
+    consolidar_particiones_en_cache(primer_elemento, elemento_siguiente);
+
+    destruir_particion(una_particion);
+    destruir_particion(particion_siguiente);
+}
+
+//REVISAR PERO MUY POLENTA
+bool existen_particiones_contiguas_vacias(t_list* memoria_cache){
+    //Si el primer elemento de cada lista está vacío, hay una partición a consolidar.
+    t_list* memoria_duplicada = list_duplicate(memoria_cache);
+
+    bool la_posicion_siguiente_tambien_esta_vacia(void* una_particion){
+        t_memoria_dinamica* particion = una_particion;
+
+        uint32_t indice = encontrar_indice(particion);
+        t_memoria_dinamica* sig_particion = list_get(memoria_duplicada, indice+1);;
+        uint32_t sig_ocupado;
+
+        if(sig_particion != NULL){
+            sig_ocupado =  sig_particion -> ocupado;
+        } else {
+            sig_ocupado = 1;
+        }
+
+        return !((particion -> ocupado) && sig_ocupado);
+    }
+
+    return list_any_satisfy(memoria_duplicada, la_posicion_siguiente_tambien_esta_vacia);
+}
+
+
+//---------------------------------COMPACTACION_P---------------------------------//
+
+void compactar_particiones_dinamicas(){
+
+    t_list* particiones_vacias = list_create();
+    t_list* particiones_ocupadas = list_create();
+
+    bool es_particion_vacia(void* particion){
+        t_memoria_dinamica* una_particion = particion;
+        return (una_particion -> ocupado) == 0;
+    }
+
+    bool no_es_particion_vacia(void* particion){
+        t_memoria_dinamica* una_particion = particion;
+        return (una_particion -> ocupado) != 0;
+    }
+
+    particiones_vacias = list_filter(memoria_con_particiones, es_particion_vacia);
+    particiones_ocupadas = list_filter(memoria_con_particiones, no_es_particion_vacia);
+
+    //list_clean(memoria_con_particiones);
+    list_clean_and_destroy_elements(memoria_con_particiones, destruir_particion); //-->REVISAR JULI
+    list_add_all(memoria_con_particiones, particiones_ocupadas);
+    list_add_all(memoria_con_particiones, particiones_vacias);
+
+    consolidar_particiones_dinamicas();
+
+    //En esta función se hace la compactación realmente en el malloc enorme (o eso espero).
+    compactar_memoria_cache(memoria_con_particiones);
+
+    /*list_destroy(particiones_vacias);
+    list_destroy(particiones_ocupadas);*/
+    list_destroy_and_destroy_elements(particiones_vacias, destruir_particion);
+    list_destroy_and_destroy_elements(particiones_ocupadas, destruir_particion);
+
+    particiones_liberadas = 0;
+}
+
+void compactar_memoria_cache(t_list* lista_particiones_compactadas){
+    //En este momento el puntero tiene que estar en la primer posición de la memoria cache.
+    void reescribir_memoria(void* particion){
+        t_memoria_dinamica* una_particion = particion;
+        memcpy(memoria + (una_particion -> base), (una_particion -> payload) , (una_particion -> tamanio_mensaje));
+    }
+    //Preguntar por la eficiencia de esto.
+    list_iterate(lista_particiones_compactadas, reescribir_memoria);
+}
+
+//ELIMINAR MENSAJE --> JULI
+
+void eliminar_mensaje(void* mensaje){
+	t_mensaje* un_mensaje = mensaje;
+    liberar_mensaje_de_memoria(un_mensaje);
+	list_destroy(un_mensaje -> suscriptor_enviado);
+	list_destroy(un_mensaje -> suscriptor_recibido);
+	free(un_mensaje -> payload);
+	free(un_mensaje);
+	free((t_mensaje*) mensaje);
+}
+
+void liberar_mensaje_de_memoria(t_mensaje* mensaje){
+
+   uint32_t id_referencia = mensaje -> id_mensaje;
+
+    bool es_la_particion_indicada(void* una_particion){
+        t_memoria_dinamica* particion = una_particion;
+        uint32_t un_id = obtener_id(particion -> payload);
+        return un_id == id_referencia;
+    }
+
+    t_memoria_dinamica* particion_a_liberar = list_find(memoria_con_particiones, es_la_particion_indicada);
+    //Acá se repite lógica y código foerte, si hay tiempo se corrije y sino sorry.
+    uint32_t indice = encontrar_indice(particion_a_liberar);
+    t_memoria_dinamica* particion_vacia = armar_particion(particion_a_liberar -> tamanio_mensaje, particion_a_liberar -> base, NULL, 0, 0);
+    //FIJARSE SI ESTO PISA O SI HAY QUE USAR OTRA VARIABLE --> JULI
+    particion_a_liberar = list_replace(memoria_con_particiones, indice, particion_vacia);
+    liberar_particion_en_cache(particion_a_liberar);
+
+    particiones_liberadas++;
+    //REVISAR --> JULI (semáforo)
+    log_info(logger, "... Se libera una partición.");
+
+    if(particiones_liberadas == config_broker -> frecuencia_compactacion){
+        compactar_memoria();
+    } else if (particiones_liberadas > config_broker -> frecuencia_compactacion) {
+        log_error(logger, "...Debería haberse compactado la memoria :$.");
+        exit(-90);
+    }
+}
+
+void dump_info_particion(void* particion){
+    t_memoria_dinamica* una_particion = particion;
+    char ocupado;
+    if(una_particion -> ocupado != 0) {
+        ocupado = "X";
+    } else {
+        ocupado = "L";
+    }
+
+    uint32_t base = memoria + (una_particion -> base);//Revisar que apunte al malloc
+    uint32_t tamanio = una_particion -> tamanio_mensaje;
+    uint32_t valor_lru = obtener_valor_lru(una_particion);
+    char* cola_del_mensaje = obtener_cola_del_mensaje(una_particion);
+    uint32_t id_del_mensaje = obtener_id(una_particion);
+
+    //Revisar el tema de la dirección de memoria para loggear-->(&base?).
+    log_info(logger_memoria, "Particion %d: %d.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, ocupado, tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
+    numero_particion++;
+    free(cola_del_mensaje);
+    //Revisar si hay que liberar la partición!
+}
+
+uint32_t obtener_valor_lru(t_memoria_dinamica* particion){
+    uint32_t valor_del_lru = 0;
+
+    valor_del_lru = encontrar_indice_de_lru(particion);
+
+    return valor_del_lru;
+}
+
+char* obtener_cola_del_mensaje(t_memoria_dinamica* una_particion){
+    char* una_cola;
+    switch(una_particion -> codigo_operacion){
+        case GET_POKEMON:
+        una_cola = malloc(strlen("COLA_GET") + 1);
+        una_cola = "COLA_GET";
+        break;
+        case CATCH_POKEMON:
+        una_cola = malloc(strlen("COLA_CATCH") + 1);
+        una_cola = "COLA_CATCH";
+        break;
+        case LOCALIZED_POKEMON:
+        una_cola = malloc(strlen("COLA_LOCALIZED") + 1);
+        una_cola = "COLA_LOCALIZED";
+        break;
+        case APPEARED_POKEMON:
+        una_cola = malloc(strlen("COLA_APPEARED") + 1);
+        una_cola = "COLA_APPEARED";
+        break;
+        case CAUGHT_POKEMON:
+        una_cola = malloc(strlen("COLA_CAUGHT") + 1);
+        una_cola = "COLA_CAUGHT";
+        break;
+        case NEW_POKEMON:
+        una_cola = malloc(strlen("COLA_NEW") + 1);
+        una_cola = "COLA_NEW";
+        break;
+        default:
+        una_cola = malloc(strlen("No existe en ninguna cola de mensajes") + 1);
+        una_cola = "No existe en ninguna cola de mensajes";
+        break;
+    }
+
+    return una_cola;
+}
+
+uint32_t encontrar_indice_de_lru(t_memoria_dinamica* una_particion){
+    uint32_t indice_disponible = 0;
+    uint32_t indice_buscador = -1;
+
+    void generar_indices(void* one_particion){
+        indice_buscador += 1;
+        t_memoria_dinamica* particion = one_particion;
+        t_indice_lru* un_indice = malloc(sizeof(t_indice_lru));
+        un_indice -> indice     = indice_buscador;
+        un_indice -> id_mensaje = obtener_id(particion -> payload);
+    }
+
+    bool es_el_mismo_id(void* un_indice){
+        t_indice_lru* otro_indice = un_indice;
+        uint32_t un_id = obtener_id(una_particion -> payload);
+        return (otro_indice -> id_mensaje) == un_id; //Obtener el id de la particion
+    }
+
+
+    t_list* indices_lru = list_create();
+    indices_lru = list_map(pila_lru, generar_indices);
+    t_indice_lru* indice_elegido = list_find(indices_lru, es_el_mismo_id);
+    //FIJARSE SI ES UN DESTROY A LOS ELEMENTOS TAMBIEN.
+    list_destroy(indices_lru);
+    indice_disponible = indice_elegido -> indice;
+    //free(indice_elegido);
+    return indice_disponible;
+}
+
+//-------------BUDDY_SYSTEM-------------//
+
 
 uint32_t obtenerPotenciaDe2(uint32_t tamanio_proceso)
 {
@@ -791,220 +1346,48 @@ uint32_t recorrer(t_node* nodo, uint32_t exponente, void* payload){
     return asignado;
 }
 
-void arrancar_memoria(){
-    if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
-        //ARMO LA ESTRUCTURA INICIAL DEL BS, SIN GUARDAR NADA TODAVIA. DESPUÉS CUANDO TENGA QUE
-        //GUARDAR ALGO SE REUTILIZA LA ESTRUCTURA QUE SE DEFINIÓ ACÁ.
-    }
+void concatenacion_buddy_systeam(t_node*  nodo)
+{
 
-    if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
-		t_list* memoria_con_particiones = list_create();
-        iniciar_memoria_particiones(memoria_con_particiones);
-        //Al principio la lista tiene un unico elemento que es la memoria entera.
-	}
-}
+      if(nodo== NULL)
+      {
+          return;
+      }
+      if(nodo -> izquierda -> bloque-> libre && nodo -> derecha-> bloque-> libre && nodo)
+      {
+          nodo -> bloque ->payload =NULL;
+          nodo-> bloque -> libre = 1;
+          nodo->izquierda =NULL;
+          nodo->derecha =NULL;
+          //concatenacion_buddy_systeam();///principop el de 4096
+      }
+      if(nodo -> izquierda)
+      {
+          concatenacion_buddy_systeam(nodo->izquierda);
+      }
+      if(nodo-> derecha)
+      {
+          concatenacion_buddy_systeam(nodo->derecha);
+      }
 
-/*TAMANIO_MENSAJE SE REFIERE AL TAMAÑO DE LA PARTICION O AL TAMAÑO DEL MENSAJE QUE SE GUARDA EN ELLA?
-
-typedef struct {
-	uint32_t tamanio_mensaje;
-	void* 	 payload;
-	uint32_t base;
-    uint32_t ocupado;
-} t_memoria_dinamica;
-*/
-
-
-void iniciar_memoria_particiones(t_list* memoria_de_particiones){
-    /*tamanio_mensaje+payload+base+ocupado+base*/
-    uint32_t size_particion = sizeof(uint32_t) * 3 + (config_broker ->size_memoria);
-    t_memoria_dinamica* particion_de_memoria = malloc(size_particion);
-    particion_de_memoria -> tamanio_mensaje = config_broker->size_memoria;
-    particion_de_memoria -> payload         = memoria_cache;
-    particion_de_memoria -> base            = 0;
-    list_add(memoria_de_particiones, particion_de_memoria);
-}
-//DEBERIA ARMAR UNA PARTICION PARA GUARDAR ANTES O CHEQUEARLO A PARTIR DEL MENSAJE?
-void guardar_particion(t_mensaje* un_mensaje){
-    uint32_t posicion_a_ubicar = 0;
-    if(!chequear_espacio_memoria_particiones(un_mensaje->tamanio_mensaje)){
-			log_error(logger, "no hay memoria");
-	}
-    if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
-        //ENCONTRAR EL PRIMER AJUSTE DEBERIA DEVOLVERME EL INDICE DEL PRIMER ELEMENTO DE LA LISTA
-        //EN EL CUAL HAY UNA PARTICION DISPONIBLE, Y -1 EN CASO DE QUE NO HAYA LUGAR SUFICIENTE.
-        posicion_a_ubicar = encontrar_primer_ajuste(un_mensaje->tamanio_mensaje);
-
-        if(posicion_a_ubicar == -1){
-            log_error(logger, "No hay suficiente tamaño para ubicar el mensaje en memoria.");
-            exit(-20);
-        }
-
-        ubicar_particion(posicion_a_ubicar, un_mensaje->tamanio_mensaje, un_mensaje->payload);
-
-    }
-    if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"BF")){
-        posicion_a_ubicar = encontrar_mejor_ajuste(un_mensaje->tamanio_mensaje);
-
-        if(posicion_a_ubicar == -1){
-            log_error(logger, "No hay suficiente tamaño para ubicar el mensaje en memoria.");
-            exit(-21);
-        }
-
-        ubicar_particion(posicion_a_ubicar, un_mensaje->tamanio_mensaje, un_mensaje->payload);
-    }
 
 }
 
-void liberar_particion_dinamica(t_memoria_dinamica* particion_vacia){
-    free(particion_vacia -> payload);
-    free(particion_vacia);
-}
 
-uint32_t chequear_espacio_memoria_particiones(uint32_t tamanio_mensaje){
-	uint32_t tamanio_ocupado = 0;
-	void sumar(void* particion){
-		t_memoria_dinamica* una_particion = particion;
-		if(una_particion->ocupado != 0)
-		tamanio_ocupado += una_particion->tamanio_mensaje;
-	}
-	list_iterate(memoria_con_particiones, sumar);
-	if(tamanio_ocupado == config_broker->size_memoria || tamanio_ocupado + tamanio_mensaje >= config_broker->size_memoria){
-		return 0;
-	}
-	return tamanio_ocupado;
-
-}
-// EN ubicar_particion FALTA UBICAR EN LA MEMORIA DEL MALLOC ENORME EL MENSAJE COMO CORRESPONDE.
-void ubicar_particion(uint32_t posicion_a_ubicar, uint32_t tamanio, void* payload){
-
-
-        t_memoria_dinamica* nueva_particion = malloc(sizeof(t_memoria_dinamica));
-        nueva_particion -> tamanio_mensaje  = tamanio;
-        nueva_particion -> base             = posicion_a_ubicar;
-        nueva_particion-> payload           = malloc(tamanio);
-        nueva_particion -> payload          = payload ;
-        nueva_particion -> ocupado          = 1; // CUANDO = 0 ESTA VACIO Y CUANDO ES !=0 ESTA OCUPADO
-
-
-        void* particion_libre = list_replace(memoria_con_particiones, posicion_a_ubicar, nueva_particion);
-        t_memoria_dinamica* particion_reemplazada = particion_libre;
-
-        uint32_t total = particion_reemplazada -> tamanio_mensaje;
-        if(tamanio < total)
-        {
-        uint32_t size_particion_vacia = sizeof(uint32_t) * 3 + (total - tamanio);
-        t_memoria_dinamica* nueva_particion_vacia = malloc(size_particion_vacia);
-        nueva_particion_vacia -> tamanio_mensaje = total - tamanio;
-        nueva_particion_vacia -> base            = posicion_a_ubicar + tamanio + 1;
-        nueva_particion_vacia -> payload         = NULL;
-        nueva_particion_vacia -> ocupado         = 0;
-
-        list_add_in_index(memoria_con_particiones, posicion_a_ubicar + 1, nueva_particion_vacia);
-        }
-        log_info(logger, "se guardo en la particion");
-        liberar_particion_dinamica(particion_reemplazada);
-
-}
-//REVISAR MUCHISIMO POSTA
-
-uint32_t encontrar_primer_ajuste(uint32_t tamanio){
-    uint32_t indice_seleccionado = 0;
-
-    bool tiene_tamanio_suficiente(void* particion){
-        t_memoria_dinamica* una_particion = particion;
-        return tamanio <= (una_particion -> tamanio_mensaje) && una_particion -> ocupado == 0;
-    }
-
-    t_memoria_dinamica* posible_particion = list_find(memoria_con_particiones, tiene_tamanio_suficiente);
-    indice_seleccionado = encontrar_indice(posible_particion);
-
-    return indice_seleccionado;
-}
-
-//HAY QUE PASARLO AL .H
-typedef struct {
-    uint32_t indice;
-    uint32_t tamanio;
-} t_indice;
-
-uint32_t encontrar_mejor_ajuste(uint32_t tamanio){
-    uint32_t indice_seleccionado = 0;
-
-    bool es_de_menor_tamanio(void* una_particion, void* otra_particion){
-        t_memoria_dinamica* particion1 = una_particion;
-        t_memoria_dinamica* particion2 = otra_particion;
-        return (particion1 -> tamanio_mensaje) < (particion2 -> tamanio_mensaje);
-    }
-
-    bool tiene_tamanio_suficiente(void* particion){
-        t_memoria_dinamica* una_particion = particion;
-        return tamanio <= (una_particion -> tamanio_mensaje) && una_particion -> ocupado == 0 ;
-    }
-
-    t_list* particiones_en_orden_creciente = list_duplicate(memoria_con_particiones);
-    list_sort(particiones_en_orden_creciente, es_de_menor_tamanio);
-
-    t_memoria_dinamica* posible_particion = list_find(particiones_en_orden_creciente, tiene_tamanio_suficiente);
-    indice_seleccionado = encontrar_indice(posible_particion);
-    //REVISAR ESTO
-    list_destroy(particiones_en_orden_creciente);
-
-    return indice_seleccionado;
-}
-
-void destruir_particion(void* una_particion){
-    t_memoria_dinamica* particion = una_particion;
-   free(particion -> payload);
-    free(particion);
-   // free(una_particion);
-}
-
-uint32_t encontrar_indice(t_memoria_dinamica* posible_particion){
-    uint32_t indice_disponible = 0;
-    uint32_t indice_buscador = -1;
-    void* obtener_indices(void* particion){
-    	indice_buscador += 1;
-        t_memoria_dinamica* particion_a_transformar = particion;
-        t_indice* un_indice = malloc(sizeof(t_indice));
-        un_indice -> indice = indice_buscador;
-        un_indice -> tamanio = particion_a_transformar -> tamanio_mensaje;
-        return un_indice;
-    }
-
-    bool es_el_tamanio_necesario(void* indice){
-        t_indice* otro_indice = indice;
-        return (otro_indice -> tamanio) == (posible_particion -> tamanio_mensaje);
-    }
-
-    t_list* indices = list_create();
-    indices = list_map(memoria_con_particiones, obtener_indices);
-    t_indice* indice_elegido = list_find(indices, es_el_tamanio_necesario);
-    //FIJARSE SI ES UN DESTROY A LOS ELEMENTOS TAMBIEN.
-    list_destroy(indices);
-    indice_disponible = indice_elegido -> indice;
-    //free(indice_elegido;)
-
-    return indice_disponible;
-}
+//-------------OTROS-------------//
+//A terminar
 
 /*void crear_hilo_segun_algoritmo() {
-
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS") ||
 			string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-
 		uint32_t err = pthread_create(&hilo_algoritmo_memoria, NULL, reservar_memoria, NULL);
-
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!"); // preguntar si estos logs se pueden hacer
 		}
-
 	} else {
 		log_error(logger, "wtf?? Algoritmo de memoria recibido: %s", config_broker -> algoritmo_memoria);
 	}
 }
-
-
 void crear_hilo_por_mensaje() {
 	uint32_t err = pthread_create(&hilo_mensaje, NULL, gestionar_mensaje, NULL);
 	if(err != 0) {
@@ -1060,207 +1443,5 @@ void liberar_semaforos_broker(){
     sem_destroy(&semaforo);
     sem_destroy(&mutex_id);
 }
-
-/*VARIABLE GLOBAL QUE SE INCREMENTA DENTRO DE LA LIBERACIÓN DE PARTICIONES.
-uint32_t particiones_liberadas = 0;
-//PENSAR EN UN SEMAFORO PARA ESTO.
-
-//ESTAS PROXIMAS LINEAS VAN DENTRO DE LAS FUNCIONES DE LIBERACION DE MEMORIA DINAMICA
-    if(particiones_liberadas == config_broker -> frecuencia_compactacion){
-        compactar_particiones_dinamicas();
-    } else if (particiones_liberadas > config_broker -> frecuencia_compactacion) {
-        log_error(logger, "Debería haberse compactado la memoria.");
-    }
-*/
-
-//---------------------------------COMPACTACION---------------------------------//
-
-//ESTO SIRVE PARA LA LISTA QUE SIMULA LA MEMORIA, PERO FALTA ADAPTARLO PARA QUE HAGA LO MISMO EN EL MALLOC
-//ENORME.
-
-
-void compactar_particiones_dinamicas(){
-
-    t_list* particiones_vacias = list_create();
-    t_list* particiones_ocupadas = list_create();
-
-    bool es_particion_vacia(void* particion){
-        t_memoria_dinamica* una_particion = particion;
-        return (una_particion -> ocupado) == 0;
-    }
-
-    bool no_es_particion_vacia(void* particion){
-        t_memoria_dinamica* una_particion = particion;
-        return (una_particion -> ocupado) != 0;
-    }
-
-    particiones_vacias = list_filter(memoria_con_particiones, es_particion_vacia);
-    particiones_ocupadas = list_filter(memoria_con_particiones, no_es_particion_vacia);
-
-    list_clean_and_destroy_elements(memoria_con_particiones, destruir_particion);
-    list_add_all(memoria_con_particiones, particiones_ocupadas);
-    list_add_all(memoria_con_particiones, particiones_vacias);
-
-    consolidar_particiones_dinamicas();
-
-    //En esta función se hace la compactación realmente en el malloc enorme (o eso espero).
-    compactar_memoria_cache(memoria_con_particiones);
-
-    list_destroy_and_destroy_elements(particiones_vacias, destruir_particion);
-    list_destroy_and_destroy_elements(particiones_ocupadas, destruir_particion);
-
-    particiones_liberadas = 0;
-}
-
-
-void compactar_memoria_cache(t_list* lista_particiones_compactadas){
-    uint32_t offset = 0;
-    // EN ESTE MOMENTO EL PUNTERO TIENE QUE ESTAR EN LA PRIMER POSICIÓN DE LA MEMORIA
-    //QUIZAS EN LUGAR DE OFFSET SE PUEDE USAR LA BASE DE LA PARTICION --> REVISAR.
-    void reescribir_memoria(void* particion){
-        t_memoria_dinamica* una_particion = particion;
-        memcpy(memoria_cache + offset, (una_particion -> payload) , (una_particion -> tamanio_mensaje));
-    }
-
-    list_iterate(lista_particiones_compactadas, reescribir_memoria);
-
-}
-
-//--------------------------------CONSOLIDACION--------------------------------//
-//ESTO SIRVE PARA LA LISTA QUE SIMULA LA MEMORIA, PERO FALTA ADAPTARLO PARA QUE HAGA LO MISMO EN EL MALLOC
-//ENORME.
-
-void consolidar_particiones_dinamicas(){
-
-
-    void consolidar_particiones_contiguas(void* particion){
-
-    }
-
-    list_iterate(memoria_con_particiones, consolidar_particiones_contiguas);
-
-    if(existen_particiones_contiguas_vacias(memoria_con_particiones)){
-         consolidar_particiones_dinamicas();
-    }
-
-    //TENDRIA QUE LLAMAR RECURSIVAMENTE --> revisar
-}
-
-
-bool existen_particiones_contiguas_vacias(t_list* memoria_cache){
-
-    //PARTICION DERECHA VACIA
-    //PARTICION IZQUIERDA VACIA
-	bool tiene_particion_vacia_a_derecha = true;
-	bool tiene_particion_vacia_a_izquierda = true;
-    /*bool tiene_particion_vacia_a_derecha = list_any_satisfy(memoria_cache, particion_derecha_vacia);
-    bool tiene_particion_vacia_a_izquierda = list_any_satisfy(memoria_cache, particion_izquierda_vacia);*/
-    return tiene_particion_vacia_a_derecha || tiene_particion_vacia_a_izquierda;
-}
-
-
-void concatenacion_buddy_systeam(t_node*  nodo)
-{
-
-      if(nodo== NULL)
-      {
-          return;
-      }
-      if(nodo -> izquierda -> bloque-> libre && nodo -> derecha-> bloque-> libre && nodo)
-      {
-          nodo -> bloque ->payload =NULL;
-          nodo-> bloque -> libre = 1;
-          nodo->izquierda =NULL;
-          nodo->derecha =NULL;
-          //concatenacion_buddy_systeam();///principop el de 4096
-      }
-      if(nodo -> izquierda)
-      {
-          concatenacion_buddy_systeam(nodo->izquierda);
-      }
-      if(nodo-> derecha)
-      {
-          concatenacion_buddy_systeam(nodo->derecha);
-      }
-
-
-}
-/*
-
-//--------------------------------CONSOLIDACION--------------------------------//
-//ESTO SIRVE PARA LA LISTA QUE SIMULA LA MEMORIA, PERO FALTA ADAPTARLO PARA QUE HAGA LO MISMO EN EL MALLOC
-//ENORME.
-void consolidar_particiones_dinamicas(void);
-void consolidar_particiones_dinamicas(){
-
-void consolidar_particiones_contiguas(void* particion){
-        t_memoria_dinamica* una_particion = particion;
-        //OBTENGO EL PRIMER ELEMENTO QUE SEA CONSOLIDABLE Y PROCEDO A CONSOLIDARLO --> falta hacer
-        uint32_t indice = encontrar_indice(memoria_con_particiones, particion);
-        //SIEMPRE ASUMO QUE ES CONSOLIDABLE PORQUE TIENE UN VALOR A LA DERECHA QUE TAMBIEN ES VACIO
-        consolidar_particiones(indice, indice+1);
-    }
-
-    list_iterate(memoria_con_particiones, consolidar_particiones_contiguas);
-
-    if(existen_particiones_contiguas_vacias(memoria_con_particiones)){
-         consolidar_particiones_dinamicas();
-    }
-
-    //TENDRIA QUE LLAMAR RECURSIVAMENTE --> revisar
-}
-
-//ESTO FUNCIONA PARA LAS LISTAS PERO NO FUNCIONA PARA EL MALLOC ENORME (sobreescribirla entera llevaria mucho tiempo?).
-//PIENSO EN UN HILO PARA ESO?
-void consolidar_particiones(uint32_t primer_elemento, uint32_t elemento_siguiente){
-    t_memoria_dinamica* una_particion = list_remove(memoria_con_particiones, primer_elemento);
-    t_memoria_dinamica* particion_siguiente = list_remove(memoria_con_particiones, elemento_siguiente);
-
-    uint32_t tamanio_particion_consolidada = (una_particion -> tamanio_mensaje) + (particion_siguiente -> tamanio_mensaje);
-
-    t_memoria_dinamica* particion_consolidada    = malloc(sizeof(t_memoria_dinamica));
-    particion_consolidada -> tamanio_mensaje     = tamanio_particion_consolidada;
-    //FALTA EL MALLOC PARA EL PAYLOAD (que no tiene nada)
-    particion_consolidada -> payload             = ;
-    particion_consolidada -> base                = (una_particion -> base);
-    particion_consolidada -> ocupado             = 0;
-    //pensar en estos ultimos dos campos
-    particion_consolidada -> tiempo_de_llegada   = ;
-    particion_consolidada -> ultima_modificacion = ;
-
-    list_add_in_index(memoria_con_particiones, primer_elemento, particion_consolidada);
-
-    //actualizar memoria malloc enorme.
-
-    destruir_particion(una_particion);
-    destruir_particion(particion_siguiente);
-
-}
-
-//REVISAR PERO MUY POLENTA
-bool existen_particiones_contiguas_vacias(t_list* memoria_cache){
-    //SI EL PRIMER ELEMENTO DE CADA LISTA ESTA VACIO, HAY UNA PARTICION A CONSOLIDAR.
-
-    t_list* memoria_duplicada = list_duplicate(memoria_cache);
-    t_memoria_dinamica* particion = list_remove(memoria_duplicada, 0);
-    t_memoria_dinamica* segunda_particion = list_get(memoria_duplicada, 0);
-    bool segunda_particion_libre;
-
-    if(segunda_particion != NULL){
-        segunda_particion_libre = segunda_particion -> ocupado;
-    } else {
-        segunda_particion_libre = 0;
-    }
-
-    bool primer_particion_libre = particion -> ocupado;
-
-    if(!list_is_empty(memoria_duplicada)){
-        existen_particiones_contiguas_vacias(memoria_duplicada);
-    }
-
-    return primer_particion_libre && segunda_particion_libre;
-}*/
-
-
 
 

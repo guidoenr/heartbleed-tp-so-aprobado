@@ -722,7 +722,7 @@ void* serializar_localized_pokemon(void* mensaje_localized, uint32_t size_mensaj
 }
 
 //CHEQUEAR CON EL TEMA DE LAS T_LIST
-t_localized_pokemon* deserealizar_localized_pokemon(void* mensaje_localized, uint32_t size_mensaje, uint32_t* size_serializado){
+t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_mensaje){
 
 	t_localized_pokemon* mensaje_localized_pokemon = malloc(sizeof(t_localized_pokemon));
     uint32_t tamanio_pokemon = 0;
@@ -740,7 +740,7 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* mensaje_localized, uin
     mensaje_localized_pokemon -> pokemon = malloc(tamanio_pokemon);
 
 	memcpy(mensaje_localized_pokemon -> pokemon, stream + offset, tamanio_pokemon);
-	log_info(logger, "Se deserializo un mensaje get del pokemon: %s", mensaje_get_pokemon -> pokemon);
+	log_info(logger, "Se deserializo un mensaje get del pokemon: %s", mensaje_localized_pokemon -> pokemon);
 	offset += tamanio_pokemon;
 
     memcpy(&tamanio_lista_posiciones, stream + offset, sizeof(uint32_t));
