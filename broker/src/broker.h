@@ -6,7 +6,8 @@
 #include <readline/readline.h>
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 #include <semaphore.h>
-
+#include <signal.h>
+#include <time.h>
 
 typedef struct {
     uint32_t size_memoria;
@@ -18,6 +19,7 @@ typedef struct {
 	char* 	 puerto;
 	uint32_t frecuencia_compactacion;
 	char* 	 log_file;
+	char*    memory_log;
 } t_config_broker;
 
 typedef struct {
@@ -31,18 +33,18 @@ typedef struct {
 } t_mensaje;
 
 typedef struct {
-	uint32_t tamanio_mensaje;
-	void* 	 payload;
+	uint32_t tamanio;
 	uint32_t base;
 	uint32_t ocupado;
-	uint32_t tiempo_de_llegada;
-	uint32_t ultima_modificacion;
+	uint32_t tiempo_de_carga;
+	uint32_t ultima_referencia;
+	op_code codigo_operacion;
 } t_memoria_dinamica;
 
 typedef struct{
 	uint32_t libre;
 	uint32_t tamanio;
-	void* payload;
+	uint32_t base;
 } t_memoria_buddy;
 
 struct t_node{
@@ -52,6 +54,16 @@ struct t_node{
 };
 struct t_node;
 typedef struct t_node t_node;
+
+typedef struct {
+    uint32_t indice;
+    uint32_t id_mensaje;
+} t_indice_lru;
+
+typedef struct {
+    uint32_t indice;
+    uint32_t tamanio;
+} t_indice;
 
 t_list* cola_catch;
 t_list* cola_caught;
@@ -67,15 +79,16 @@ t_list* lista_suscriptores_localized;
 t_list* lista_suscriptores_new;
 t_list* lista_suscriptores_appeared;
 
-//void* memoria_cache;
+void* memoria;
 t_list* memoria_cache;
 t_list* memoria_con_particiones;
 t_config* config;
 t_config_broker* config_broker;
 t_log* logger;
+t_log* logger_memoria;
 uint32_t particiones_liberadas;
 uint32_t asignado = 0;
-
+uint32_t numero_particion = 0;
 //---hilos---//
 
 pthread_t hilo_algoritmo_memoria;
@@ -162,13 +175,13 @@ void enviar_mensajes_cacheados_en_buddy_system(op_code tipo_mensaje, uint32_t so
 //Memoria
 void 	 	  		eliminar_particion_de_memoria		 (void);
 void 	 	   		compactar_memoria 			  		 (void);
-void 	 	   		guardar_en_memoria			  		 (t_mensaje*);
+void 	 	   		guardar_en_memoria			  		 (t_mensaje*,void*);
 uint32_t 	   		obtenerPotenciaDe2					 (uint32_t);
 struct t_node* 		crear_nodo							 (uint32_t);
 void 		   		arrancar_buddy						 (void);
 void 		   		asignar_nodo						 (struct t_node*, void*);
 uint32_t 	   		recorrer							 (struct t_node*,uint32_t ,void*);
-void 		   		ubicar_particion					 (uint32_t, uint32_t, void* );
+void 		   		ubicar_particion					 (uint32_t, t_memoria_dinamica* );
 void 		   		liberar_particion_dinamica			 (t_memoria_dinamica*);
 void 		   		iniciar_memoria_particiones			 (t_list*);
 uint32_t 	   		encontrar_primer_ajuste				 (uint32_t);
@@ -181,7 +194,15 @@ void 		   		compactar_memoria_cache				 (t_list*);
 void 		   		compactar_particiones_dinamicas		 (void);
 t_memoria_dinamica* seleccionar_victima_de_reemplazo_fifo(void);
 t_memoria_dinamica* seleccionar_victima_de_reemplazo_lru (void);
-void guardar_particion(t_mensaje*);
+void guardar_particion(t_mensaje*, void*);
 uint32_t chequear_espacio_memoria_particiones(uint32_t);
-
+void dump_info_particion(void*);
+void guardar_contenido_de_mensaje(uint32_t,  void*, uint32_t);
+bool ambas_estan_vacias(uint32_t, uint32_t);
+t_memoria_dinamica* armar_particion(uint32_t, uint32_t, t_mensaje*, uint32_t);
+t_memoria_dinamica* encontrar_mensaje(uint32_t, op_code);
+char* obtener_cola_del_mensaje(t_memoria_dinamica*);
+t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(void);
+bool tiene_siguiente(uint32_t);
+uint64_t timestamp(void);
 
