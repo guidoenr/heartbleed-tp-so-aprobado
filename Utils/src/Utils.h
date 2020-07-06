@@ -28,8 +28,8 @@ typedef enum {
 typedef struct {
 	uint32_t socket;
 	uint32_t tiempo_suscripcion;
-	op_code  cola_a_suscribir;
-	uint32_t    id_proceso;
+	op_code cola_a_suscribir;
+	uint32_t id_proceso;
 } t_suscripcion;
 
 typedef struct {
