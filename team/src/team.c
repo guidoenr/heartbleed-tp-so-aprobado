@@ -70,14 +70,25 @@ void iniciar_programa() {
 	inicializar_semaforos();
 	determinar_objetivo_global();
 
+	suscribirme_a_colas();
+
+	crear_listas_globales();
+
+	enviar_get_pokemon();
+
 	iniciar_entrenadores();
+
+
+	iniciar_hilos_ejecucion();
+
+	//iniciar_conexion_game_boy();
+}
+void crear_listas_globales() {
 	mapa_pokemons = list_create();
 	pedidos_captura = list_create();
 	pedidos_intercambio = list_create();
-
-	iniciar_hilos_ejecucion();
-	//suscribirme_a_colas();
-	//iniciar_conexion_game_boy();
+	especies_ya_localizadas = list_create();
+	especies_objetivo_global = list_create();
 }
 
 void iniciar_hilos_ejecucion() {
@@ -287,7 +298,7 @@ void suscribirse_a(op_code cola) {
 	}
 
 	t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
-	suscripcion -> id_proceso = malloc(sizeof(char*));
+	//suscripcion -> id_proceso = malloc(sizeof(char*));
 	uint32_t tamanio_suscripcion = sizeof(t_suscripcion);
 
 	suscripcion -> cola_a_suscribir = cola;
@@ -297,7 +308,7 @@ void suscribirse_a(op_code cola) {
 
 	enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
 
-	free(suscripcion -> id_proceso);
+	//free(suscripcion -> id_proceso);
 	free(suscripcion);
 }
 
@@ -426,7 +437,7 @@ void manejar_desalojo_captura(t_pedido_captura* pedido){
 		sem_post(&mx_desalojo_exec);
 
 	} else { // FIFO o SJF Sin Desalojo // RR/SJF NO DESALOJADO
-		//sem_wait(&(pedido -> entrenador -> esperar_caught)); // darle verde en el process request
+		sem_wait(&(pedido -> entrenador -> esperar_caught)); // darle verde en el process request
 		procesar_caught(pedido);
 
 	}
@@ -457,8 +468,6 @@ bool cumplio_objetivo_personal(t_entrenador* entrenador) {
 }
 
 void procesar_caught(t_pedido_captura* pedido){
-
-	pedido -> entrenador -> resultado_caught = 1; // delete
 
 	if(pedido -> entrenador -> resultado_caught) { // settear a lo que corresponda en el process_request ANTES de cambiar el esperando_caught
 
@@ -598,7 +607,7 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 void recibir_id_de_mensaje_enviado(uint32_t socket_cliente, uint32_t id_mensaje_enviado) {
   uint32_t id = 0;
 
-  recv(socket_cliente, & id, sizeof(uint32_t), MSG_WAITALL);
+  recv(socket_cliente, &id, sizeof(uint32_t), MSG_WAITALL);
   id_mensaje_enviado = id;
   log_info(logger, "El ID de mensaje enviado es: %d", id_mensaje_enviado);
 
@@ -1301,22 +1310,74 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 
 	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
 
-	uint32_t tamanio_mensaje = size_mensaje(mensaje, CATCH_POKEMON);
-
-	enviar_mensaje(CATCH_POKEMON, mensaje, socket, tamanio_mensaje);
-
 	pedido -> entrenador -> tire_accion = 1;
 
-	//pedido -> entrenador -> socket_mensaje_catch = socket; // ver comentario t_entrenador
+	if(socket != -1) {
 
-	recibir_id_de_mensaje_enviado(socket, pedido -> entrenador -> id_espera_catch);
+		uint32_t tamanio_mensaje = size_mensaje(mensaje, CATCH_POKEMON);
+		enviar_mensaje(CATCH_POKEMON, mensaje, socket, tamanio_mensaje);
 
+		//pedido -> entrenador -> socket_mensaje_catch = socket; // ver comentario t_entrenador
+		recibir_id_de_mensaje_enviado(socket, pedido -> entrenador -> id_espera_catch);
+
+	} else { // Comportamiento default *ATRAPÓ*
+		pedido -> entrenador -> resultado_caught = 1;
+		sem_post(&(pedido -> entrenador -> esperar_caught));
+	}
+
+
+}
+
+void enviar_mensaje_get(char* pokemon) {
+
+	t_get_pokemon* mensaje = malloc(sizeof(t_get_pokemon));
+
+	mensaje -> id_mensaje = 0;
+	mensaje -> pokemon = pokemon;
+
+
+	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	if(socket != -1) {
+		uint32_t tamanio_mensaje = size_mensaje(mensaje, GET_POKEMON);
+
+		enviar_mensaje(GET_POKEMON, mensaje, socket, tamanio_mensaje);
+
+		int id = 0;
+		recibir_id_de_mensaje_enviado(socket, id);
+
+	}
+}
+
+void enviar_get_pokemon() {
+
+	void agregar_si_no_encuentra(void* otro_pokemon) {
+		char* pokemon = otro_pokemon;
+
+		bool es_el_pokemon(void* another_pokemon) {
+			char* un_pokemon = another_pokemon;
+			return string_equals_ignore_case(pokemon, un_pokemon);
+		}
+
+		if(list_find(especies_objetivo_global, es_el_pokemon) == NULL) {
+			list_add(especies_objetivo_global, pokemon);
+		}
+	}
+
+	list_iterate(objetivo_global, agregar_si_no_encuentra);
+
+	/* ---------- */
+	void enviar_mensaje_por_especie(void* pokemon) {
+
+		enviar_mensaje_get((char*) pokemon);
+	}
+
+	list_iterate(especies_objetivo_global, enviar_mensaje_por_especie);
 }
 
 //TODO
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 
-	/*uint32_t size;
+	uint32_t size;
 	op_code* codigo_op = malloc(sizeof(op_code));
 
 	sem_wait(&mx_paquete);
@@ -1329,20 +1390,26 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 
 	switch (cod_op) {
 		case LOCALIZED_POKEMON:
+			list_add(especies_ya_localizadas, ((t_localized_pokemon*) mensaje_recibido) -> pokemon);
+			log_info(logger, "ME LLEGO UN LOCALIZED JUJU");
 			break;
 		case CAUGHT_POKEMON:
+			log_info(logger, "ME LLEGO UN CAUGHT JUJU");
 
+			//sem_post(&(pedido -> entrenador -> esperar_caught));
 			// entrenador -> resultado_caught = ((t_caught_pokemon*) mensaje_recibido) -> resultado;
 			break;
 		case APPEARED_POKEMON:
-
+			log_info(logger, "ME LLEGO UN APPEARED JUJU");
 			break;
 
 		case 0:
 			log_info(logger,"No se encontro el tipo de mensaje");
 			pthread_exit(NULL);
+
 		case -1:
-			pthread_exit(NULL); */
+			pthread_exit(NULL);
+	}
 }
 
 // ------------------------------- TERMINAR ------------------------------- //
@@ -1424,7 +1491,7 @@ void terminar_hilos_entrenadores() {
 	list_iterate(config -> entrenadores, esperar_hilo_entrenador);
 }
 
-void loggear_resultados(){
+void loggear_resultados() {
 
 	void ciclos_por_entrenador(void* un_entrenador) {
 		t_entrenador* entrenador = un_entrenador;
