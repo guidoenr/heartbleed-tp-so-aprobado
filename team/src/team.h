@@ -82,6 +82,7 @@ void suscribirme_a_colas();
 void suscribirse_a(op_code);
 void inicializar_semaforos();
 void iniciar_hilos_ejecucion();
+void crear_listas_globales();
 
 // entrenadores
 void iniciar_entrenadores();
@@ -107,6 +108,7 @@ bool estoy_esperando_trade(t_entrenador*);
 void recibir_id_de_mensaje_enviado(uint32_t, uint32_t);
 void enviar_mensaje_catch(t_pedido_captura*);
 void procesar_caught(t_pedido_captura*);
+void enviar_get_pokemon();
 
 // segun algoritmo:
 int distancia_segun_algoritmo(t_pedido_captura*);
@@ -188,6 +190,8 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo();
 
 // objetivo
 t_list* objetivo_global;
+t_list* especies_objetivo_global;
+t_list* especies_ya_localizadas;
 
 void determinar_objetivo_global();
 bool no_esta_en_objetivo(void*);
