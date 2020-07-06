@@ -219,7 +219,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 
 	//Este id habría que ver como pasarlo al id de un t_get por ejemplo.
 
-	mensaje_a_agregar -> payload   = armar_payload_mensaje(mensaje, (op_code)cod_op, size);
+	//mensaje_a_agregar -> payload   = armar_payload_mensaje(mensaje, (op_code)cod_op, size);
 	mensaje_a_agregar -> codigo_operacion    = cod_op;
 	mensaje_a_agregar -> suscriptor_enviado  = list_create();
 	mensaje_a_agregar -> suscriptor_recibido = list_create();
@@ -238,7 +238,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 	sem_post(&semaforo);
 }
 
-
+/*
 void* armar_payload_mensaje(void* mensaje, op_code codigo, uint32_t size){
 	void* payload;
 
@@ -261,7 +261,7 @@ void* armar_payload_mensaje(void* mensaje, op_code codigo, uint32_t size){
 
 	return payload;
 }
-
+*/
 uint32_t generar_id_univoco(){
 	pthread_mutex_t mutex_id_univoco = PTHREAD_MUTEX_INITIALIZER;
 
