@@ -71,6 +71,8 @@ void iniciar_programa() {
 	determinar_objetivo_global();
 
 	suscribirme_a_colas();
+	levantar_server_broker();
+	iniciar_conexion_game_boy();
 
 	crear_listas_globales();
 
@@ -80,8 +82,6 @@ void iniciar_programa() {
 
 
 	iniciar_hilos_ejecucion();
-
-	//iniciar_conexion_game_boy();
 }
 void crear_listas_globales() {
 	mapa_pokemons = list_create();
@@ -326,6 +326,22 @@ void* conexion_con_game_boy() {
 
 	return NULL;
 }
+
+void levantar_server_broker() {
+
+	uint32_t err = pthread_create(&hilo_broker, NULL, conexion_con_broker, NULL);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+}
+
+void* conexion_con_broker() {
+
+	iniciar_servidor(config -> ip_broker, config -> puerto_broker);
+
+	return NULL;
+}
+
 
 // ------------------------------- ENTRENADORES -------------------------------//
 
@@ -604,14 +620,14 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 	pedido -> entrenador -> pasos_a_moverse --;
 }
 
-void recibir_id_de_mensaje_enviado(uint32_t socket_cliente, uint32_t id_mensaje_enviado) {
+uint32_t recibir_id_de_mensaje_enviado(uint32_t socket_cliente) {
   uint32_t id = 0;
 
   recv(socket_cliente, &id, sizeof(uint32_t), MSG_WAITALL);
-  id_mensaje_enviado = id;
-  log_info(logger, "El ID de mensaje enviado es: %d", id_mensaje_enviado);
+  log_info(logger, "El ID de mensaje enviado es: %d", id);
 
   close(socket_cliente);
+  return id;
 }
 
 void tradear_pokemon(t_pedido_intercambio* pedido){
@@ -1194,7 +1210,6 @@ void remover_entrenadores_en_deadlock(t_list* entrenadores_para_ready){
 		}
 	}
 
-
 	list_iterate(entrenadores_para_ready, eliminar_entrenador);
 }
 
@@ -1318,7 +1333,7 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 		enviar_mensaje(CATCH_POKEMON, mensaje, socket, tamanio_mensaje);
 
 		//pedido -> entrenador -> socket_mensaje_catch = socket; // ver comentario t_entrenador
-		recibir_id_de_mensaje_enviado(socket, pedido -> entrenador -> id_espera_catch);
+		pedido -> entrenador -> id_espera_catch = recibir_id_de_mensaje_enviado(socket);
 
 	} else { // Comportamiento default *ATRAPÓ*
 		pedido -> entrenador -> resultado_caught = 1;
@@ -1342,8 +1357,7 @@ void enviar_mensaje_get(char* pokemon) {
 
 		enviar_mensaje(GET_POKEMON, mensaje, socket, tamanio_mensaje);
 
-		int id = 0;
-		recibir_id_de_mensaje_enviado(socket, id);
+		int id = recibir_id_de_mensaje_enviado(socket);
 
 	}
 }
@@ -1390,26 +1404,95 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 
 	switch (cod_op) {
 		case LOCALIZED_POKEMON:
-			list_add(especies_ya_localizadas, ((t_localized_pokemon*) mensaje_recibido) -> pokemon);
-			log_info(logger, "ME LLEGO UN LOCALIZED JUJU");
+			log_info(logger, "...ME LLEGO UN LOCALIZED JUJU");
+			procesar_localized((t_localized_pokemon*) mensaje_recibido);
+
 			break;
 		case CAUGHT_POKEMON:
-			log_info(logger, "ME LLEGO UN CAUGHT JUJU");
-
-			//sem_post(&(pedido -> entrenador -> esperar_caught));
-			// entrenador -> resultado_caught = ((t_caught_pokemon*) mensaje_recibido) -> resultado;
+			log_info(logger, "...ME LLEGO UN CAUGHT JUJU");
+			procesar_mensaje_caught((t_caught_pokemon*) mensaje_recibido);
 			break;
 		case APPEARED_POKEMON:
-			log_info(logger, "ME LLEGO UN APPEARED JUJU");
+			log_info(logger, "...ME LLEGO UN APPEARED JUJU");
+			procesar_mensaje_appeared((t_appeared_pokemon*) mensaje_recibido);
 			break;
-
 		case 0:
-			log_info(logger,"No se encontro el tipo de mensaje");
+			log_error(logger,"No se encontro el tipo de mensaje");
 			pthread_exit(NULL);
 
 		case -1:
 			pthread_exit(NULL);
 	}
+}
+
+void procesar_mensaje_appeared(t_appeared_pokemon* mensaje_recibido) {
+
+	t_pokemon_mapa* pokemon_mapa = malloc(sizeof(t_pokemon_mapa));
+	pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
+	pokemon_mapa -> posicion[0] = mensaje_recibido -> posicion[0];
+	pokemon_mapa -> posicion[1] = mensaje_recibido -> posicion[1];
+
+	bool esta_en_el_mapa(void* another_pokemon_mapa) {
+		t_pokemon_mapa* un_pokemon_mapa = another_pokemon_mapa;
+		return pokemon_mapa -> nombre == un_pokemon_mapa -> nombre &&
+				pokemon_mapa -> posicion[0] == un_pokemon_mapa -> posicion[0] &&
+				pokemon_mapa -> posicion[1] == un_pokemon_mapa -> posicion[1];
+	}
+	t_pokemon_mapa* otro_pokemon_mapa = list_find(mapa_pokemons, esta_en_el_mapa);
+
+	if(otro_pokemon_mapa == NULL) {
+		pokemon_mapa -> cantidad = 1;
+		list_add(mapa_pokemons, pokemon_mapa);
+	} else {
+		(otro_pokemon_mapa -> cantidad)++;
+	}
+}
+
+void procesar_mensaje_caught(t_caught_pokemon* mensaje_recibido) {
+
+	bool tiene_el_id_recibido(void* un_entrenador) {
+		t_entrenador* entrenador = un_entrenador;
+		return entrenador -> id_espera_catch == mensaje_recibido -> id_mensaje;
+	}
+
+	t_entrenador* entrenador = list_find(estado_block, tiene_el_id_recibido);
+
+	if(entrenador != NULL) {
+		entrenador -> resultado_caught = mensaje_recibido -> resultado;
+		sem_post(&(entrenador -> esperar_caught));
+	} else {
+		log_error(logger, "NO TENGO AL ENTRENADOR DEL MENSAJE RECIBIDO EN BLOCK.");
+	}
+}
+
+void procesar_localized(t_localized_pokemon* mensaje_recibido) {
+
+	bool es_el_pokemon(void* another_pokemon) {
+		char* un_pokemon = another_pokemon;
+		return string_equals_ignore_case(mensaje_recibido -> pokemon, un_pokemon);
+	}
+
+	if(list_find(especies_ya_localizadas, es_el_pokemon) == NULL) {
+		list_add(especies_ya_localizadas, mensaje_recibido -> pokemon);
+		list_remove_by_condition(especies_objetivo_global, es_el_pokemon);
+		agregar_localized_al_mapa(mensaje_recibido);
+	}
+
+}
+
+void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
+	t_pokemon_mapa* pokemon_mapa = malloc(sizeof(t_pokemon_mapa));
+
+	t_list* lista_posiciones = mensaje_recibido -> posiciones;
+	t_link_element* cabeza_lista = mensaje_recibido -> posiciones -> head;
+
+	pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
+	pokemon_mapa -> posicion[0] = 1;
+	pokemon_mapa -> posicion[1] = 1;
+	pokemon_mapa -> cantidad = 1;
+	list_add(mapa_pokemons, pokemon_mapa);
+
+	//mensaje_recibido -> posiciones, agregar_al_mapa;
 }
 
 // ------------------------------- TERMINAR ------------------------------- //
@@ -1479,6 +1562,7 @@ void terminar_hilos() {
 	pthread_cancel(hilo_algoritmo); // ambos bloqueados por semaforos pq terminaron los entrenadores y no van a recibir post
 	pthread_cancel(hilo_planificar); // ambos bloqueados por semaforos pq terminaron los entrenadores y no van a recibir post
 	//pthread_cancel(hilo_game_boy);
+	//pthread_cancel(hilo_broker);
 }
 
 void terminar_hilos_entrenadores() {
