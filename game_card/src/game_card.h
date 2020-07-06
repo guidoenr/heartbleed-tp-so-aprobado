@@ -122,3 +122,4 @@ t_file_metadata generar_file_metadata(t_new_pokemon* newPoke);
 t_bitarray* obtener_bitmap();
 
 void pruebas_catch_pokemon(int socket);
+t_list* obtener_posiciones_y_cantidades(char* meta_path,char* temporary_file);
