@@ -22,22 +22,25 @@ int main(void) {
 /*
 	pruebas_new_pokemon(socket_br);
 	pruebas_catch_pokemon(socket_br);
-*/
 	pruebas_get_pokemon(socket_br);
+*/
+
+	sem_init(&mx_bitmap,0,1);
+	pruebas_new_pokemon(socket_br);
 	terminar_programa(socket_br, config_gc);
 
 }
 
 void pruebas_new_pokemon(int socket){
 
-	t_new_pokemon* kennyS = malloc(sizeof(t_new_pokemon));
-	kennyS->posicion[0]=16;
-	kennyS->posicion[1] = 2;
-	kennyS->cantidad=1;
-	kennyS->id_mensaje = 124;
-	kennyS->pokemon= "kennyS";
-	//unlock_file(obtener_path_metafile(kennyS->pokemon));
-	funcion_hilo_new_pokemon(kennyS, socket);
+	t_new_pokemon* luca = malloc(sizeof(t_new_pokemon));
+	luca->posicion[0]=16;
+	luca->posicion[1] = 12;
+	luca->cantidad=44;
+	luca->id_mensaje = 124;
+	luca->pokemon= "GD3";
+
+	funcion_hilo_new_pokemon(luca, socket);
 
 
 }
@@ -80,9 +83,12 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 
 	switch (cod_op) {
 		case NEW_POKEMON:
-			log_info(logger,"LLEGO UN NEW_POKEMON");
-			informarAlBroker(cliente_fd, NEW_POKEMON);
+			log_info(logger,"CASE: NEW POKEMON");
+
+			informar_al_broker(cliente_fd, NEW_POKEMON,mensaje,size);
+
 			funcion_hilo_new_pokemon(mensaje,cliente_fd);
+
 			free(mensaje);
 			break;
 		case GET_POKEMON:
@@ -109,10 +115,15 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 	}
 }
 
-void informarAlBroker(int socket,op_code codigo){
-	char* aviso = concatenar("ACK[gamecard]: ",(char*) codigo);
-	int tamanioAviso = sizeof(aviso) + 1;
-	enviar_mensaje(codigo,aviso,socket,tamanioAviso);
+void informar_al_broker(int socket,op_code codigo,void* mensaje,uint32_t size){
+	t_ack acknowledgement;
+	acknowledgement.tipo_mensaje = codigo;
+	acknowledgement.id_proceso = 666; //gamecard es uno solo
+	acknowledgement.id_mensaje = 7030; //TODO y esto?
+
+
+	//enviar_mensaje(codigo, acknowledgement, socket, size); //todo JULI mica
+
 }
 
 void conectarse_a_br(int socket){
@@ -319,6 +330,11 @@ void crear_bitmap(char* path){
 
 	log_info(logger,"Se creo el bitarray de %d posiciones, con un tamaño de %d bytes",fs_metadata.blocks,size_in_bytes);
 
+	sem_init(&mx_bitmap,0,1);
+
+	log_info(logger,"Inicializo el semaforo para el bitarray");
+
+
 }
 
 /*------------------------------------------------------------------------- BITMAP/BITARRAY ----------------------------------------------------------------------------- */
@@ -327,6 +343,10 @@ void crear_bitmap(char* path){
 //TODO maybe un semaforo para el bitarray? entiendo que el filesystem es rapido, y mensajes en simultaneo se los banca porque termina afondo.
 
 t_bitarray* obtener_bitmap(){
+
+	log_info(logger,"Espero que el semaforo pase a 1");
+	sem_wait(&mx_bitmap);
+	log_info(logger,"Semaforo listo");
 
 	char* bitmapPath = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
 	int size_in_bytes = bitarray_default_size();
@@ -356,6 +376,7 @@ void actualizar_bitmap(t_bitarray* bitarray){
 	bitarray_destroy(bitarray);
 	free(bitmapPath);
 
+	sem_post(&mx_bitmap);
 }
 
 int bitarray_default_size(){
@@ -559,7 +580,7 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 
 		char* key = get_key_from_position(new_pokemon->posicion);
 		char* value = get_value_from_cantidad(new_pokemon->cantidad);
-		char* temporary_file = generar_archivo_temporal(path_metafile);
+		char* temporary_file = generar_archivo_temporal(path_metafile,new_pokemon->pokemon);
 
 		if (existe_la_posicion(key,temporary_file)){
 
@@ -595,21 +616,25 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 
 		}
 
-	log_info(logger,"THREAD FINISHED , unlockeo el pokemon");
+	log_info(logger,"Esperando el tiempo de retardo de operacion");
+
+	sleep(config_gc->tiempo_retardo_operacion);
+
+	log_info(logger,"THREAD FINISHED, unlockeo el pokemon");
+
 	unlock_file(path_metafile);
 
-	//t_appeared_pokemon* appeared = armar_appeared(new_pokemon);
+	t_appeared_pokemon* appeared = armar_appeared(new_pokemon);
 	//enviar_appeared POKKEMON TODO serializacion
 
 	free(path_metafile);
 	free(dir_path_newpoke);
-	destrozar_new_pokemon(new_pokemon);
 
 }
 
 void crear_pokemon(t_new_pokemon* newPoke,char* path){
 
-	t_file_metadata metadata = generar_file_metadata(newPoke->pokemon);
+	t_file_metadata metadata = generar_file_metadata(newPoke);
 
 	escribir_block_inicial(metadata,newPoke);
 	log_info(logger,"Se escribio la posicion del pokemon en el block");
@@ -668,7 +693,7 @@ bool esta_la_posicion_mal_grabada(char* key,char* temporary_file){
 	return existe_la_key_mal_grabada(key, temporary_file);
 }
 
-char* generar_archivo_temporal(char* metapath_file){
+char* generar_archivo_temporal(char* metapath_file,char* nombre_pokemon){
 
 	t_config* metapath = config_create(metapath_file);
 	char** blocks = config_get_array_value(metapath,"BLOCKS");
@@ -677,7 +702,7 @@ char* generar_archivo_temporal(char* metapath_file){
 	char* blockpath;
 	int cantidad_blocks = size_char_doble(blocks);
 	char* a = malloc(1);
-	char* random_path = rand_string();
+	char* random_path = rand_string(nombre_pokemon);
 	FILE* temporary = fopen(random_path,"wb");
 
 	int n = 0;
@@ -846,36 +871,46 @@ void verificar_apertura_pokemon(char* path_metafile,char* nombre_pokemon){
 
 void actualizar_pokemon(char* temporary_path,char* path_metafile,char* key,char* value){
 
-	int nueva_cantidad;
-	int length_posicion;
+	int nuevo_size;
+	int cantidad_nueva;
 	int cantidad_vieja;
 
 	t_config* temporary_config = config_create(temporary_path);
 
 	cantidad_vieja = config_get_int_value(temporary_config,key);
 
-	nueva_cantidad = cantidad_vieja + atoi(value);
+	cantidad_nueva = cantidad_vieja + atoi(value);
 
-	config_set_value(temporary_config, key, string_itoa(nueva_cantidad));
+	config_set_value(temporary_config, key, string_itoa(cantidad_nueva));
 
 	config_save(temporary_config);
 	config_destroy(temporary_config);
 
 	re_grabar_temporary_en_blocks(temporary_path, path_metafile);
-	log_info(logger,"Se actualizo la cantidad %s, ahora hay %d",key,nueva_cantidad);
-	length_posicion = strlen(posicion_into_string(key, value)) +1 ;
-	actualizar_size_new_pokemon(path_metafile,length_posicion);
+
+	log_info(logger,"Se actualizo la cantidad %s en el mapa, ahora hay %d",key,cantidad_nueva);
+
+	int length_viejo = strlen(string_itoa(cantidad_vieja));
+	int length_nuevo = strlen(string_itoa(cantidad_nueva));
+
+	if (length_nuevo > length_viejo){
+		nuevo_size = length_nuevo;
+	}else {
+		nuevo_size = 0;
+	}
+
+	actualizar_size_new_pokemon(path_metafile,nuevo_size);
 
 }
 
-void actualizar_size_new_pokemon(char* pathmetafile,int lengtposicion){
+void actualizar_size_new_pokemon(char* pathmetafile,int nuevosize){
 
 	int nuevo_size;
 
 	t_config* configmeta = config_create(pathmetafile);
 
 	int size_actual = config_get_int_value(configmeta,"SIZE");
-	nuevo_size = lengtposicion + size_actual;
+	nuevo_size = nuevosize + size_actual;
 
 	config_set_value(configmeta,"SIZE",string_itoa(nuevo_size));
 	config_save(configmeta);
@@ -964,7 +999,7 @@ void escribir_data_en_block(char* blockpath,char* key,char* value){
 int calcular_size_inicial(t_new_pokemon* newPoke){
 	int size;
 
-	char* key = get_key_from_position(newPoke);
+	char* key = get_key_from_position(newPoke->posicion);
 	char* value = get_value_from_cantidad(newPoke->cantidad);
 
 
@@ -1020,11 +1055,25 @@ char* get_value_from_cantidad(uint32_t cantidad){
 	return value;
 }
 
+t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
+
+	t_appeared_pokemon* appeared = malloc(sizeof(t_appeared_pokemon));
+	appeared->id_mensaje = new_pokemon->id_mensaje;
+	appeared->id_mensaje_correlativo = 0;
+	appeared->pokemon = new_pokemon->pokemon;
+	appeared->posicion[0] = new_pokemon->posicion[0];
+	appeared->posicion[1] = new_pokemon->posicion[1];
+
+	return appeared;
+}
+
+
 /*-------------------------------------------------------------------------- CATCH-POKEMON ----------------------------------------------------------------------------- */
 void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,int socket_br){
 
 	log_info(logger,"THREAD CATCH POKEMON");
 	log_info(logger,"LLEGO UN CATCH %s en la posicion %d-%d ",catch_pokemon->pokemon,catch_pokemon->posicion[0],catch_pokemon->posicion[1]);
+	uint32_t resultado = 0;
 
 	char* meta_path = obtener_path_metafile(catch_pokemon->pokemon);
 	char* dir_path = obtener_path_dir_pokemon(catch_pokemon->pokemon);
@@ -1033,31 +1082,42 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,int socket_br){
 	if (el_pokemon_esta_creado(dir_path)){
 
 		verificar_apertura_pokemon(meta_path, catch_pokemon->pokemon);
-		log_info(logger,"Existia el pokemon, ahi te lo actualizo del mapa kpo");
+		log_info(logger,"Existia el pokemon, se va a actualizar su cantidad en el mapa");
 
-
-		char* temporaryfile = generar_archivo_temporal(meta_path);
+		char* temporaryfile = generar_archivo_temporal(meta_path,catch_pokemon->pokemon);
 
 		if (existe_la_posicion(key, temporaryfile)){
+
 			remover_posicion(temporaryfile,key);
 			re_grabar_temporary_en_blocks(temporaryfile,meta_path);
 			log_info(logger,"Se retiro una cantidad en la posicion %s",key);
 
-		} else{
-			log_info(logger,"Error, no existe esta posicion en el mapa");
-		}
+			verificar_espacio_en_blocks(meta_path);
+			resultado = 1;
 
-		remove(temporaryfile);
-		verificar_espacio_en_blocks(meta_path);
-
+			} else{
+			log_error(logger,"No existe la posicion %d - %d del pokemon %s en el mapa",catch_pokemon->posicion[0],catch_pokemon->posicion[1],catch_pokemon->pokemon);
+			}
+			remove(temporaryfile);
 
 	}else{
-		log_info(logger,"No se encuentra este pokemon creado");
+		log_error(logger,"No se encuentra el pokemon %s creado",catch_pokemon->pokemon);
 	}
 
-	unlock_file(meta_path);
 	verificar_espacio_ocupado_por_pokemon(catch_pokemon,meta_path);
-	log_info(logger,"THREAD FINISHED, UNLOCKEO EL POKEMON");
+
+	log_info(logger,"Esperando el tiempo de retardo de operacion");
+
+	sleep(config_gc->tiempo_retardo_operacion);
+
+	log_info(logger,"THREAD FINISHED, unlockeo el pokemon");
+
+	unlock_file(meta_path);
+
+
+	t_caught_pokemon* caught_pokemon = armar_caught_pokemon(catch_pokemon, resultado);
+	//ENVIAR CAUGHT TODO
+
 
 }
 
@@ -1189,7 +1249,16 @@ verificar_espacio_ocupado_por_pokemon(t_catch_pokemon* catch_pokemon,char* meta_
 
 	free(poke_dir);
 	free(blocks);
+}
 
+t_caught_pokemon* armar_caught_pokemon(t_catch_pokemon* catch_pokemon,uint32_t resultado){
+
+	t_caught_pokemon* caught_pokemon = malloc(sizeof(t_caught_pokemon));
+	caught_pokemon->resultado = resultado;
+	caught_pokemon->id_mensaje = catch_pokemon->id_mensaje;
+	caught_pokemon->id_mensaje_correlativo = 0;
+
+	return caught_pokemon;
 }
 
 
@@ -1206,7 +1275,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,int socket_br){
 
 		 verificar_apertura_pokemon(meta_path, get_pokemon->pokemon);
 
-		 char* temporary_file = generar_archivo_temporal(meta_path);
+		 char* temporary_file = generar_archivo_temporal(meta_path,get_pokemon->pokemon);
 
 		 t_list* posiciones = obtener_posiciones_y_cantidades(meta_path,temporary_file);
 
@@ -1290,7 +1359,6 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 
 	}
 
-
 	free(a);
 	free(posiciony);
 	free(posicionx);
@@ -1298,13 +1366,6 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 
 
 }
-
-
-
-
-
-
-
 
 
 /*-------------------------------------------------------------------------- TOOLS ----------------------------------------------------------------------------- */
@@ -1435,19 +1496,6 @@ uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon){
 	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
 }
 
-t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
-
-	//TODO
-		t_appeared_pokemon* appeared_pokemon = malloc(sizeof(t_appeared_pokemon));
-
-		appeared_pokemon->posicion[0] = new_pokemon->posicion[0];
-		appeared_pokemon->posicion[1] = new_pokemon->posicion[1];
-		appeared_pokemon->pokemon = new_pokemon->pokemon;
-		appeared_pokemon->id_mensaje_correlativo = 0;
-		appeared_pokemon->id_mensaje = new_pokemon->id_mensaje;
-		return appeared_pokemon;
-}
-
 int size_char_doble(char** array){
 
 	int i = 0;
@@ -1465,7 +1513,6 @@ int size_char_doble(char** array){
 
 void destrozar_new_pokemon(t_new_pokemon* new_pokemon){
 	free(new_pokemon->pokemon);
-	free(new_pokemon);
 }
 
 void destrozar_metadata_file(t_file_metadata metadata){
@@ -1479,7 +1526,7 @@ void destrozar_fs_metadata(t_metadata metadata){
 	free(metadata.magic);
 }
 
-char* rand_string() {
+char* rand_string(char* nombre_pokemon) {
 
     static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     char *randomString = NULL;
@@ -1497,9 +1544,11 @@ char* rand_string() {
             randomString[length] = '\0';
         }
     }
-    char* rand = concatenar(randomString,".bin");
+    char* rand = concatenar(randomString,nombre_pokemon);
+    char* random_string = concatenar(rand,".bin");
     free(randomString);
-    return rand;
+
+    return random_string;
 }
 
 char* generar_string_desde_blocks(char** blocks){

@@ -5,7 +5,7 @@
 #include<commons/config.h>
 #include<commons/bitarray.h>
 #include<readline/readline.h>
-#include <semaphore.h>
+#include<semaphore.h>
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.h"
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 
@@ -14,8 +14,7 @@
 t_log* logger;
 char* punto_montaje;
 t_new_pokemon* luken;
-
-
+sem_t mx_bitmap;
 
 
 typedef struct {
@@ -50,7 +49,7 @@ typedef struct{
 //package sending
 void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente);
 t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size);
-void informarAlBroker(int socket,op_code codigo);
+void informar_al_broker(int socket,op_code codigo,void* mensaje,uint32_t size);
 t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon);
 bool existePokemonEnPosicion(t_new_pokemon* pokemon);
 void enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket);
@@ -70,9 +69,9 @@ char* get_key_from_position(uint32_t posicion[2]);
 char* get_value_from_cantidad(uint32_t cantidad);
 char* list_to_string_array(t_list* blocks);
 char* block_path(char* block);
-char* rand_string();
+char* rand_string(char* nombre_pokemon);
 char* generar_string_desde_blocks(char** blocks);
-char* generar_archivo_temporal(char* metapath_file);
+char* generar_archivo_temporal(char* metapath_file,char* nombre_pokemon);
 bool los_blocks_estan_llenos(char** blocks,int cantidad_blocks);
 bool el_block_tiene_espacio_justo(char* key,char* value,char* ultimo_block_path);
 bool el_block_tiene_espacio_pero_no_alcanza(char* blockpath);
@@ -85,6 +84,9 @@ int size_char_doble(char** array);
 int la_posicion_ya_existe(t_new_pokemon* newpoke,char* meta_path, char* key_posicion);
 t_list* chardoble_to_tlist(char** chardoble);
 
+
+/* CATCH POKEMON */
+t_caught_pokemon* armar_caught_pokemon(t_catch_pokemon* catch_pokemon,uint32_t resultado);
 /* FS */
 void iniciar_tall_grass();
 t_metadata leer_fs_metadata();
