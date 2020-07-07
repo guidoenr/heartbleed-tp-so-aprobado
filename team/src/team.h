@@ -22,6 +22,9 @@ typedef struct {
 	uint32_t resultado_caught;
 	sem_t esperar_caught;
 	uint32_t estimacion;
+	uint32_t ciclos_cpu;
+	uint32_t socket_mensaje_catch; // depende de donde hagamos el recv
+	uint32_t id_espera_catch;
 } t_entrenador;
 
 typedef struct {
@@ -55,10 +58,16 @@ typedef struct {
 	char* puerto_broker;
 	uint32_t estimacion_inicial;
 	char* log_file;
+	uint32_t id_proceso;
 } t_config_team;
 
 t_config_team* config;
 t_log* logger;
+
+uint32_t deadlocks_totales;
+uint32_t deadlocks_resueltos;
+uint32_t ciclos_cpu_totales;
+uint32_t cambios_de_contexto;
 
 // utils
 char* append(const char*, char);
@@ -73,6 +82,7 @@ void suscribirme_a_colas();
 void suscribirse_a(op_code);
 void inicializar_semaforos();
 void iniciar_hilos_ejecucion();
+void crear_listas_globales();
 
 // entrenadores
 void iniciar_entrenadores();
@@ -95,14 +105,14 @@ void calcular_estimaciones_ready();
 bool estoy_esperando_trade(t_entrenador*);
 
 // mensajes
+void recibir_id_de_mensaje_enviado(uint32_t, uint32_t);
+void enviar_mensaje_catch(t_pedido_captura*);
+void procesar_caught(t_pedido_captura*);
+void enviar_get_pokemon();
 
 // segun algoritmo:
 int distancia_segun_algoritmo(t_pedido_captura*);
 void planificar_segun_algoritmo(t_pedido_captura* pedido);
-
-
-void procesar_caught(t_pedido_captura*);
-
 
 // planificacion
 void* planificar_entrenadores();
@@ -152,6 +162,8 @@ sem_t mx_desalojo_exec;
 sem_t entrenadores_ready;
 sem_t sem_cont_mapa;
 sem_t sem_cont_entrenadores_a_replanif;
+sem_t mx_contexto;
+sem_t mx_paquete;
 
 
 // mapa
@@ -178,6 +190,8 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo();
 
 // objetivo
 t_list* objetivo_global;
+t_list* especies_objetivo_global;
+t_list* especies_ya_localizadas;
 
 void determinar_objetivo_global();
 bool no_esta_en_objetivo(void*);
@@ -187,6 +201,7 @@ bool comparar_pokemon(void*, void*);
 
 
 // terminar
+void loggear_resultados();
 void liberar_config();
 void liberar_lista_de_lista_de_strings(t_list*);
 void liberar_entrenadores();

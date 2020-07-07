@@ -9,6 +9,17 @@
 #include <signal.h>
 #include <time.h>
 
+
+typedef struct {
+    uint32_t indice;
+    uint32_t id_mensaje;
+} t_indice_lru;
+
+typedef struct {
+    uint32_t indice;
+    uint32_t tamanio;
+} t_indice;
+
 typedef struct {
     uint32_t size_memoria;
 	uint32_t size_min_memoria;
@@ -19,7 +30,7 @@ typedef struct {
 	char* 	 puerto;
 	uint32_t frecuencia_compactacion;
 	char* 	 log_file;
-	char*    memory_log;
+	char* 	 memory_log;
 } t_config_broker;
 
 typedef struct {
@@ -36,8 +47,8 @@ typedef struct {
 	uint32_t tamanio;
 	uint32_t base;
 	uint32_t ocupado;
-	uint32_t tiempo_de_carga;
 	uint32_t ultima_referencia;
+	uint32_t tiempo_de_carga;
 	op_code codigo_operacion;
 } t_memoria_dinamica;
 
@@ -54,16 +65,6 @@ struct t_node{
 };
 struct t_node;
 typedef struct t_node t_node;
-
-typedef struct {
-    uint32_t indice;
-    uint32_t id_mensaje;
-} t_indice_lru;
-
-typedef struct {
-    uint32_t indice;
-    uint32_t tamanio;
-} t_indice;
 
 t_list* cola_catch;
 t_list* cola_caught;
@@ -89,6 +90,8 @@ t_log* logger_memoria;
 uint32_t particiones_liberadas;
 uint32_t asignado = 0;
 uint32_t numero_particion = 0;
+
+
 //---hilos---//
 
 pthread_t hilo_algoritmo_memoria;
@@ -133,8 +136,6 @@ void liberar_semaforos_broker	 (void);
 
 
 
-
-
 //Administracion de mensajes
 void 	 encolar_mensaje			       			   (t_mensaje*, op_code);
 void 	 agregar_mensaje				   			   (uint32_t,uint32_t,void*,uint32_t);
@@ -156,6 +157,8 @@ void 	 eliminar_mensajes_confirmados	   			   (void);
 void 	 borrar_mensajes_confirmados	   			   (op_code, t_list*, t_list*);
 void 	 eliminar_mensaje							   (void*);
 bool 	 no_tiene_el_mensaje						   (t_mensaje*, uint32_t);
+void 	 encolar_mensaje_fifo 						   (uint32_t);
+void 	 apilar_mensaje								   (uint32_t);
 
 //Suscripciones
 void 		   recibir_suscripcion         (t_suscripcion*);
@@ -180,7 +183,8 @@ uint32_t 	   		obtenerPotenciaDe2					 (uint32_t);
 struct t_node* 		crear_nodo							 (uint32_t);
 void 		   		arrancar_buddy						 (void);
 void 		   		asignar_nodo						 (struct t_node*, void*);
-uint32_t 	   		recorrer							 (struct t_node*,uint32_t ,void*);
+uint32_t 	   		recorrer_fifo							 (struct t_node*,uint32_t ,void*);
+uint32_t            recorrer_best_fit                    (t_node* , uint32_t , void* );
 void 		   		ubicar_particion					 (uint32_t, t_memoria_dinamica* );
 void 		   		liberar_particion_dinamica			 (t_memoria_dinamica*);
 void 		   		iniciar_memoria_particiones			 (t_list*);
@@ -205,4 +209,5 @@ char* obtener_cola_del_mensaje(t_memoria_dinamica*);
 t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(void);
 bool tiene_siguiente(uint32_t);
 uint64_t timestamp(void);
+void sig_handler(uint32_t);
 

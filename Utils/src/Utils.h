@@ -28,8 +28,8 @@ typedef enum {
 typedef struct {
 	uint32_t socket;
 	uint32_t tiempo_suscripcion;
-	op_code  cola_a_suscribir;
-	uint32_t    id_proceso;
+	op_code cola_a_suscribir;
+	uint32_t id_proceso;
 } t_suscripcion;
 
 typedef struct {
@@ -69,18 +69,12 @@ typedef struct {
 	uint32_t resultado;
 } t_caught_pokemon;
 
-typedef struct {
-	char* pokemon;
-	uint32_t posicion[2];
-	uint32_t cantidad;
-	uint32_t* next;
-	// capaz tengamos q agregar un uint32_t* previous;
-} t_lista_pokemones; //CUIDADO ACA, TEAM TIENE UN t_lista_pokemons, esto va a ir en gamecard
 
 typedef struct {
 	uint32_t id_mensaje;
 	char* pokemon;
-	t_lista_pokemones* lista_pokemons; //CUIDADO ACA, TEAM TIENE UN t_lista_pokemons
+	t_list* posiciones; // [4,22,44,55,22,221,12,512,21]
+	// sizeof(t_list) + elements.count * (sizeof(uint32_t)) tamaño de la lista
 } t_localized_pokemon;
 
 
@@ -131,7 +125,7 @@ void* serializar_paquete(void* mensaje, uint32_t size_mensaje, op_code codigo, u
 void* serializar_new_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_get_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_appeared_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
-void* serializar_localized_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
+void* serializar_localized_pokemon(void* mensaje_new, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_catch_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_caught_pokemon(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
 void* serializar_suscripcion(void* mensaje, uint32_t size_mensaje, uint32_t* size_serializado);
@@ -145,6 +139,7 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_
 t_caught_pokemon* deserealizar_caught_pokemon(void* stream, uint32_t size_mensaje);
 t_appeared_pokemon* deserealizar_appeared_pokemon(void* stream, uint32_t size_mensaje);
 t_new_pokemon* deserealizar_new_pokemon(void* stream, uint32_t size_mensaje);
+t_localized_pokemon* deserealizar_localized_pokemon(void*,uint32_t);
 
 
 void iniciar_logger(char* file, char* program_name);

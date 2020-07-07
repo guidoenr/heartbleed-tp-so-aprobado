@@ -55,38 +55,63 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon);
 bool existePokemonEnPosicion(t_new_pokemon* pokemon);
 void enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket);
 
-//metadata + fileSystem
+/* NEW POKEMON */
+void verificar_existencia_pokemon(t_new_pokemon* pokemon,int socket);
+void funcion_hilo_new_pokemon(t_new_pokemon* pokemon,int socket);
+void re_grabar_temporary_en_blocks(char* temporary_file,char* path_metafile);
+void destrozar_metadata_file(t_file_metadata metadata);
+void destrozar_new_pokemon(t_new_pokemon* new_pokemon);
+void escribir_data_sin_fragmentacion_interna(char* block_nuevo,char* block_viejo, char*key, char*value);
+void conectarse_a_br(int socket);
+void conectarse_a_gb(int socket);
+void verificar_apertura_pokemon(char* path_metafile,char* nombre_pokemon);
+void actualizar_pokemon(char* temporary_path,char* path_metafile,char* key,char* value);
+char* get_key_from_position(uint32_t posicion[2]);
+char* get_value_from_cantidad(uint32_t cantidad);
+char* list_to_string_array(t_list* blocks);
+char* block_path(char* block);
+char* rand_string();
+char* generar_string_desde_blocks(char** blocks);
+char* generar_archivo_temporal(char* metapath_file);
+bool los_blocks_estan_llenos(char** blocks,int cantidad_blocks);
+bool el_block_tiene_espacio_justo(char* key,char* value,char* ultimo_block_path);
+bool el_block_tiene_espacio_pero_no_alcanza(char* blockpath);
+bool existe_la_key_mal_grabada(char* key,char* temporary_file);
+bool esta_la_posicion_mal_grabada(char* key,char* temporary_file);
+bool existe_la_posicion(char* key,char* temporary_path);
+bool el_pokemon_esta_creado(char* path);
+bool es_directorio(char* path);
+int size_char_doble(char** array);
+int la_posicion_ya_existe(t_new_pokemon* newpoke,char* meta_path, char* key_posicion);
+t_list* chardoble_to_tlist(char** chardoble);
+
+/* FS */
 void iniciar_tall_grass();
 t_metadata leer_fs_metadata();
 void escribirMetadata();
 void crear_metadata_fs();
 int tamanio_de_metadata(t_metadata metadata);
-void verificar_existencia_pokemon(t_new_pokemon* pokemon,int socket);
-void verificar_apertura_pokemon(t_new_pokemon* msg,int socket);
 int tamanio_file_metadata(t_file_metadata fileMeta);
 t_file_metadata leer_file_metadata(char* path);
 
-//commons
+/* COMMONS */
 void terminar_programa(int, t_config_game_card*);
 void liberar_conexion(uint32_t);
 void liberar_logger();
 void liberar_config_gc(t_config_game_card*);
 void suscribirme_a_colas();
 void suscribirse_a(op_code);
-
-//procces
 void process_request(uint32_t cod_op, uint32_t cliente_fd);
-void funcion_hilo_new_pokemon(t_new_pokemon* pokemon,int socket);
 
 //parsers + tools
 char* concatenar(char* str1,char* str2);
 bool isFile(char* path);
 uint32_t sizeNewPokemon(t_new_pokemon* pokemon);
 uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon);
-char* obtener_path_metafile(t_new_pokemon* pokemon);
-char* obtener_path_dir_pokemon(t_new_pokemon* pokemon);
+char* obtener_path_metafile(char* nombre_pokemon);
+char* obtener_path_dir_pokemon(char* nombre_pokemon);
 void conectarse(int socket);
-bool is_open(char* path);
+bool esta_lockeado(char* path);
 bool isDir(const char* name);
 bool existeElFileSystem(char* puntoMontaje);
 t_list* asignar_block_inicial();
@@ -95,23 +120,6 @@ char* buscar_block_libre();
 char* posicion_into_string(char*key,char*value);
 t_file_metadata generar_file_metadata(t_new_pokemon* newPoke);
 t_bitarray* obtener_bitmap();
-char* get_value_from_position(t_new_pokemon* newpoke);
-char* get_key_from_position(t_new_pokemon* newpoke);
-char* list_to_string_array(t_list* blocks);
-char* block_path(char* block);
-bool el_ultimo_bloque_tiene_espacio_justo(char* key,char* value,char* ultimo_block_path);
-int size_char_doble(char** array);
-t_list* chardoble_to_tlist(char** chardoble);
-bool es_directorio(char* path);
-int la_posicion_ya_existe(t_new_pokemon* newpoke,char* meta_path, char* key_posicion);
-bool el_pokemon_esta_creado(char* path);
-void actualizar_pokemon(t_new_pokemon* new_pokemon,char* path_metafile,char* key,char* value,int block_number);
-existe_la_posicion(new_pokemon,path_metafile);
-char* rand_string(int length);
-char* generar_string_desde_blocks(char** blocks);
-bool esta_la_posicion_mal_grabada(char* key,char* temporary_file);
-char* generar_archivo_temporal(char* metapath_file);
-void re_grabar_temporary_en_blocks(char* temporary_file,char* path_metafile);
-bool existe_la_key_mal_grabada(char* key,char* temporary_file);
-void destrozar_metadata_file(t_file_metadata metadata);
-void destrozar_new_pokemon(t_new_pokemon* new_pokemon);
+
+void pruebas_catch_pokemon(int socket);
+t_list* obtener_posiciones_y_cantidades(char* meta_path,char* temporary_file);

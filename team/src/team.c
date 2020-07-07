@@ -4,7 +4,6 @@ int main(void) {
 
 	iniciar_programa();
 
-
 	t_pokemon_mapa* pikachu = malloc(sizeof(t_pokemon_mapa));
 	pikachu -> nombre = "Pikachu";
 	pikachu -> posicion[0] = 1;
@@ -61,19 +60,35 @@ int main(void) {
 
 void iniciar_programa() {
 	iniciar_logger("team.log", "team");
+	deadlocks_totales = 0;
+	deadlocks_resueltos = 0;
+	ciclos_cpu_totales = 0;
+	cambios_de_contexto = 0;
+
 	leer_config();
 	inicializar_estados();
 	inicializar_semaforos();
 	determinar_objetivo_global();
 
+	suscribirme_a_colas();
+
+	crear_listas_globales();
+
+	enviar_get_pokemon();
+
 	iniciar_entrenadores();
+
+
+	iniciar_hilos_ejecucion();
+
+	//iniciar_conexion_game_boy();
+}
+void crear_listas_globales() {
 	mapa_pokemons = list_create();
 	pedidos_captura = list_create();
 	pedidos_intercambio = list_create();
-
-	iniciar_hilos_ejecucion();
-	//suscribirme_a_colas();
-	//iniciar_conexion_game_boy();
+	especies_ya_localizadas = list_create();
+	especies_objetivo_global = list_create();
 }
 
 void iniciar_hilos_ejecucion() {
@@ -102,6 +117,8 @@ void inicializar_semaforos() {
 	sem_init(&entrenadores_ready, 0, 0);
 	sem_init(&sem_cont_mapa, 0, 0);
 	sem_init(&sem_cont_entrenadores_a_replanif, 0, 0);
+	sem_init(&mx_contexto, 0, 1);
+	sem_init(&mx_paquete, 0, 1);
 }
 
 void leer_config(void) {
@@ -126,7 +143,7 @@ void leer_config(void) {
 	config -> puerto_broker = strdup(config_get_string_value(config_team, "PUERTO_BROKER"));
 	config -> estimacion_inicial = config_get_int_value(config_team, "ESTIMACION_INICIAL");
 	config -> log_file = strdup(config_get_string_value(config_team, "LOG_FILE"));
-
+	config -> id_proceso = config_get_int_value(config_team, "ID_PROCESO");
 	config_destroy(config_team);
 }
 
@@ -263,33 +280,36 @@ void suscribirme_a_colas() {
 	suscribirse_a(LOCALIZED_POKEMON);
 }
 
-//TODO CHEQUEAR, robado de game_card :p
 void suscribirse_a(op_code cola) {
-	uint32_t socket 			      = crear_conexion(config -> ip_broker, config -> puerto_broker);
-	t_suscripcion* suscripcion 		  = malloc(sizeof(t_suscripcion));
-	suscripcion -> id_proceso 		  = malloc(sizeof(char*));
-	uint32_t tamanio_suscripcion	  = sizeof(t_suscripcion);
+	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
 
-	suscripcion -> cola_a_suscribir   = cola;
-	suscripcion -> id_proceso		  = "1"; //ESTE VALOR SE SACA DE CONFIG
-	suscripcion -> socket 		      = socket;
-	suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
+	while(socket == -1) {
+
+		log_info(logger, "Inicio de proceso de reintento de comunicacion con el Broker");
+		sleep(config -> tiempo_reconexion);
+
+		socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+
+		if(socket == -1){
+			log_info(logger, "Proceso de reintento de comunicacion con el Broker fallido");
+		} else{
+			log_info(logger, "Proceso de reintento de comunicacion con el Broker exitoso");
+		}
+	}
+
+	t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
+	//suscripcion -> id_proceso = malloc(sizeof(char*));
+	uint32_t tamanio_suscripcion = sizeof(t_suscripcion);
+
+	suscripcion -> cola_a_suscribir = cola;
+	suscripcion -> id_proceso = config -> id_proceso;
+	suscripcion -> socket = socket;
+	suscripcion -> tiempo_suscripcion = 0; //este valor es siempre 0
 
 	enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
 
-	free(suscripcion -> id_proceso);
+	//free(suscripcion -> id_proceso);
 	free(suscripcion);
-}
-//TODO CHEQUEAR, robado de game_card :p
-void conectarse(int socket) {
-	socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
-	if (socket == -1) {
-		log_info(logger, "imposible conectar con broker, reintento en: %d",time);
-		sleep(config -> tiempo_reconexion);
-		conectarse(socket);
-	} else {
-		log_info(logger, "conexion exitosa con broker");
-	}
 }
 
 void iniciar_conexion_game_boy() {
@@ -302,6 +322,9 @@ void iniciar_conexion_game_boy() {
 
 void* conexion_con_game_boy() {
 
+	iniciar_servidor("127.0.0.2", "5662"); // puerto robado de la config de gameboy
+
+	return NULL;
 }
 
 // ------------------------------- ENTRENADORES -------------------------------//
@@ -316,6 +339,9 @@ void iniciar_entrenadores() {
 		entrenador -> pasos_a_moverse = 0;
 		entrenador -> tire_accion = 0;
 		entrenador -> estimacion = config -> estimacion_inicial;
+		entrenador -> ciclos_cpu = 0;
+		//entrenador -> socket_mensaje_catch = 0;
+		//entrenador ->
 		sem_init(&(entrenador -> sem_binario), 0, 0);
 		sem_init(&(entrenador -> esperar_caught), 0, 0);
 
@@ -411,7 +437,7 @@ void manejar_desalojo_captura(t_pedido_captura* pedido){
 		sem_post(&mx_desalojo_exec);
 
 	} else { // FIFO o SJF Sin Desalojo // RR/SJF NO DESALOJADO
-		//sem_wait(&(pedido -> entrenador -> esperar_caught)); // darle verde en el process request
+		sem_wait(&(pedido -> entrenador -> esperar_caught)); // darle verde en el process request
 		procesar_caught(pedido);
 
 	}
@@ -442,8 +468,6 @@ bool cumplio_objetivo_personal(t_entrenador* entrenador) {
 }
 
 void procesar_caught(t_pedido_captura* pedido){
-
-	pedido -> entrenador -> resultado_caught = 1; // delete
 
 	if(pedido -> entrenador -> resultado_caught) { // settear a lo que corresponda en el process_request ANTES de cambiar el esperando_caught
 
@@ -562,7 +586,8 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 		pedido -> distancia --;
 		log_info(logger, "El entrenador %d se mueve a [%d,%d]", pedido -> entrenador -> id, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 	} else {
-		// tirar el catch (agarrar)
+		enviar_mensaje_catch(pedido);
+
 		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_block, pedido -> entrenador);
 		log_info(logger, "El entrenador %d tiro el catch para un %s en la posicion [%d,%d]",
@@ -570,11 +595,23 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 				pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 		log_info(logger, "El entrenador %d se mueve a block para esperar la respuesta del catch", pedido -> entrenador -> id);
 		sem_post(&mx_estados);
-		pedido -> entrenador -> tire_accion = 1;
+
 		//sleep(config -> retardo_cpu * 4); //dsp decomentar CREO
 	}
+
+	pedido -> entrenador -> ciclos_cpu ++;
 	sleep(config -> retardo_cpu);// RETARDO_CICLO_CPU
 	pedido -> entrenador -> pasos_a_moverse --;
+}
+
+void recibir_id_de_mensaje_enviado(uint32_t socket_cliente, uint32_t id_mensaje_enviado) {
+  uint32_t id = 0;
+
+  recv(socket_cliente, &id, sizeof(uint32_t), MSG_WAITALL);
+  id_mensaje_enviado = id;
+  log_info(logger, "El ID de mensaje enviado es: %d", id_mensaje_enviado);
+
+  close(socket_cliente);
 }
 
 void tradear_pokemon(t_pedido_intercambio* pedido){
@@ -598,9 +635,11 @@ void tradear_pokemon(t_pedido_intercambio* pedido){
 		pedido -> entrenador_buscando -> tire_accion = 1;
 		ejecutar_trade(pedido);
 		sem_post(&(pedido -> entrenador_esperando -> sem_binario));
-		//sleep(config -> retardo_cpu * 4); //dsp decomentar CREO
+		sleep(config -> retardo_cpu * 4);
+		pedido -> entrenador_buscando -> ciclos_cpu += 4;
 	}
 	pedido -> entrenador_buscando -> pasos_a_moverse --;
+	pedido -> entrenador_buscando -> ciclos_cpu ++;
 	sleep(config -> retardo_cpu);
 }
 
@@ -631,6 +670,7 @@ void ejecutar_trade(t_pedido_intercambio* pedido) {
 			pedido -> entrenador_buscando -> id, pedido -> pokemon_a_dar,
 			pedido -> entrenador_esperando -> id, pedido -> pokemon_a_recibir);
 
+	deadlocks_resueltos ++;
 	eliminar_pedido_intercambio(pedido);
 }
 
@@ -795,6 +835,8 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 	} else {
 		pedido -> entrenador_buscando -> pasos_a_moverse = pedido -> distancia;
 	}
+
+	deadlocks_totales ++;
 
 	return pedido;
 }
@@ -1187,6 +1229,11 @@ void cambiar_a_estado(t_list* estado, t_entrenador* entrenador) {
 
 		if(esta_en_estado(estado_ready, entrenador)) {
 			estado_actual = estado_ready;
+
+			sem_wait(&mx_contexto);
+			cambios_de_contexto ++;
+			sem_post(&mx_contexto);
+
 		} else {
 			log_error(logger, "ESTOY TRATANDO DE CAMBIAR A EXEC DESDE UN ESTADO QUE NO DEBERIA.");
 		}
@@ -1207,6 +1254,12 @@ void cambiar_a_estado(t_list* estado, t_entrenador* entrenador) {
 		}
 	} else {
 		log_error(logger, "ESTOY TRATANDO DE CAMBIAR A UN ESTADO QUE NO DEBERIA.");
+	}
+
+	if(estado_actual == estado_exec){
+		sem_wait(&mx_contexto);
+		cambios_de_contexto ++;
+		sem_post(&mx_contexto);
 	}
 
 	list_destroy(estados_a_buscar);
@@ -1244,52 +1297,122 @@ bool esta_en_estado(t_list* estado, t_entrenador* entrenador) {
 	return 0;
 }
 
-//TODO
-void process_request(uint32_t cod_op, uint32_t cliente_fd) {
-	uint32_t size;
-	void* msg;
+// ------------------------------- MENSAJES ------------------------------- //
 
-	log_info(logger,"Codigo de operacion %d", cod_op);
-	/*
-	switch (cod_op) {
-		case GET_POKEMON:
-			msg = malloc(sizeof(t_get_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
-			t_get_pokemon* mensaje_recibido = desempaquetar_get_pokemon(msg);
-			agregar_mensaje(GET_POKEMON, size, mensaje_recibido, cliente_fd);
-			free(msg);
-			break;
-		case LOCALIZED_POKEMON:
-			msg = malloc(sizeof(t_localized_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
-			t_localized_pokemon* mensaje_recibido = desempaquetar_localized_pokemon(msg);
-			agregar_mensaje(LOCALIZED_POKEMON, size, mensaje_recibido, cliente_fd);
-			free(msg);
-			break;
-		case CAUGHT_POKEMON:
-			msg = malloc(sizeof(t_caught_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
-			t_caught_pokemon* mensaje_recibido = despaquetar_caught_pokemon(msg);
-			agregar_mensaje(CAUGHT_POKEMON, size,  mensaje_recibido, cliente_fd);
-			free(msg);
-			break;
-		case APPEARED_POKEMON:
-			msg = malloc(sizeof(t_caught_pokemon));
-			msg = recibir_mensaje(cliente_fd, &size);
-			t_appeared_pokemon* mensajeRecibido = despaquetar_appeared_pokemon(msg);
-			agregar_mensaje(APPEARED_POKEMON, size, mensajeRecibido, cliente_fd);
-			free(msg);
-			break;
+void enviar_mensaje_catch(t_pedido_captura* pedido) {
 
-		/*case 0:
-			log_info(logger,"No se encontro el tipo de mensaje");
-			pthread_exit(NULL);
-		case -1:
-			pthread_exit(NULL);
-	}*/
+	t_catch_pokemon* mensaje = malloc(sizeof(t_catch_pokemon));
+
+	mensaje -> pokemon = pedido -> pokemon -> nombre;
+	mensaje -> posicion[0] = pedido -> pokemon -> posicion[0];
+	mensaje -> posicion[1] = pedido -> pokemon -> posicion[1];
+	mensaje -> id_mensaje = 0;
+
+	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+
+	pedido -> entrenador -> tire_accion = 1;
+
+	if(socket != -1) {
+
+		uint32_t tamanio_mensaje = size_mensaje(mensaje, CATCH_POKEMON);
+		enviar_mensaje(CATCH_POKEMON, mensaje, socket, tamanio_mensaje);
+
+		//pedido -> entrenador -> socket_mensaje_catch = socket; // ver comentario t_entrenador
+		recibir_id_de_mensaje_enviado(socket, pedido -> entrenador -> id_espera_catch);
+
+	} else { // Comportamiento default *ATRAPÓ*
+		pedido -> entrenador -> resultado_caught = 1;
+		sem_post(&(pedido -> entrenador -> esperar_caught));
+	}
+
+
 }
 
-// ------------------------------- TERMINAR -------------------------------//
+void enviar_mensaje_get(char* pokemon) {
+
+	t_get_pokemon* mensaje = malloc(sizeof(t_get_pokemon));
+
+	mensaje -> id_mensaje = 0;
+	mensaje -> pokemon = pokemon;
+
+
+	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	if(socket != -1) {
+		uint32_t tamanio_mensaje = size_mensaje(mensaje, GET_POKEMON);
+
+		enviar_mensaje(GET_POKEMON, mensaje, socket, tamanio_mensaje);
+
+		int id = 0;
+		recibir_id_de_mensaje_enviado(socket, id);
+
+	}
+}
+
+void enviar_get_pokemon() {
+
+	void agregar_si_no_encuentra(void* otro_pokemon) {
+		char* pokemon = otro_pokemon;
+
+		bool es_el_pokemon(void* another_pokemon) {
+			char* un_pokemon = another_pokemon;
+			return string_equals_ignore_case(pokemon, un_pokemon);
+		}
+
+		if(list_find(especies_objetivo_global, es_el_pokemon) == NULL) {
+			list_add(especies_objetivo_global, pokemon);
+		}
+	}
+
+	list_iterate(objetivo_global, agregar_si_no_encuentra);
+
+	/* ---------- */
+	void enviar_mensaje_por_especie(void* pokemon) {
+
+		enviar_mensaje_get((char*) pokemon);
+	}
+
+	list_iterate(especies_objetivo_global, enviar_mensaje_por_especie);
+}
+
+//TODO
+void process_request(uint32_t cod_op, uint32_t cliente_fd) {
+
+	uint32_t size;
+	op_code* codigo_op = malloc(sizeof(op_code));
+
+	sem_wait(&mx_paquete);
+	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
+	sem_post(&mx_paquete);
+
+	cod_op = (*codigo_op);
+
+	void* mensaje_recibido = deserealizar_paquete(stream, *codigo_op, size);
+
+	switch (cod_op) {
+		case LOCALIZED_POKEMON:
+			list_add(especies_ya_localizadas, ((t_localized_pokemon*) mensaje_recibido) -> pokemon);
+			log_info(logger, "ME LLEGO UN LOCALIZED JUJU");
+			break;
+		case CAUGHT_POKEMON:
+			log_info(logger, "ME LLEGO UN CAUGHT JUJU");
+
+			//sem_post(&(pedido -> entrenador -> esperar_caught));
+			// entrenador -> resultado_caught = ((t_caught_pokemon*) mensaje_recibido) -> resultado;
+			break;
+		case APPEARED_POKEMON:
+			log_info(logger, "ME LLEGO UN APPEARED JUJU");
+			break;
+
+		case 0:
+			log_info(logger,"No se encontro el tipo de mensaje");
+			pthread_exit(NULL);
+
+		case -1:
+			pthread_exit(NULL);
+	}
+}
+
+// ------------------------------- TERMINAR ------------------------------- //
 
 void liberar_config() {
 	liberar_entrenadores();
@@ -1341,6 +1464,8 @@ void liberar_semaforos() {
 	sem_destroy(&entrenadores_ready);
 	sem_destroy(&sem_cont_mapa);
 	sem_destroy(&sem_cont_entrenadores_a_replanif);
+	sem_destroy(&mx_contexto);
+	sem_destroy(&mx_paquete);
 }
 
 void liberar_listas() {
@@ -1366,8 +1491,30 @@ void terminar_hilos_entrenadores() {
 	list_iterate(config -> entrenadores, esperar_hilo_entrenador);
 }
 
+void loggear_resultados() {
+
+	void ciclos_por_entrenador(void* un_entrenador) {
+		t_entrenador* entrenador = un_entrenador;
+
+		log_info(logger, "La cantidad de ciclos de cpu del entrenador %d es %d", entrenador -> id, entrenador -> ciclos_cpu);
+
+		ciclos_cpu_totales += entrenador -> ciclos_cpu;
+	}
+
+	list_iterate(config -> entrenadores, ciclos_por_entrenador);
+
+	log_info(logger, "La cantidad de ciclos de cpu totales es %d", ciclos_cpu_totales);
+
+	sem_wait(&mx_contexto);
+	log_info(logger, "La cantidad de cambios de contexto es %d", cambios_de_contexto);
+	sem_post(&mx_contexto);
+
+	log_info(logger, "La cantidad de deadlocks producidos es %d y la cantidad de resueltos es %d", deadlocks_totales, deadlocks_resueltos);
+}
+
 void terminar_programa(/*uint32_t conexion*/) {
 	terminar_hilos();
+	loggear_resultados();
 	free(mapa_pokemons); // ver, se va destruyendo como objetivo global?
 	//liberar_conexion(conexion);
 	liberar_listas();
