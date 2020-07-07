@@ -105,10 +105,15 @@ void calcular_estimaciones_ready();
 bool estoy_esperando_trade(t_entrenador*);
 
 // mensajes
-void recibir_id_de_mensaje_enviado(uint32_t, uint32_t);
+uint32_t recibir_id_de_mensaje_enviado(uint32_t);
 void enviar_mensaje_catch(t_pedido_captura*);
 void procesar_caught(t_pedido_captura*);
 void enviar_get_pokemon();
+void procesar_localized();
+void agregar_localized_al_mapa();
+void procesar_mensaje_caught(t_caught_pokemon*);
+void procesar_mensaje_appeared(t_appeared_pokemon*);
+void levantar_server_broker();
 
 // segun algoritmo:
 int distancia_segun_algoritmo(t_pedido_captura*);
@@ -129,15 +134,15 @@ void planificar_deadlocks_rr();
 pthread_t hilo_algoritmo;
 pthread_t hilo_planificar;
 pthread_t hilo_game_boy;
+pthread_t hilo_broker;
 void crear_hilo_segun_algoritmo();
 void crear_hilo_planificar_entrenadores();
 void terminar_hilos();
 void terminar_hilos_entrenadores();
 void iniciar_conexion_game_boy();
-
-
-// game boy
 void* conexion_con_game_boy();
+void levantar_server_broker();
+void* conexion_con_broker();
 
 
 // estados
