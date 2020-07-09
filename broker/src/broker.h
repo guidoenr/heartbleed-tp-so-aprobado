@@ -7,7 +7,7 @@
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 #include <semaphore.h>
 #include <signal.h>
-#include <time.h>
+#include <sys/time.h>
 
 
 typedef struct {
@@ -100,7 +100,7 @@ pthread_t hilo_mensaje;
 //---semaforos---//
 sem_t semaforo;
 sem_t mutex_id;
-sem_t  mx_cola_get;
+sem_t mx_cola_get;
 sem_t mx_cola_catch;
 sem_t mx_cola_localized;
 sem_t mx_cola_caught;
@@ -209,15 +209,22 @@ char* obtener_cola_del_mensaje(t_memoria_dinamica*);
 t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(void);
 bool tiene_siguiente(uint32_t);
 uint64_t timestamp(void);
-void sig_handler(uint32_t);
+void sig_handler(void*);
 void* preparar_mensaje_desde_particion(t_mensaje*);
-void* armar_contenido_new(t_new_pokemon*);
 bool mensaje_recibido_por_todos(void*, t_list*);
 void* preparar_mensaje(t_mensaje*);
-void* armar_contenido_localized(t_localized_pokemon*, uint32_t);
+void* armar_contenido_appeared(t_appeared_pokemon*);
+void* armar_contenido_localized(t_localized_pokemon*);
 void* armar_contenido_caught(t_caught_pokemon*);
 void* armar_contenido_catch(t_catch_pokemon*);
 void* armar_contenido_get(t_get_pokemon*);
+void* armar_contenido_new(t_new_pokemon*);
 void* armar_contenido_de_mensaje(void* , uint32_t);
 void establecer_tiempo_de_carga(t_mensaje*);
+void actualizar_ultima_referencia(t_mensaje*);
+void dump_de_memoria(void);
+void consolidar_particiones(uint32_t, uint32_t);
+void liberar_mensaje_de_memoria(t_mensaje*);
+void liberar_particion_en_cache(t_memoria_dinamica*);
 
+uint32_t obtener_tamanio_contenido_mensaje(void*, uint32_t);
