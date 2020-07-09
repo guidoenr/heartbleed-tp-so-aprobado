@@ -114,6 +114,7 @@ void agregar_localized_al_mapa();
 void procesar_mensaje_caught(t_caught_pokemon*);
 void procesar_mensaje_appeared(t_appeared_pokemon*);
 void levantar_server_broker();
+void enviar_ack_broker(uint32_t, op_code);
 
 // segun algoritmo:
 int distancia_segun_algoritmo(t_pedido_captura*);
@@ -171,10 +172,6 @@ sem_t mx_contexto;
 sem_t mx_paquete;
 
 
-// mapa
-t_list* mapa_pokemons;
-
-
 // pedido
 t_list* pedidos_captura;
 t_list* pedidos_intercambio;
@@ -197,12 +194,16 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo();
 t_list* objetivo_global;
 t_list* especies_objetivo_global;
 t_list* especies_ya_localizadas;
+t_list* objetivo_global_pendiente;
+t_list* mapa_pokemons;
+t_list* mapa_pokemons_pendiente;
 
 void determinar_objetivo_global();
 bool no_esta_en_objetivo(void*);
 void eliminar_los_que_ya_tengo();
 bool cumplio_objetivo_personal(t_entrenador*);
 bool comparar_pokemon(void*, void*);
+void eliminar_del_objetivo_global(t_pokemon_mapa*);
 
 
 // terminar
