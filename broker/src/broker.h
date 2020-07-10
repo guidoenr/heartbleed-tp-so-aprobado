@@ -53,7 +53,8 @@ typedef struct {
 } t_memoria_dinamica;
 
 typedef struct{
-	uint32_t tamanio;
+	uint32_t tamanio_exponente;
+	uint32_t tamanio_mensaje;
 	uint32_t base;
 	uint32_t ocupado;
 	uint32_t ultima_referencia;

@@ -91,7 +91,7 @@ void leer_config() {
 
 	config_broker = malloc(sizeof(t_config_broker));
 
-	config = config_create("broker.config");
+	config = config_create("Debug/broker.config");
 
 	if(config == NULL){
 		    	printf("No se pudo encontrar el path del config.");
@@ -1581,7 +1581,7 @@ void compactar_memoria_cache(t_list* lista_particiones_ocupadas){
 		memcpy(memoria + (una_particion -> base), NULL , (una_particion -> tamanio));
     }
     //Preguntar por la eficiencia de esto.
-   // list_iterate(lista_particiones_ocupadas, reescribir_memoria);
+   // list_iterate(lista_particiones_ocupadas5, reescribir_memoria);
 }*/
 
 void eliminar_mensaje(void* mensaje){
@@ -1718,7 +1718,7 @@ t_node* crear_nodo(uint32_t tamanio)
 
   // Assign data to this node
   node -> bloque = malloc(sizeof(t_memoria_buddy));
-  node -> bloque -> tamanio = tamanio;
+  node -> bloque -> tamanio_exponente = tamanio;
   node -> bloque -> ocupado =0;
 
   // Initialize left and right children as NULL
@@ -1738,7 +1738,9 @@ void asignar_nodo(t_node* node,void* contenido, t_mensaje* mensaje, uint32_t exp
     node ->  bloque -> ocupado =1;
     node -> bloque -> tiempo_de_carga =  timestamp();
     node ->  bloque-> ultima_referencia =  timestamp();
-    node -> bloque -> tamanio = mensaje ->tamanio_mensaje;
+    node -> bloque -> tamanio_mensaje = mensaje ->tamanio_mensaje;
+
+    log_info(logger, "....me guardo en el tamanio:%d", node->bloque->tamanio_exponente);
    //mensaje -> payload = node -> bloque;  RESOLVER MAS ADELANTE.
    /* if(list_size(memoria_cache) > 1){
 
@@ -1752,67 +1754,72 @@ void asignar_nodo(t_node* node,void* contenido, t_mensaje* mensaje, uint32_t exp
 }
 
 uint32_t recorrer_first_fit(t_node* nodo, uint32_t exponente, void* contenido, t_mensaje*  mensaje){
-    if(nodo == NULL || nodo->bloque->tamanio < config_broker -> size_min_memoria) {
+    if(nodo == NULL || exponente < config_broker -> size_min_memoria) {
         return 0;
     }
     asignado  = 0;
-    if (nodo->bloque->tamanio >= exponente && nodo->bloque->ocupado == 0) {
+    if (nodo->bloque->tamanio_exponente >= exponente && nodo->bloque->ocupado == 0) {
         asignar_nodo(nodo, contenido, mensaje, exponente);
         return 1;
     }
 
-    if (nodo -> izquierda == NULL) {
-        nodo -> izquierda = crear_nodo(nodo -> bloque -> tamanio / 2);
+    if (exponente > config_broker-> size_min_memoria && nodo -> izquierda == NULL) {
+        nodo -> izquierda = crear_nodo(nodo -> bloque -> tamanio_exponente / 2);
     }
 
-    if (nodo -> izquierda -> bloque -> tamanio > exponente) {
+    if (nodo -> izquierda != NULL && nodo -> izquierda -> bloque -> tamanio_exponente > exponente) {
     	recorrer_first_fit(nodo->izquierda, exponente,contenido,mensaje);
     }
 
     asignado = recorrer_first_fit(nodo -> izquierda, exponente, contenido,mensaje);
     if(asignado == 0) {
     	if (nodo -> derecha == NULL) {
-    	        nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio / 2);
+    		if(nodo -> bloque->tamanio_exponente > exponente) {
+    	        nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio_exponente / 2);
+    		} else {
+    			 nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio_exponente);
+    		}
     	    }
         asignado = recorrer_first_fit(nodo -> derecha,exponente, contenido,mensaje);
     } else {
     	return 1;
     }
-    log_info(logger,"paso por recorrer, varias veces");
     return asignado;
 }
 
 uint32_t recorrer_best_fit(t_node* nodo, uint32_t exponente, void* contenido, t_mensaje* mensaje){
-    if(nodo == NULL || nodo->bloque->tamanio < config_broker -> size_min_memoria) {
+    if(nodo == NULL || exponente < config_broker -> size_min_memoria) {
         return 0;
     }
     asignado  = 0;
-    if (nodo->bloque->tamanio == exponente && nodo->bloque->ocupado == 0) {
+    if (nodo->bloque->tamanio_exponente == exponente && nodo->bloque->ocupado == 0) {
         asignar_nodo(nodo, contenido, mensaje, exponente);
         return 1;
     }
 
-    if (nodo -> izquierda == NULL) {
-        nodo -> izquierda = crear_nodo(nodo -> bloque -> tamanio / 2);
+    if (exponente > config_broker-> size_min_memoria && nodo -> izquierda == NULL) {
+        nodo -> izquierda = crear_nodo(nodo -> bloque -> tamanio_exponente / 2);
     }
 
-    if (nodo -> izquierda -> bloque -> tamanio > exponente) {
-      recorrer_best_fit(nodo->izquierda, exponente, contenido, mensaje);
+    if (nodo -> izquierda != NULL && nodo -> izquierda -> bloque -> tamanio_exponente > exponente) {
+    	recorrer_best_fit(nodo->izquierda, exponente,contenido,mensaje);
     }
 
-    asignado = recorrer_best_fit(nodo -> izquierda, exponente, contenido, mensaje);
+    asignado = recorrer_best_fit(nodo -> izquierda, exponente, contenido,mensaje);
     if(asignado == 0) {
     	if (nodo -> derecha == NULL) {
-    	        nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio / 2);
+    		if(nodo -> bloque->tamanio_exponente > exponente) {
+    	        nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio_exponente / 2);
+    		} else {
+    			 nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio_exponente);
+    		}
     	    }
-        asignado = recorrer_best_fit(nodo -> derecha,exponente,contenido, mensaje);
+        asignado = recorrer_best_fit(nodo -> derecha,exponente, contenido,mensaje);
     } else {
     	return 1;
     }
-    log_info(logger,"paso por recorrer, varias veces");
     return asignado;
 }
-
 void concatenacion_buddy_systeam(t_node*  nodo)
 {
 
