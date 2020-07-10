@@ -501,7 +501,7 @@ void procesar_caught(t_pedido_captura* pedido){
 	list_remove_by_condition(objetivo_global_pendiente, es_el_pokemon);
 
 	if(pedido -> entrenador -> resultado_caught) { // settear a lo que corresponda en el process_request ANTES de cambiar el esperando_caught
-
+		log_info(logger, "ATRAPE :)"); // delete
 		list_add(pedido -> entrenador -> pokemons, pedido -> pokemon -> nombre);
 
 		if(tengo_la_mochila_llena(pedido -> entrenador)){
@@ -519,12 +519,30 @@ void procesar_caught(t_pedido_captura* pedido){
 
 	} else {
 		log_info(logger, "NO ATRAPE :("); // delete
-		list_add(objetivo_global, pedido -> pokemon -> nombre);
 		sem_post(&sem_cont_entrenadores_a_replanif);
+
+		list_add(objetivo_global, pedido -> pokemon -> nombre);
+		reagregar_especie_al_mapa_principal(pedido -> pokemon -> nombre);
 	}
 
 	pedido -> entrenador -> tire_accion = 0;
 	eliminar_pedido_captura(pedido);
+}
+
+
+void reagregar_especie_al_mapa_principal(char* pokemon) {
+	bool pokemon_a_eliminar(void* un_pokemon) {
+		t_pokemon_mapa* otro_pokemon = un_pokemon;
+		return string_equals_ignore_case(pokemon, otro_pokemon -> nombre);
+	}
+
+	pokemon_a_remover = list_remove_by_condition(mapa_pokemons_pendiente, eliminar_del_mapa_original);
+
+	while(pokemon_a_remover) {
+		sem_post(&sem_cont_mapa);
+		list_add(mapa_pokemons, pokemon_a_remover);
+		pokemon_a_remover = list_remove_by_condition(mapa_pokemons_pendiente, eliminar_del_mapa_original);
+	}
 }
 
 bool estoy_en_deadlock(t_entrenador* entrenador){
@@ -1170,14 +1188,21 @@ void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
 		return string_equals_ignore_case(pokemon -> nombre, un_pokemon);
 	}
 
-// TODO
+	bool eliminar_del_mapa_original(void* otro_pokemon) {
+		t_pokemon_mapa* un_pokemon = otro_pokemon;
+		return string_equals_ignore_case(pokemon -> nombre, un_pokemon -> nombre);
+	}
+
 	if(!list_find(objetivo_global, es_el_pokemon)) {
 
-		do{
+		pokemon_a_remover = list_remove_by_condition(mapa_pokemons, eliminar_del_mapa_original);
 
-			list_remove_by_condition()
+		while(pokemon_a_remover) {
+			sem_wait(&sem_cont_mapa);
+			list_add(mapa_pokemons_pendiente, pokemon_a_remover);
+			pokemon_a_remover = list_remove_by_condition(mapa_pokemons, eliminar_del_mapa_original);
+		}
 
-		} while();
 	}
 }
 
@@ -1631,7 +1656,7 @@ void liberar_listas() {
 	list_destroy(especies_objetivo_global);
 	list_destroy(especies_ya_localizadas);
 	list_destroy(objetivo_global_pendiente);
-	list_destroy(mapa_pokemons_pendiente);
+	list_destroy(mapa_pokemons_pendiente); // A ESTE HAY QUE LIMPIARLE LOS POKEMONS TAMBIEN.
 }
 
 void terminar_hilos() {
@@ -1685,4 +1710,4 @@ void terminar_programa(/*uint32_t conexion*/) {
 	log_info(logger, "El team completo su objetivo");
 	log_info(logger, "El team finalizo correctamente");
 	liberar_logger();
-}
+}	
