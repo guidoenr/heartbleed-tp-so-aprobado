@@ -86,6 +86,9 @@ uint32_t id_mensaje_univoco;
 
 void* recibir_buffer(uint32_t*, uint32_t); /// este no esta definido en utils.c
 
+// iniciar
+void iniciar_logger(char* file, char* program_name);
+
 //client
 //void* serializar_paquete(t_paquete* paquete, uint32_t* bytes);
 uint32_t crear_conexion(char* ip, char* puerto);
@@ -143,7 +146,8 @@ t_new_pokemon* deserealizar_new_pokemon(void* stream, uint32_t size_mensaje);
 t_localized_pokemon* deserealizar_localized_pokemon(void*,uint32_t);
 
 
-void iniciar_logger(char* file, char* program_name);
+
+// terminar
 void liberar_conexion(uint32_t socket_cliente);
 void liberar_logger();
 

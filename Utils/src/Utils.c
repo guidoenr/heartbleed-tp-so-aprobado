@@ -706,8 +706,10 @@ void* serializar_localized_pokemon(void* mensaje_localized, uint32_t size_mensaj
     uint32_t tamanio_lista = list_size(mensaje_a_enviar -> posiciones) * sizeof(uint32_t);
     void* contenido_lista = malloc(tamanio_lista);
     uint32_t desplazamiento = 0;
+
     void serializar_numero(void* numero){
     	uint32_t* un_numero = numero;
+
     	memcpy(contenido_lista + desplazamiento, un_numero, sizeof(uint32_t));
     	desplazamiento += sizeof(uint32_t);
     }
@@ -753,15 +755,15 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_
     offset += sizeof(uint32_t);
 
     mensaje_localized_pokemon -> posiciones = list_create();
-    list_add(mensaje_localized_pokemon -> posiciones, cantidad_coordenadas);
+    list_add(mensaje_localized_pokemon -> posiciones, &cantidad_coordenadas);
 
     uint32_t cantidad_elementos = cantidad_coordenadas * 2;
     uint32_t posicion[cantidad_elementos];
     uint32_t i = 0;
 
-    for(i=0; i<cantidad_elementos; i++){
+    for(i = 0; i < cantidad_elementos; i ++){
     	memcpy(&(posicion[i]), stream + offset, sizeof(uint32_t));
-    	list_add(mensaje_localized_pokemon -> posiciones, posicion[i]);
+    	list_add(mensaje_localized_pokemon -> posiciones, &posicion[i]);
     }
 
 	return mensaje_localized_pokemon;
@@ -778,23 +780,23 @@ void* serializar_ack(void* mensaje_ack, uint32_t size_mensaje, uint32_t* size_se
 
 	op_code codigo_operacion = ACK;
 	memcpy(stream + offset, &codigo_operacion, sizeof(op_code));
-	log_info(logger,"Sereliazacion codigo de operacion: %d", *(int*) (stream+ offset));
+	log_info(logger,"Serializacion codigo de operacion: %d", *(int*) (stream+ offset));
 	offset += sizeof(op_code);
 
     memcpy(stream + offset, size_serializado, sizeof(uint32_t));
-    log_info(logger,"Sereliazacion size: %d", *(int*) (stream+ offset));
+    log_info(logger,"Serializacion size: %d", *(int*) (stream+ offset));
     offset += sizeof(uint32_t);
 
     memcpy(stream + offset, &(mensaje_a_enviar -> id_mensaje), sizeof(uint32_t));
-    log_info(logger,"Sereliazacion idmensaje: %d", *(int*) (stream+ offset));
+    log_info(logger,"Serializacion idmensaje: %d", *(int*) (stream+ offset));
 	offset += sizeof(uint32_t);
 
     memcpy(stream + offset, &(mensaje_a_enviar -> tipo_mensaje), sizeof(op_code));
-    log_info(logger,"Sereliazacion tipomensaje confirmado: %d", *(int*) (stream+ offset));
+    log_info(logger,"Serializacion tipomensaje confirmado: %d", *(int*) (stream+ offset));
 	offset += sizeof(op_code);
 
     memcpy(stream + offset, &(mensaje_a_enviar -> id_proceso), sizeof(uint32_t));
-    log_info(logger,"Sereliazacion idproceso: %d", *(int*) (stream+ offset));
+    log_info(logger,"Serializacion idproceso: %d", *(int*) (stream+ offset));
 	offset += sizeof(uint32_t);
 
 	log_info(logger, "...Codigo de operacion a enviar: %d", ACK);
