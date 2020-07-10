@@ -37,6 +37,8 @@ void iniciar_programa(){
 	numero_particion = 1;
 	leer_config();
 	iniciar_logger(config_broker->log_file, "broker");
+	log_info(logger, "...tam memoria: d%", config_broker->size_memoria);
+	log_info(logger,"... algoritmo: s%", config_broker -> algoritmo_memoria);
 	reservar_memoria();
 	iniciar_semaforos_broker();
 	crear_colas_de_mensajes();
@@ -96,7 +98,7 @@ void leer_config() {
 		    	exit(-2);
 	}
 	config_broker -> size_memoria 			   = config_get_int_value(config, "TAMANO_MEMORIA");
-	config_broker -> size_min_memoria 		   = config_get_int_value(config, "TAMANO_MEMORIA");
+	config_broker -> size_min_memoria 		   = config_get_int_value(config, "TAMANO_MINIMO_PARTICION");
 	config_broker -> algoritmo_memoria 		   = config_get_string_value(config, "ALGORITMO_MEMORIA");
 	config_broker -> algoritmo_reemplazo 	   = config_get_string_value(config, "ALGORITMO_REEMPLAZO");
 	config_broker -> algoritmo_particion_libre = config_get_string_value(config, "ALGORITMO_PARTICION_LIBRE");
@@ -969,7 +971,14 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 		else
 			exponente = config_broker -> size_min_memoria;
       t_node* primer_nodo = (t_node*) memoria_cache->head->data;
-      uint32_t pudoGuardarlo = recorrer_fifo(primer_nodo, exponente, mensaje -> payload);
+      uint32_t pudoGuardarlo =0;
+      if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
+         pudoGuardarlo = recorrer_first_fit(primer_nodo, exponente,  contenido, mensaje);
+      }
+      if(string_equals_ignore_case(config_broker ->algoritmo_particion_libre, "BF")){
+    	  pudoGuardarlo = recorrer_best_fit(primer_nodo,exponente, contenido, mensaje);
+      }
+
 	  if(!pudoGuardarlo)
 	  {
 		  log_error(logger,"no hay memoria suficiente para guardarlo");
@@ -1022,7 +1031,7 @@ void* armar_contenido_de_mensaje(void* mensaje, uint32_t codigo){
 
 
 void* armar_contenido_get(t_get_pokemon* mensaje){
-    uint32_t tamanio = strlen(mensaje -> pokemon) + 1;
+    uint32_t tamanio = strlen(mensaje -> pokemon);
     void* contenido = malloc(tamanio);
 
     memcpy(contenido, (mensaje -> pokemon), tamanio);
@@ -1032,7 +1041,7 @@ void* armar_contenido_get(t_get_pokemon* mensaje){
 
 
 void* armar_contenido_catch(t_catch_pokemon* mensaje){
-    uint32_t tamanio_pokemon = strlen(mensaje -> pokemon) + 1;
+    uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
     uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 2);
     void* contenido = malloc(tamanio);
     uint32_t offset = 0;
@@ -1065,7 +1074,7 @@ void* armar_contenido_caught(t_caught_pokemon* mensaje){
 }
 
 void* armar_contenido_appeared(t_appeared_pokemon* mensaje){
-    uint32_t tamanio_pokemon = strlen(mensaje -> pokemon) + 1;
+    uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
     uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 2);
     void* contenido = malloc(tamanio);
     uint32_t offset = 0;
@@ -1084,7 +1093,7 @@ void* armar_contenido_appeared(t_appeared_pokemon* mensaje){
 
 
 void* armar_contenido_new(t_new_pokemon* mensaje){
-    uint32_t tamanio_pokemon = strlen(mensaje -> pokemon) + 1;
+    uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
     uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 3);
     void* contenido = malloc(tamanio);
     uint32_t offset = 0;
@@ -1710,7 +1719,7 @@ t_node* crear_nodo(uint32_t tamanio)
   // Assign data to this node
   node -> bloque = malloc(sizeof(t_memoria_buddy));
   node -> bloque -> tamanio = tamanio;
-  node -> bloque -> libre = 1;
+  node -> bloque -> ocupado =0;
 
   // Initialize left and right children as NULL
   node -> izquierda = NULL;
@@ -1725,18 +1734,30 @@ void arrancar_buddy(){
 	list_add(memoria_cache, root);
 }
 
-void asignar_nodo(t_node* node,void* payload){
-    node ->  bloque -> libre = 0;
+void asignar_nodo(t_node* node,void* contenido, t_mensaje* mensaje, uint32_t exponente){
+    node ->  bloque -> ocupado =1;
+    node -> bloque -> tiempo_de_carga =  timestamp();
+    node ->  bloque-> ultima_referencia =  timestamp();
+    node -> bloque -> tamanio = mensaje ->tamanio_mensaje;
+   //mensaje -> payload = node -> bloque;  RESOLVER MAS ADELANTE.
+   /* if(list_size(memoria_cache) > 1){
+
+    }else{
+
+    	guardar_contenido_de_mensaje(0, contenido, exponente);
+    }*/
+
     list_add(memoria_cache, node);
+
 }
 
-uint32_t recorrer_fifo(t_node* nodo, uint32_t exponente, void* payload){
+uint32_t recorrer_first_fit(t_node* nodo, uint32_t exponente, void* contenido, t_mensaje*  mensaje){
     if(nodo == NULL || nodo->bloque->tamanio < config_broker -> size_min_memoria) {
         return 0;
     }
     asignado  = 0;
-    if (nodo->bloque->tamanio >= exponente && nodo->bloque->libre == 1) {
-        asignar_nodo(nodo, payload);
+    if (nodo->bloque->tamanio >= exponente && nodo->bloque->ocupado == 0) {
+        asignar_nodo(nodo, contenido, mensaje, exponente);
         return 1;
     }
 
@@ -1745,15 +1766,15 @@ uint32_t recorrer_fifo(t_node* nodo, uint32_t exponente, void* payload){
     }
 
     if (nodo -> izquierda -> bloque -> tamanio > exponente) {
-      recorrer_fifo(nodo->izquierda, exponente,payload);
+    	recorrer_first_fit(nodo->izquierda, exponente,contenido,mensaje);
     }
 
-    asignado = recorrer_fifo(nodo -> izquierda, exponente, payload);
+    asignado = recorrer_first_fit(nodo -> izquierda, exponente, contenido,mensaje);
     if(asignado == 0) {
     	if (nodo -> derecha == NULL) {
     	        nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio / 2);
     	    }
-        asignado = recorrer_fifo(nodo -> derecha,exponente, payload);
+        asignado = recorrer_first_fit(nodo -> derecha,exponente, contenido,mensaje);
     } else {
     	return 1;
     }
@@ -1761,13 +1782,13 @@ uint32_t recorrer_fifo(t_node* nodo, uint32_t exponente, void* payload){
     return asignado;
 }
 
-uint32_t recorrer_best_fit(t_node* nodo, uint32_t exponente, void* payload){
+uint32_t recorrer_best_fit(t_node* nodo, uint32_t exponente, void* contenido, t_mensaje* mensaje){
     if(nodo == NULL || nodo->bloque->tamanio < config_broker -> size_min_memoria) {
         return 0;
     }
     asignado  = 0;
-    if (nodo->bloque->tamanio == exponente && nodo->bloque->libre == 1) {
-        asignar_nodo(nodo, payload);
+    if (nodo->bloque->tamanio == exponente && nodo->bloque->ocupado == 0) {
+        asignar_nodo(nodo, contenido, mensaje, exponente);
         return 1;
     }
 
@@ -1776,22 +1797,21 @@ uint32_t recorrer_best_fit(t_node* nodo, uint32_t exponente, void* payload){
     }
 
     if (nodo -> izquierda -> bloque -> tamanio > exponente) {
-      recorrer_best_fit(nodo->izquierda, exponente,payload);
+      recorrer_best_fit(nodo->izquierda, exponente, contenido, mensaje);
     }
 
-    asignado = recorrer_best_fit(nodo -> izquierda, exponente, payload);
+    asignado = recorrer_best_fit(nodo -> izquierda, exponente, contenido, mensaje);
     if(asignado == 0) {
     	if (nodo -> derecha == NULL) {
     	        nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio / 2);
     	    }
-        asignado = recorrer_best_fit(nodo -> derecha,exponente, payload);
+        asignado = recorrer_best_fit(nodo -> derecha,exponente,contenido, mensaje);
     } else {
     	return 1;
     }
     log_info(logger,"paso por recorrer, varias veces");
     return asignado;
 }
-
 
 void concatenacion_buddy_systeam(t_node*  nodo)
 {
@@ -1800,9 +1820,9 @@ void concatenacion_buddy_systeam(t_node*  nodo)
       {
           return;
       }
-      if(nodo -> izquierda -> bloque-> libre && nodo -> derecha-> bloque-> libre && nodo)
+      if(nodo -> izquierda -> bloque-> ocupado && nodo -> derecha-> bloque-> ocupado && nodo)
       {
-          nodo-> bloque -> libre = 1;
+          nodo-> bloque -> ocupado = 0;
           nodo->izquierda =NULL;
           nodo->derecha =NULL;
           //concatenacion_buddy_systeam();///principop el de 4096

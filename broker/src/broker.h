@@ -53,9 +53,12 @@ typedef struct {
 } t_memoria_dinamica;
 
 typedef struct{
-	uint32_t libre;
 	uint32_t tamanio;
 	uint32_t base;
+	uint32_t ocupado;
+	uint32_t ultima_referencia;
+	uint32_t tiempo_de_carga;
+	op_code codigo_operacion;
 } t_memoria_buddy;
 
 struct t_node{
@@ -182,9 +185,9 @@ void 	 	   		guardar_en_memoria			  		 (t_mensaje*,void*);
 uint32_t 	   		obtenerPotenciaDe2					 (uint32_t);
 struct t_node* 		crear_nodo							 (uint32_t);
 void 		   		arrancar_buddy						 (void);
-void 		   		asignar_nodo						 (struct t_node*, void*);
-uint32_t 	   		recorrer_fifo							 (struct t_node*,uint32_t ,void*);
-uint32_t            recorrer_best_fit                    (t_node* , uint32_t , void* );
+void 		   		asignar_nodo						 (struct t_node*, void*,t_mensaje*, uint32_t);
+uint32_t 	   		recorrer_first_fit					 (t_node*, uint32_t ,void*, t_mensaje*);
+uint32_t            recorrer_best_fit                    (t_node* , uint32_t , void*, t_mensaje* );
 void 		   		ubicar_particion					 (uint32_t, t_memoria_dinamica* );
 void 		   		liberar_particion_dinamica			 (t_memoria_dinamica*);
 void 		   		iniciar_memoria_particiones			 (t_list*);
