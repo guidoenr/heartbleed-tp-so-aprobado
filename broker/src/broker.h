@@ -232,3 +232,8 @@ void liberar_mensaje_de_memoria(t_mensaje*);
 void liberar_particion_en_cache(t_memoria_dinamica*);
 
 uint32_t obtener_tamanio_contenido_mensaje(void*, uint32_t);
+void dump_info_buddy(void*);
+char* obtener_cola_del_mensaje_buddy(t_memoria_buddy*);
+uint32_t obtener_id_buddy(t_memoria_buddy*);
+t_mensaje* encontrar_mensaje_buddy(uint32_t, op_code);
+t_memoria_buddy* seleccionar_particion_victima_de_reemplazo_buddy();
