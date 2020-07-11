@@ -50,6 +50,7 @@ typedef struct {
 	uint32_t ultima_referencia;
 	uint32_t tiempo_de_carga;
 	op_code codigo_operacion;
+	void* contenido;
 } t_memoria_dinamica;
 
 typedef struct{
@@ -70,10 +71,10 @@ struct t_node{
 struct t_node;
 typedef struct t_node t_node;
 
-/*typedef struct {
+typedef struct {
 	t_suscripcion* suscriptor;
 	t_mensaje* mensaje;
-}t_envio_mensaje;*/
+}t_envio_mensaje;
 
 
 t_list* cola_catch;
@@ -106,7 +107,7 @@ uint32_t numero_particion = 0;
 
 pthread_t hilo_algoritmo_memoria;
 pthread_t hilo_mensaje;
-//pthread_t hilo_envio_mensajes;
+pthread_t hilo_envio_mensajes;
 
 //---semaforos---//
 sem_t semaforo;
@@ -213,7 +214,7 @@ uint32_t chequear_espacio_memoria_particiones(uint32_t);
 void dump_info_particion(void*);
 void guardar_contenido_de_mensaje(uint32_t,  void*, uint32_t);
 bool ambas_estan_vacias(uint32_t, uint32_t);
-t_memoria_dinamica* armar_particion(uint32_t, uint32_t, t_mensaje*, uint32_t);
+t_memoria_dinamica* armar_particion(uint32_t, uint32_t, t_mensaje*, uint32_t, void*);
 t_mensaje* encontrar_mensaje(uint32_t, op_code);
 char* obtener_cola_del_mensaje(t_memoria_dinamica*);
 t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(void);
@@ -243,3 +244,6 @@ char* obtener_cola_del_mensaje_buddy(t_memoria_buddy*);
 uint32_t obtener_id_buddy(t_memoria_buddy*);
 t_mensaje* encontrar_mensaje_buddy(uint32_t, op_code);
 t_memoria_buddy* seleccionar_particion_victima_de_reemplazo_buddy();
+void* main_hilo_mensaje(void* );
+uint32_t obtener_nueva_base(t_memoria_dinamica*);
+bool es_el_primer_elemento(t_memoria_dinamica*);

@@ -34,7 +34,6 @@ uint32_t seleccionar_proceso(char * parametros[]);
 op_code obtener_enum_de_string(char * );
 t_get_pokemon* armar_mensaje_get_pokemon(char * parametros[]);
 t_catch_pokemon* armar_mensaje_catch_pokemon(char * parametros[]);
-t_localized_pokemon* armar_mensaje_localized_pokemon(char * parametros[]);
 t_caught_pokemon* armar_mensaje_caught_pokemon(char * parametros[]);
 t_appeared_pokemon* armar_mensaje_appeared_pokemon(char * parametros[]);
 t_new_pokemon* armar_mensaje_new_pokemon(char * parametros[]);

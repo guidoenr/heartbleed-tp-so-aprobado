@@ -32,28 +32,32 @@ void sig_handler(void* signo) {
 void iniciar_programa(){
 	id_mensaje_univoco = 0;
 	particiones_liberadas = 0;
-	//Variable global (revisar?).
-	//Es para hacer el dump de la cache.
 	numero_particion = 1;
+
+	iniciar_semaforos_broker();
+
 	leer_config();
 	iniciar_logger(config_broker->log_file, "broker");
+	iniciar_servidor(config_broker -> ip_broker, config_broker -> puerto);
+
 	log_info(logger, "...tam memoria: d%", config_broker->size_memoria);
 	log_info(logger,"... algoritmo: s%", config_broker -> algoritmo_memoria);
+
 	reservar_memoria();
-	iniciar_semaforos_broker();
+
 	crear_colas_de_mensajes();
     crear_listas_de_suscriptores();
-    //crear_hilo_por_mensaje(); --> en el serve client
     //crear_hilo_envio_mensajes(); --> tiene como main enviar_mensajes
+    //crear_hilo_por_mensaje(); --> en el serve client
+
 	log_info(logger, "IP: %s", config_broker -> ip_broker);
-	iniciar_servidor(config_broker -> ip_broker, config_broker -> puerto);
 
 }
 
 void reservar_memoria(){
-	//La memoria en sí tiene que ser un void*
-	//La memoria_cache sería la lista auxiliar para esa memoria?
+
 	memoria = malloc(config_broker ->  size_memoria);
+
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
 		arrancar_buddy();
 	}
@@ -61,7 +65,6 @@ void reservar_memoria(){
     if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
 		memoria_con_particiones = list_create();
         iniciar_memoria_particiones(memoria_con_particiones);
-        //Al principio la lista tiene un unico elemento que es la memoria entera.
 	}
 
 	//hilo_de_compactacion(); --> va a tener un semaforo para saber cunado compactar
@@ -195,7 +198,6 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	}
 	free(codigo_op);
 	free(stream);
-//REVISAR DONDE Y CUANDO HACER EL FREE DE LOS MENSAJES QUE SE AGREGARON
 }
 
 void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t socket_cliente){
@@ -208,7 +210,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 
 
 	mensaje_a_agregar -> id_mensaje = nuevo_id;
-    //Revisar la opcion de localized.
+
     if(cod_op == APPEARED_POKEMON){
     	t_appeared_pokemon* mensaje_pokemon = mensaje;
     	mensaje_a_agregar -> id_correlativo = mensaje_pokemon -> id_mensaje_correlativo;
@@ -240,9 +242,9 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 	sem_wait(&mutex_id);
 	send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
 	sem_post(&mutex_id);
-
+	log_error(logger, "Hasta aca llegue1");
     guardar_en_memoria(mensaje_a_agregar, mensaje);
-
+    log_error(logger, "Hasta aca llegue");
 	sem_wait(&semaforo);
 	encolar_mensaje(mensaje_a_agregar, cod_op);
 	sem_post(&semaforo);
@@ -259,26 +261,26 @@ uint32_t obtener_tamanio_contenido_mensaje(void* mensaje, uint32_t codigo){
 	switch(codigo){
 	case GET_POKEMON:
 		get = mensaje;
-		tamanio = strlen(get -> pokemon) + 1;
+		tamanio = strlen(get -> pokemon);
 		break;
 	case CATCH_POKEMON:
 		catch = mensaje;
-		tamanio = strlen(catch -> pokemon) + 1 + (2*sizeof(uint32_t));
+		tamanio = strlen(catch -> pokemon) + (2*sizeof(uint32_t));
 		break;
 	case LOCALIZED_POKEMON:
 		localized = mensaje;
-		tamanio = 0; //Falta hacer
+		tamanio = strlen(localized -> pokemon) + (list_size(localized -> posiciones) * sizeof(uint32_t));
 		break;
 	case CAUGHT_POKEMON:
 		tamanio = sizeof(uint32_t);
 		break;
 	case APPEARED_POKEMON:
 		appeared = mensaje;
-		tamanio = strlen(appeared -> pokemon) + 1 + (2*sizeof(uint32_t));
+		tamanio = strlen(appeared -> pokemon) + (2*sizeof(uint32_t));
 		break;
 	case NEW_POKEMON:
 		new = mensaje;
-		tamanio = strlen(new -> pokemon) + 1 + (3*sizeof(uint32_t));
+		tamanio = strlen(new -> pokemon) + (3*sizeof(uint32_t));
 		break;
 	default:
 		log_error(logger, "...No se puede obtener el tamaño del contenido del mensaje.");
@@ -622,7 +624,7 @@ void* preparar_mensaje_desde_particion(t_mensaje* un_mensaje){
 			mensaje_get -> id_mensaje = un_mensaje -> id_mensaje;
 			tamanio = particion_del_mensaje -> tamanio;
 			mensaje_get -> pokemon = malloc(tamanio);
-			memcpy(mensaje_get -> pokemon, (memoria + (particion_del_mensaje -> base)), tamanio);
+			memcpy(mensaje_get -> pokemon, particion_del_mensaje -> contenido, tamanio);
 			return mensaje_get;
 			break;
 
@@ -630,15 +632,18 @@ void* preparar_mensaje_desde_particion(t_mensaje* un_mensaje){
 			mensaje_catch = malloc(sizeof(t_catch_pokemon));
 			mensaje_catch -> id_mensaje = un_mensaje -> id_mensaje;
 			tamanio =  particion_del_mensaje -> tamanio - sizeof(uint32_t) * 2;
+			void* contenido_a_enviar = particion_del_mensaje -> contenido;
 			mensaje_catch -> pokemon = malloc(tamanio);
-			memcpy(mensaje_catch -> pokemon, (memoria + (particion_del_mensaje -> base)), tamanio);
-			memcpy(&(mensaje_catch -> posicion[0]), (memoria + (particion_del_mensaje -> base) + tamanio), sizeof(uint32_t));
-			memcpy(&(mensaje_catch -> posicion[1]), (memoria + (particion_del_mensaje -> base) + tamanio + sizeof(uint32_t)), sizeof(uint32_t));
+			memcpy(mensaje_catch -> pokemon, contenido_a_enviar, tamanio);
+			memcpy(&(mensaje_catch -> posicion[0]), contenido_a_enviar + tamanio , sizeof(uint32_t));
+			memcpy(&(mensaje_catch -> posicion[1]), contenido_a_enviar + tamanio + sizeof(uint32_t), sizeof(uint32_t));
 			return mensaje_catch;
 			break;
 
-			case LOCALIZED_POKEMON://REHACER
+			case LOCALIZED_POKEMON:
 			mensaje_localized = malloc(sizeof(t_localized_pokemon));
+			//FALTA HACER
+
 			return mensaje_localized;
 			break;
 
@@ -646,7 +651,7 @@ void* preparar_mensaje_desde_particion(t_mensaje* un_mensaje){
 			mensaje_caught = malloc(sizeof(t_caught_pokemon));
 			mensaje_caught -> id_mensaje = un_mensaje -> id_mensaje;
 			mensaje_caught -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
-			memcpy(&(mensaje_caught -> resultado), (memoria + (particion_del_mensaje -> base)), sizeof(uint32_t));
+			memcpy(&(mensaje_caught -> resultado), particion_del_mensaje -> contenido, sizeof(uint32_t));
 			return mensaje_caught;
 			break;
 
@@ -656,9 +661,9 @@ void* preparar_mensaje_desde_particion(t_mensaje* un_mensaje){
 			mensaje_appeared -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
 			tamanio =  particion_del_mensaje -> tamanio - sizeof(uint32_t) * 2;
 			mensaje_appeared -> pokemon = malloc(tamanio);
-			memcpy(mensaje_appeared -> pokemon, (memoria + (particion_del_mensaje -> base)), tamanio);
-			memcpy(&(mensaje_appeared -> posicion[0]), (memoria + (particion_del_mensaje -> base) + tamanio), sizeof(uint32_t));
-			memcpy(&(mensaje_appeared -> posicion[1]), (memoria + (particion_del_mensaje -> base) + tamanio + sizeof(uint32_t)), sizeof(uint32_t));
+			memcpy(mensaje_appeared -> pokemon, particion_del_mensaje -> contenido, tamanio);
+			memcpy(&(mensaje_appeared -> posicion[0]), (particion_del_mensaje -> contenido) + tamanio, sizeof(uint32_t));
+			memcpy(&(mensaje_appeared -> posicion[1]), ((particion_del_mensaje -> contenido) + tamanio + sizeof(uint32_t)), sizeof(uint32_t));
 			return mensaje_appeared;
 			break;
 
@@ -667,10 +672,10 @@ void* preparar_mensaje_desde_particion(t_mensaje* un_mensaje){
 			mensaje_new->id_mensaje = un_mensaje -> id_mensaje;
 			tamanio =  particion_del_mensaje -> tamanio - sizeof(uint32_t) * 3;
 			mensaje_new -> pokemon = malloc(tamanio);
-			memcpy(mensaje_new -> pokemon, (memoria + (particion_del_mensaje -> base)), tamanio);
-			memcpy(&(mensaje_new -> posicion[0]), (memoria + (particion_del_mensaje -> base) + tamanio), sizeof(uint32_t));
-			memcpy(&(mensaje_new -> posicion[1]), (memoria + (particion_del_mensaje -> base) + tamanio + sizeof(uint32_t)), sizeof(uint32_t));
-			memcpy(&(mensaje_new -> cantidad), (memoria + (particion_del_mensaje -> base) + tamanio + sizeof(uint32_t)*2), sizeof(uint32_t));
+			memcpy(mensaje_new -> pokemon, particion_del_mensaje -> contenido, tamanio);
+			memcpy(&(mensaje_new -> posicion[0]), (particion_del_mensaje -> contenido) + tamanio, sizeof(uint32_t));
+			memcpy(&(mensaje_new -> posicion[1]), (particion_del_mensaje -> contenido) + tamanio + sizeof(uint32_t), sizeof(uint32_t));
+			memcpy(&(mensaje_new -> cantidad), ((particion_del_mensaje -> contenido) + tamanio + sizeof(uint32_t)*2), sizeof(uint32_t));
 			return mensaje_new;
 			break;
 
@@ -878,7 +883,7 @@ void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){ // h
 					datos_de_mensaje -> suscriptor = un_suscriptor;
 					datos_de_mensaje -> mensaje = un_mensaje;
 
-					uint32_t err = pthread_create(&hilo_envio_mensajes, NULL, main_hilo_mesaje, datos_de_mensaje);
+					uint32_t err = pthread_create(&hilo_envio_mensajes, NULL, main_hilo_mensaje, datos_de_mensaje);
 						if(err != 0) {
 							log_error(logger, "El hilo no pudo ser creado!!");
 					}
@@ -893,13 +898,21 @@ void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){ // h
 void* main_hilo_mensaje(void* unos_datos_de_mensaje) {
 
 	t_envio_mensaje* datos_de_mensaje = unos_datos_de_mensaje;
+	void* mensaje_a_enviar;
+	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
+		mensaje_a_enviar = preparar_mensaje(datos_de_mensaje -> mensaje);
+		uint32_t tamanio_mensaje = size_mensaje(mensaje_a_enviar, datos_de_mensaje -> mensaje -> codigo_operacion);
 
-	uint32_t tamanio_mensaje = size_mensaje(datos_de_mensaje -> mensaje -> payload, datos_de_mensaje -> mensaje -> codigo_operacion);
-	void* mensaje_a_enviar = preparar_mensaje(datos_de_mensaje -> mensaje);
-	enviar_mensaje(datos_de_mensaje -> mensaje -> codigo_operacion, mensaje_a_enviar, datos_de_mensaje -> suscriptor -> socket, tamanio_mensaje);
-	//actualizar_ultima_referencia(un_mensaje);
-	actualizar_ultima_referencia(datos_de_mensaje -> mensaje);
-	agregar_suscriptor_a_enviados_sin_confirmar(datos_de_mensaje -> mensaje, datos_de_mensaje -> suscriptor -> id_proceso);
+		enviar_mensaje(datos_de_mensaje -> mensaje -> codigo_operacion, mensaje_a_enviar, datos_de_mensaje -> suscriptor -> socket, tamanio_mensaje);
+		actualizar_ultima_referencia(datos_de_mensaje -> mensaje);
+		agregar_suscriptor_a_enviados_sin_confirmar(datos_de_mensaje -> mensaje, datos_de_mensaje -> suscriptor -> id_proceso);
+
+	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
+		//Falta hacer
+	} else {
+		log_error(logger, "...No se reconoce el algoritmo de memoria. ");
+	}
+
 
 	free(mensaje_a_enviar);
 
@@ -1006,7 +1019,7 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
          guardar_particion(mensaje, contenido);
      } else {
     	 t_memoria_dinamica* nueva_particion;
-    	 nueva_particion = armar_particion(mensaje -> tamanio_mensaje, 0, mensaje, 1);
+    	 nueva_particion = armar_particion(mensaje -> tamanio_mensaje, 0, mensaje, 1, contenido);
     	 ubicar_particion(0, nueva_particion);
     	 guardar_contenido_de_mensaje(0, contenido, mensaje -> tamanio_mensaje);
      }
@@ -1046,7 +1059,7 @@ void* armar_contenido_de_mensaje(void* mensaje, uint32_t codigo){
 
 
 void* armar_contenido_get(t_get_pokemon* mensaje){
-    uint32_t tamanio = strlen(mensaje -> pokemon);
+    uint32_t tamanio = strlen(mensaje -> pokemon) + 1;
     void* contenido = malloc(tamanio);
 
     memcpy(contenido, (mensaje -> pokemon), tamanio);
@@ -1131,7 +1144,6 @@ void* armar_contenido_new(t_new_pokemon* mensaje){
 //--------------PARTICIONES-------------//
 
 
-//ESTO ESTA PENSADO PARA PARTICIONES DINAMICAS, HAY QUE VER BS.
 void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje){
 
 	t_memoria_dinamica* particion_a_reemplazar;
@@ -1143,11 +1155,11 @@ void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje
 
 	eliminar_mensaje(mensaje_a_eliminar);
 
-    t_memoria_dinamica* particion_vacia = armar_particion(particion_a_reemplazar -> tamanio, particion_a_reemplazar -> base, NULL, 0);
+    t_memoria_dinamica* particion_vacia = armar_particion(particion_a_reemplazar -> tamanio, particion_a_reemplazar -> base, NULL, 0, contenido_mensaje);
 
     particion_a_reemplazar = list_replace(memoria_con_particiones, indice, particion_vacia);
 
-    liberar_particion_en_cache(particion_a_reemplazar);
+    free(particion_a_reemplazar);
     log_info(logger, "... Se libera una partición y se intenta ubicar nuevamente el mensaje.");
 
     guardar_particion(mensaje, contenido_mensaje);
@@ -1359,18 +1371,19 @@ t_mensaje* encontrar_mensaje_buddy(uint32_t base_del_buddy_del_mensaje, op_code 
 void iniciar_memoria_particiones(t_list* memoria_de_particiones){
     /*tamanio_mensaje+payload+base+ocupado+base*/
     //Es la particion inicial, es decir, la memoria entera vacía.
-    t_memoria_dinamica* particion_de_memoria = armar_particion((config_broker->size_memoria), 0, NULL, 0);
+
+    t_memoria_dinamica* particion_de_memoria = armar_particion((config_broker->size_memoria), 0, NULL, 0, NULL);
     list_add(memoria_de_particiones, particion_de_memoria);
 }
 
-//DEBERIA ARMAR UNA PARTICION PARA GUARDAR ANTES O CHEQUEARLO A PARTIR DEL MENSAJE?
+
 void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
     uint32_t posicion_a_ubicar = 0;
 	t_memoria_dinamica* particion_a_ubicar;
 	t_memoria_dinamica* nueva_particion;
 
     if(!chequear_espacio_memoria_particiones(un_mensaje -> tamanio_mensaje)){
-			log_error(logger, "no hay memoria");
+			log_error(logger, "...No hay memoria.");
             reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
             //La idea es que se llama recursivamente ya que se liberan particiones hasta que haya suficiente espacio
             //contiguo para almacenar.
@@ -1380,13 +1393,13 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
         posicion_a_ubicar = encontrar_primer_ajuste(un_mensaje -> tamanio_mensaje);
 
         if(posicion_a_ubicar == -1){
-            log_error(logger, "No hay suficiente tamaño para ubicar el mensaje en memoria.");
+            log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
             reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
         }
 
 		particion_a_ubicar = list_get(memoria_con_particiones, posicion_a_ubicar);
 
-		nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1);
+		nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1, contenido_mensaje);
         ubicar_particion(posicion_a_ubicar, nueva_particion);
 		guardar_contenido_de_mensaje(nueva_particion -> base, contenido_mensaje, nueva_particion -> tamanio);
     }
@@ -1395,16 +1408,15 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
         posicion_a_ubicar = encontrar_mejor_ajuste(un_mensaje -> tamanio_mensaje);
 
         if(posicion_a_ubicar == -1){
-            log_error(logger, "No hay suficiente tamaño para ubicar el mensaje en memoria.");
+            log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
             reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
         }
 
 		particion_a_ubicar = list_get(memoria_con_particiones, posicion_a_ubicar);
 
-		nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1);
+		nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1, contenido_mensaje);
 		ubicar_particion(posicion_a_ubicar, nueva_particion);
 		guardar_contenido_de_mensaje(nueva_particion -> base, contenido_mensaje, nueva_particion -> tamanio);
-
 
     }
 
@@ -1422,12 +1434,12 @@ void guardar_contenido_de_mensaje(uint32_t offset, void* contenido, uint32_t tam
 		log_info(logger, "Se libera una partición de tamaño %d que comienza en la posicion %d.", tamanio, memoria + offset);
 	}
 
-	//Revisar el free.
 	//free(contenido);
 }
 
 void liberar_particion_dinamica(t_memoria_dinamica* particion_vacia){
-    free(particion_vacia);
+    free(particion_vacia -> contenido);
+	free(particion_vacia);
 }
 
 uint32_t chequear_espacio_memoria_particiones(uint32_t tamanio_mensaje){
@@ -1453,7 +1465,7 @@ void ubicar_particion(uint32_t posicion_a_ubicar, t_memoria_dinamica* particion)
         uint32_t total = particion_reemplazada -> tamanio;
         if(particion -> tamanio < total) {
         uint32_t nueva_base = (particion_reemplazada -> base) + particion -> tamanio + 1;
-        t_memoria_dinamica* nueva_particion_vacia = armar_particion(total - particion ->tamanio, nueva_base, NULL, 0);
+        t_memoria_dinamica* nueva_particion_vacia = armar_particion(total - particion ->tamanio, nueva_base, NULL, 0, contenido_vacio);
         list_add_in_index(memoria_con_particiones, posicion_a_ubicar + 1, nueva_particion_vacia);
 		contenido_vacio = malloc(total - (particion -> tamanio));
         guardar_contenido_de_mensaje(nueva_base, contenido_vacio, (total - (particion -> tamanio)));
@@ -1463,7 +1475,7 @@ void ubicar_particion(uint32_t posicion_a_ubicar, t_memoria_dinamica* particion)
         liberar_particion_dinamica(particion_reemplazada);
 }
 
-t_memoria_dinamica* armar_particion(uint32_t tamanio, uint32_t base, t_mensaje* mensaje, uint32_t ocupacion){
+t_memoria_dinamica* armar_particion(uint32_t tamanio, uint32_t base, t_mensaje* mensaje, uint32_t ocupacion, void* contenido){
 
 	t_memoria_dinamica* nueva_particion = malloc(sizeof(t_memoria_dinamica));
 
@@ -1473,12 +1485,14 @@ t_memoria_dinamica* armar_particion(uint32_t tamanio, uint32_t base, t_mensaje* 
 		nueva_particion-> base = base;
 		nueva_particion-> ocupado = ocupacion;
 		nueva_particion-> codigo_operacion = mensaje->codigo_operacion;
+		nueva_particion-> contenido = contenido;
     	nueva_particion = mensaje -> payload;
     } else {
 		nueva_particion -> tamanio = tamanio;
 		nueva_particion -> base = base;
 		nueva_particion -> ocupado = 0;
 		nueva_particion -> codigo_operacion = 0;
+		nueva_particion -> contenido = contenido;
 	}
 
     return nueva_particion;
@@ -1596,12 +1610,12 @@ void consolidar_particiones(uint32_t primer_elemento, uint32_t elemento_siguient
     t_memoria_dinamica* particion_siguiente = list_remove(memoria_con_particiones, elemento_siguiente);
 
     uint32_t tamanio_particion_consolidada    = (una_particion -> tamanio) + (particion_siguiente -> tamanio);
-    t_memoria_dinamica* particion_consolidada = armar_particion(tamanio_particion_consolidada, (una_particion -> base), NULL, 0);
+    void* contenido_vacio = malloc(tamanio_particion_consolidada);
+    t_memoria_dinamica* particion_consolidada = armar_particion(tamanio_particion_consolidada, (una_particion -> base), NULL, 0, contenido_vacio);
 
     list_add_in_index(memoria_con_particiones, primer_elemento, particion_consolidada);
-    void* contenido_vacio = malloc(tamanio_particion_consolidada);
-    //Esto consolida las particiones en la "memoria". Quizás se podría sacar ya que ahí no se distinguen particiones.
-	guardar_contenido_de_mensaje((una_particion -> base), contenido_vacio, tamanio_particion_consolidada);
+
+
     free(contenido_vacio);
 	destruir_particion(una_particion);
     destruir_particion(particion_siguiente);
@@ -1629,7 +1643,7 @@ bool existen_particiones_contiguas_vacias(t_list* memoria_cache){
 
     return list_any_satisfy(memoria_duplicada, la_posicion_siguiente_tambien_esta_vacia);
 }
-/*
+
 void compactar_particiones_dinamicas(){
     t_list* particiones_vacias = list_create();
     t_list* particiones_ocupadas = list_create();
@@ -1671,12 +1685,11 @@ void compactar_particiones_dinamicas(){
     particiones_liberadas = 0;
 }
 
-bool es_el_primer_elemento(t_memoria_dinamica*);
+
 bool es_el_primer_elemento(t_memoria_dinamica* una_particion){
 	return (una_particion -> base == 0);
 }
 
-uint32_t obtener_nueva_base(t_memoria_dinamica*);
 uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion){
 	uint32_t nueva_base = 0;
 	//--> Revisar si hay que crear las listas y destruirlas.
@@ -1709,14 +1722,13 @@ void compactar_memoria_cache(t_list* lista_particiones){
     }
 	//--> Revisar si hace falta un semaforo.
     list_iterate(lista_particiones, reescribir_memoria);
-}*/
+}
 
 void eliminar_mensaje(void* mensaje){
 	t_mensaje* un_mensaje = mensaje;
 	list_destroy(un_mensaje -> suscriptor_enviado);
 	list_destroy(un_mensaje -> suscriptor_recibido);
-	//liberar_mensaje_de_memoria(mensaje);
-    liberar_mensaje_de_memoria(un_mensaje);
+	liberar_mensaje_de_memoria(un_mensaje);
 	free(un_mensaje -> payload);
 	free(un_mensaje);
 	free((t_mensaje*) mensaje);
@@ -1735,21 +1747,24 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 		t_memoria_dinamica* particion_a_liberar = list_find(memoria_con_particiones, es_la_particion);
 
 		uint32_t indice = encontrar_indice(particion_a_liberar);
-		t_memoria_dinamica* particion_vacia = armar_particion(particion_a_liberar -> tamanio, particion_a_liberar -> base, NULL, 0);
+		void* contenido;
+		t_memoria_dinamica* particion_vacia = armar_particion(particion_a_liberar -> tamanio, particion_a_liberar -> base, NULL, 0, contenido);
 
 		particion_a_liberar = list_replace(memoria_con_particiones, indice, particion_vacia);
 		liberar_particion_en_cache(particion_a_liberar);
 
-		particiones_liberadas++;
-		//REVISAR --> JULI (semáforo)
+		//particiones_liberadas++;
+		//sem_post(&sem_consolidacion); --> buscar
 		log_info(logger, "... Se libera una partición.");
 
-		if(particiones_liberadas == config_broker -> frecuencia_compactacion){
+		/*if(particiones_liberadas == config_broker -> frecuencia_compactacion){
 			compactar_memoria();
 		} else if (particiones_liberadas > config_broker -> frecuencia_compactacion) {
 			log_error(logger, "...Debería haberse compactado la memoria :$.");
 			exit(-90);
-		}
+		}*/
+
+		free(contenido);
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
 		//Falta hacer
 	} else {
@@ -2037,12 +2052,6 @@ void consolidacion_buddy_systeam(t_node*  nodo)
       }
 }
 
-/*void crear_hilo_por_mensaje() {
-	uint32_t err = pthread_create(&hilo_mensaje, NULL, gestionar_mensaje, NULL);
-	if(err != 0) {
-		log_error(logger, "El hilo no pudo ser creado!!");
-	}
-}*/
 
 void gestionar_mensaje(){
     //ACA HAY QUE METER EL PROCESS REQUEST Y DEMÁS
@@ -2071,8 +2080,8 @@ void iniciar_semaforos_broker() {
 }
 
 void terminar_hilos_broker(){
-    pthread_detach(hilo_algoritmo_memoria);
-    pthread_detach(hilo_mensaje);
+	pthread_detach(hilo_envio_mensajes);
+    //pthread_detach(hilo_mensaje);
 }
 
 void liberar_semaforos_broker(){
