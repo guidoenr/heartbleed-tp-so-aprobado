@@ -8,8 +8,6 @@
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.h"
 #include "/home/utnso/workspace/tp-2020-1c-heartbleed/Utils/src/Utils.c"
 
-// agregar un id 0 al mensaje a mandar al broker
-
 typedef struct {
 	uint32_t id;
 	pthread_t hilo;
@@ -78,11 +76,13 @@ uint32_t distancia(uint32_t[2], uint32_t[2]);
 void iniciar_programa();
 void inicializar_estados();
 void leer_config(void);
-void suscribirme_a_colas();
+void*suscribirme_a_colas();
 void suscribirse_a(op_code);
 void inicializar_semaforos();
 void iniciar_hilos_ejecucion();
 void crear_listas_globales();
+void conexion_inicial_broker();
+
 
 // entrenadores
 void iniciar_entrenadores();
@@ -204,6 +204,9 @@ void eliminar_los_que_ya_tengo();
 bool cumplio_objetivo_personal(t_entrenador*);
 bool comparar_pokemon(void*, void*);
 void eliminar_del_objetivo_global(t_pokemon_mapa*);
+
+// mapa
+void reagregar_especie_al_mapa_principal(char*);
 
 
 // terminar

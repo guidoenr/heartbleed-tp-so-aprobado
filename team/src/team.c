@@ -70,19 +70,17 @@ void iniciar_programa() {
 	inicializar_semaforos();
 	determinar_objetivo_global();
 
-	suscribirme_a_colas();
-	//levantar_server_broker();
-	//iniciar_conexion_game_boy();
+	/*conexion_inicial_broker();
+	iniciar_conexion_game_boy();*/
 
 	crear_listas_globales();
 
 	enviar_get_pokemon();
 
 	iniciar_entrenadores();
-
-
 	iniciar_hilos_ejecucion();
 }
+
 void crear_listas_globales() {
 	mapa_pokemons = list_create();
 	pedidos_captura = list_create();
@@ -146,6 +144,7 @@ void leer_config(void) {
 	config -> estimacion_inicial = config_get_int_value(config_team, "ESTIMACION_INICIAL");
 	config -> log_file = strdup(config_get_string_value(config_team, "LOG_FILE"));
 	config -> id_proceso = config_get_int_value(config_team, "ID_PROCESO");
+
 	config_destroy(config_team);
 }
 
@@ -276,17 +275,28 @@ void eliminar_los_que_ya_tengo() {
 
 }
 
-void suscribirme_a_colas() {
+void conexion_inicial_broker() {
+
+	uint32_t err = pthread_create(&hilo_game_boy, NULL, suscribirme_a_colas, NULL);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+}
+
+void* suscribirme_a_colas() {
 	suscribirse_a(APPEARED_POKEMON);
 	suscribirse_a(CAUGHT_POKEMON);
 	suscribirse_a(LOCALIZED_POKEMON);
+
+	levantar_server_broker();
+
+	return NULL;
 }
 
 void suscribirse_a(op_code cola) {
 	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
-	int i = 0;
 
-	while(socket == -1 && i < 5) { // falta el hilo
+	while(socket == -1) {
 
 		log_info(logger, "Inicio de proceso de reintento de comunicacion con el Broker");
 		sleep(config -> tiempo_reconexion);
@@ -295,28 +305,24 @@ void suscribirse_a(op_code cola) {
 
 		if(socket == -1){
 			log_info(logger, "Proceso de reintento de comunicacion con el Broker fallido");
-			i ++;
+
 		} else{
+			t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
+			uint32_t tamanio_suscripcion = sizeof(t_suscripcion);
+
+			suscripcion -> cola_a_suscribir = cola;
+			suscripcion -> id_proceso = config -> id_proceso;
+			suscripcion -> socket = socket;
+			suscripcion -> tiempo_suscripcion = 0; //este valor es siempre 0
+
+			enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
+
 			log_info(logger, "Proceso de reintento de comunicacion con el Broker exitoso");
+
+			free(suscripcion);
+
+			break;
 		}
-	}
-
-	if(i >= 5) {
-		log_info(logger, "termino el intento de reconexion luego de varios fallos");
-	} else {
-		t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
-		//suscripcion -> id_proceso = malloc(sizeof(char*));
-		uint32_t tamanio_suscripcion = sizeof(t_suscripcion);
-
-		suscripcion -> cola_a_suscribir = cola;
-		suscripcion -> id_proceso = config -> id_proceso;
-		suscripcion -> socket = socket;
-		suscripcion -> tiempo_suscripcion = 0; //este valor es siempre 0
-
-		enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
-
-		//free(suscripcion -> id_proceso);
-		free(suscripcion);
 	}
 }
 
@@ -365,7 +371,7 @@ void iniciar_entrenadores() {
 		entrenador -> estimacion = config -> estimacion_inicial;
 		entrenador -> ciclos_cpu = 0;
 		//entrenador -> socket_mensaje_catch = 0;
-		//entrenador ->
+
 		sem_init(&(entrenador -> sem_binario), 0, 0);
 		sem_init(&(entrenador -> esperar_caught), 0, 0);
 
@@ -461,7 +467,7 @@ void manejar_desalojo_captura(t_pedido_captura* pedido){
 		sem_post(&mx_desalojo_exec);
 
 	} else { // FIFO o SJF Sin Desalojo // RR/SJF NO DESALOJADO
-		sem_wait(&(pedido -> entrenador -> esperar_caught)); // darle verde en el process request
+		sem_wait(&(pedido -> entrenador -> esperar_caught));
 		procesar_caught(pedido);
 
 	}
@@ -500,8 +506,8 @@ void procesar_caught(t_pedido_captura* pedido){
 		}
 	list_remove_by_condition(objetivo_global_pendiente, es_el_pokemon);
 
-	if(pedido -> entrenador -> resultado_caught) { // settear a lo que corresponda en el process_request ANTES de cambiar el esperando_caught
-		log_info(logger, "ATRAPE :)"); // delete
+	if(pedido -> entrenador -> resultado_caught) {
+		log_info(logger, "...ATRAPE :)");
 		list_add(pedido -> entrenador -> pokemons, pedido -> pokemon -> nombre);
 
 		if(tengo_la_mochila_llena(pedido -> entrenador)){
@@ -518,7 +524,7 @@ void procesar_caught(t_pedido_captura* pedido){
 		}
 
 	} else {
-		log_info(logger, "NO ATRAPE :("); // delete
+		log_info(logger, "...NO ATRAPE :(");
 		sem_post(&sem_cont_entrenadores_a_replanif);
 
 		list_add(objetivo_global, pedido -> pokemon -> nombre);
@@ -533,15 +539,16 @@ void procesar_caught(t_pedido_captura* pedido){
 void reagregar_especie_al_mapa_principal(char* pokemon) {
 	bool pokemon_a_eliminar(void* un_pokemon) {
 		t_pokemon_mapa* otro_pokemon = un_pokemon;
+
 		return string_equals_ignore_case(pokemon, otro_pokemon -> nombre);
 	}
 
-	pokemon_a_remover = list_remove_by_condition(mapa_pokemons_pendiente, eliminar_del_mapa_original);
+	t_pokemon_mapa* pokemon_a_remover = list_remove_by_condition(mapa_pokemons_pendiente, pokemon_a_eliminar);
 
 	while(pokemon_a_remover) {
 		sem_post(&sem_cont_mapa);
 		list_add(mapa_pokemons, pokemon_a_remover);
-		pokemon_a_remover = list_remove_by_condition(mapa_pokemons_pendiente, eliminar_del_mapa_original);
+		// pokemon_a_remover = list_remove_by_condition(mapa_pokemons_pendiente, eliminar_del_mapa_original);
 	}
 }
 
@@ -635,21 +642,23 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 		pedido -> distancia --;
 		log_info(logger, "El entrenador %d se mueve a [%d,%d]", pedido -> entrenador -> id, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 	} else {
+
+		log_info(logger, "El entrenador %d tiro el catch para un %s en la posicion [%d,%d]",
+					pedido -> entrenador -> id,
+					pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
+
 		enviar_mensaje_catch(pedido);
 
 		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_block, pedido -> entrenador);
-		log_info(logger, "El entrenador %d tiro el catch para un %s en la posicion [%d,%d]",
-				pedido -> entrenador -> id,
-				pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
-		log_info(logger, "El entrenador %d se mueve a block para esperar la respuesta del catch", pedido -> entrenador -> id);
+		log_info(logger, "El entrenador %d se mueve a block para esperar el resultado del catch", pedido -> entrenador -> id);
 		sem_post(&mx_estados);
 
 		//sleep(config -> retardo_cpu * 4); //dsp decomentar CREO
 	}
 
 	pedido -> entrenador -> ciclos_cpu ++;
-	sleep(config -> retardo_cpu);// RETARDO_CICLO_CPU
+	sleep(config -> retardo_cpu);
 	pedido -> entrenador -> pasos_a_moverse --;
 }
 
@@ -765,7 +774,7 @@ void* planificar_entrenadores() {
 			log_info(logger, "Inicio del algoritmo de deteccion de deadlocks");
 			//matar hilo gameboy
 			//matar suscripciones broker
-			for(int i=0; i <= estado_block -> elements_count; i++) {
+			for(int i = 0; i <= estado_block -> elements_count; i++) {
 				sem_post(&sem_cont_entrenadores_a_replanif);
 			}
 
@@ -877,6 +886,7 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 
 		bool entrenador_que_le_sobra_pokemon(void* un_entrenador){
 			t_entrenador* entrenador = un_entrenador;
+
 			return le_sobra_pokemon(entrenador, pedido -> pokemon_a_recibir);
 		}
 		pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon);
@@ -978,6 +988,9 @@ char* encontrar_pokemon_sobrante(t_entrenador* entrenador){
 
 	list_iterate(pokemons, remover_del_objetivo);
 
+	list_destroy(pokemons);
+	list_destroy(objetivos);
+
 	return pokemon_sobrante;
 }
 
@@ -1006,6 +1019,9 @@ char* encontrar_pokemon_faltante(t_entrenador* entrenador){
 	}
 
 	list_iterate(objetivos, remover_del_objetivo);
+
+	list_destroy(pokemons);
+	list_destroy(objetivos);
 
 	return pokemon_faltante;
 }
@@ -1131,7 +1147,7 @@ void crear_hilo_segun_algoritmo() {
 		uint32_t err = pthread_create(&hilo_algoritmo, NULL, ejecutar_algoritmo, NULL);
 
 		if(err != 0) {
-			log_error(logger, "El hilo no pudo ser creado!!"); // preguntar si estos logs se pueden hacer
+			log_error(logger, "El hilo no pudo ser creado!!");
 		}
 
 	} else {
@@ -1206,10 +1222,10 @@ void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
 	}
 }
 
-void limpiar_mapa(void* pokemon) {
+/*void limpiar_mapa(void* pokemon) {
 
 	list_remove_and_destroy_by_condition(mapa_pokemons, no_esta_en_objetivo, destruir_pokemon_mapa);
-}
+}*/
 
 bool no_esta_en_objetivo(void* pokemon) {
 
@@ -1224,8 +1240,8 @@ bool no_esta_en_objetivo(void* pokemon) {
 
 void destruir_pokemon_mapa(void* un_pokemon) {
 	t_pokemon_mapa* pokemon = un_pokemon;
-	//free(pokemon -> nombre);
-	free(pokemon); // acordarse de hacer los malloc cuando se cargan al mapa
+	free(pokemon -> nombre);
+	free(pokemon);
 }
 
 uint32_t distancia(uint32_t pos1[2], uint32_t pos2[2]) {
@@ -1403,10 +1419,12 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 		close(socket);
 
 	} else { // Comportamiento default *ATRAPÓ*
-		log_info(logger, "Comportamiento default *ATRAPÓ*");
+		log_info(logger, "No se pudo establecer la conexion con broker, se realiza el comportamiento default del catch");
 		pedido -> entrenador -> resultado_caught = 1;
 		sem_post(&(pedido -> entrenador -> esperar_caught));
 	}
+
+	free(mensaje);
 }
 
 void enviar_mensaje_get(char* pokemon) {
@@ -1424,8 +1442,14 @@ void enviar_mensaje_get(char* pokemon) {
 		enviar_mensaje(GET_POKEMON, mensaje, socket, tamanio_mensaje);
 
 		int id = recibir_id_de_mensaje_enviado(socket);
+
 		close(socket);
+
+	} else{
+		log_info(logger, "No se pudo establecer la conexion con broker, se realiza el comportamiento default del get");
 	}
+
+	free(mensaje);
 }
 
 void enviar_get_pokemon() {
@@ -1469,17 +1493,21 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 
 	switch (cod_op) {
 		case LOCALIZED_POKEMON:
-			log_info(logger, "...ME LLEGO UN LOCALIZED JUJU");
+			log_info(logger, "Se recibio un mensaje LOCALIZED con id %d y pokemon %s",
+					((t_localized_pokemon*) mensaje_recibido) -> id_mensaje, ((t_localized_pokemon*) mensaje_recibido) -> pokemon); // faltaria la lista de posiciones
 			procesar_localized((t_localized_pokemon*) mensaje_recibido);
 			enviar_ack_broker(((t_localized_pokemon*) mensaje_recibido) -> id_mensaje, LOCALIZED_POKEMON);
 			break;
 		case CAUGHT_POKEMON:
-			log_info(logger, "...ME LLEGO UN CAUGHT JUJU");
+			log_info(logger, "Se recibio un mensaje CAUGHT con id %d y resultado %d",
+					((t_caught_pokemon*) mensaje_recibido) -> id_mensaje, ((t_caught_pokemon*) mensaje_recibido) -> resultado);
 			procesar_mensaje_caught((t_caught_pokemon*) mensaje_recibido);
 			enviar_ack_broker(((t_caught_pokemon*) mensaje_recibido) -> id_mensaje, CAUGHT_POKEMON);
 			break;
 		case APPEARED_POKEMON:
-			log_info(logger, "...ME LLEGO UN APPEARED JUJU");
+			log_info(logger, "Se recibio un mensaje APPEARED con id %d, pokemon %d y posicion [%d, %d]",
+					((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, ((t_appeared_pokemon*) mensaje_recibido) -> pokemon,
+					((t_appeared_pokemon*) mensaje_recibido) -> posicion[0], ((t_appeared_pokemon*) mensaje_recibido) -> posicion[1]);
 			procesar_mensaje_appeared((t_appeared_pokemon*) mensaje_recibido);
 			enviar_ack_broker(((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, APPEARED_POKEMON); // y si viene del gameboy?
 			break;
@@ -1574,6 +1602,7 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 	while(cabeza_lista) {
 		t_pokemon_mapa* pokemon_mapa = malloc(sizeof(t_pokemon_mapa));
 
+		pokemon_mapa -> nombre = malloc(strlen(mensaje_recibido -> pokemon));
 		pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
 		pokemon_mapa -> posicion[0] = *(int*)cabeza_lista -> data;
 		cabeza_lista = cabeza_lista -> next;
@@ -1656,15 +1685,15 @@ void liberar_listas() {
 	list_destroy(especies_objetivo_global);
 	list_destroy(especies_ya_localizadas);
 	list_destroy(objetivo_global_pendiente);
-	list_destroy(mapa_pokemons_pendiente); // A ESTE HAY QUE LIMPIARLE LOS POKEMONS TAMBIEN.
+	list_destroy_and_destroy_elements(mapa_pokemons_pendiente, destruir_pokemon_mapa);
 }
 
 void terminar_hilos() {
 	terminar_hilos_entrenadores();
 	pthread_cancel(hilo_algoritmo); // ambos bloqueados por semaforos pq terminaron los entrenadores y no van a recibir post
 	pthread_cancel(hilo_planificar); // ambos bloqueados por semaforos pq terminaron los entrenadores y no van a recibir post
-	//pthread_cancel(hilo_game_boy);
-	//pthread_cancel(hilo_broker);
+	pthread_cancel(hilo_game_boy);
+	pthread_cancel(hilo_broker);
 }
 
 void terminar_hilos_entrenadores() {
