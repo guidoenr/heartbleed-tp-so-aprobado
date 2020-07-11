@@ -47,12 +47,8 @@ int main(void) {
 	list_add(mapa_pokemons, gengar);
 	sem_post(&sem_cont_mapa);
 
-	sleep(15*1);
+	sleep(300);
 
-	sem_post(&sem_cont_mapa); // ESTE CUANDO HAY QUE RESOLVER DEADLOCKS
-	sem_post(&sem_cont_entrenadores_a_replanif); // ESTE CUANDO HAY QUE RESOLVER DEADLOCKS
-
-	terminar_programa(/*socket*/);
 	return 0;
 }
 
@@ -70,8 +66,8 @@ void iniciar_programa() {
 	inicializar_semaforos();
 	determinar_objetivo_global();
 
-	/*conexion_inicial_broker();
-	iniciar_conexion_game_boy();*/
+	conexion_inicial_broker();
+	iniciar_conexion_game_boy();
 
 	crear_listas_globales();
 
@@ -439,6 +435,12 @@ void asignar_estado_luego_de_trade(t_entrenador* entrenador) {
 		cambiar_a_estado(estado_exit, entrenador);
 		log_info(logger, "Luego de ejecutar el trade, el entrenador %d cumplio su objetivo personal y se mueve a exit", entrenador -> id);
 		sem_post(&mx_estados);
+
+		if(config -> entrenadores -> elements_count == estado_exit -> elements_count) {
+			log_info(logger, "ENTRE LPM");
+			terminar_programa();
+		}
+
 	} else {
 		if(!esta_en_estado(estado_block, entrenador)) {
 			sem_wait(&mx_estados);
@@ -517,6 +519,11 @@ void procesar_caught(t_pedido_captura* pedido){
 				cambiar_a_estado(estado_exit, pedido -> entrenador);
 				log_info(logger, "El entrenador %d completo su objetivo personal y se mueve a exit", pedido -> entrenador -> id);
 				sem_post(&mx_estados);
+			}
+
+			if(entrenadores_con_mochila_llena()){
+				sem_post(&sem_cont_mapa);
+				sem_post(&sem_cont_entrenadores_a_replanif);
 			}
 
 		} else {
@@ -758,9 +765,9 @@ t_pedido_captura* buscar_pedido_captura(t_entrenador* entrenador) {
 void* planificar_entrenadores() {
 	int deadlocks = 1;
 	while(deadlocks){
-		sem_wait(&sem_cont_mapa); //hace el signal cuando llega un mensaje de broker/gameboy
+		sem_wait(&sem_cont_mapa);
 		sem_wait(&sem_cont_entrenadores_a_replanif);
-		if(mapa_pokemons -> elements_count) {
+		if(!entrenadores_con_mochila_llena()) {
 
 			t_pedido_captura* pedido = malloc(sizeof(t_pedido_captura));
 			armar_pedido_captura(pedido);
@@ -787,7 +794,19 @@ void* planificar_entrenadores() {
 			deadlocks = 0;
 		}
 	}
+
 	return 0;
+}
+
+bool entrenadores_con_mochila_llena() {
+
+	bool tiene_la_mochila_llena(void* un_entrenador) {
+		t_entrenador* entrenador = un_entrenador;
+
+		return entrenador -> pokemons -> elements_count >= entrenador -> objetivos -> elements_count;
+	}
+
+	return list_all_satisfy(config -> entrenadores, tiene_la_mochila_llena);
 }
 
 void eliminar_del_objetivo_global(t_pokemon_mapa* pokemon) {
@@ -1222,11 +1241,6 @@ void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
 	}
 }
 
-/*void limpiar_mapa(void* pokemon) {
-
-	list_remove_and_destroy_by_condition(mapa_pokemons, no_esta_en_objetivo, destruir_pokemon_mapa);
-}*/
-
 bool no_esta_en_objetivo(void* pokemon) {
 
 	bool es_el_pokemon(void* otro_pokemon) {
@@ -1236,12 +1250,6 @@ bool no_esta_en_objetivo(void* pokemon) {
 	}
 
 	return list_find(objetivo_global, es_el_pokemon);
-}
-
-void destruir_pokemon_mapa(void* un_pokemon) {
-	t_pokemon_mapa* pokemon = un_pokemon;
-	free(pokemon -> nombre);
-	free(pokemon);
 }
 
 uint32_t distancia(uint32_t pos1[2], uint32_t pos2[2]) {
@@ -1505,11 +1513,11 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			enviar_ack_broker(((t_caught_pokemon*) mensaje_recibido) -> id_mensaje, CAUGHT_POKEMON);
 			break;
 		case APPEARED_POKEMON:
-			log_info(logger, "Se recibio un mensaje APPEARED con id %d, pokemon %d y posicion [%d, %d]",
+			log_info(logger, "Se recibio un mensaje APPEARED con id %d, pokemon %s y posicion [%d,%d]",
 					((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, ((t_appeared_pokemon*) mensaje_recibido) -> pokemon,
 					((t_appeared_pokemon*) mensaje_recibido) -> posicion[0], ((t_appeared_pokemon*) mensaje_recibido) -> posicion[1]);
 			procesar_mensaje_appeared((t_appeared_pokemon*) mensaje_recibido);
-			enviar_ack_broker(((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, APPEARED_POKEMON); // y si viene del gameboy?
+			//enviar_ack_broker(((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, APPEARED_POKEMON); // y si viene del gameboy?
 			break;
 		case 0:
 			log_error(logger,"No se encontro el tipo de mensaje");
@@ -1518,6 +1526,9 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 		case -1:
 			pthread_exit(NULL);
 	}
+
+	free(codigo_op);
+	free(stream);
 }
 
 void enviar_ack_broker(uint32_t id_mensaje, op_code codigo) {
@@ -1532,33 +1543,69 @@ void enviar_ack_broker(uint32_t id_mensaje, op_code codigo) {
 
 	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
 
-	enviar_mensaje(codigo, ack, socket, size_mensaje);
-
-	close(socket);
+	if(socket != -1) {
+		enviar_mensaje(codigo, ack, socket, size_mensaje);
+		close(socket);
+	}
 	free(ack);
 }
 
 void procesar_mensaje_appeared(t_appeared_pokemon* mensaje_recibido) {
 
 	t_pokemon_mapa* pokemon_mapa = malloc(sizeof(t_pokemon_mapa));
-	pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
-	pokemon_mapa -> posicion[0] = mensaje_recibido -> posicion[0];
-	pokemon_mapa -> posicion[1] = mensaje_recibido -> posicion[1];
 
-	bool esta_en_el_mapa(void* another_pokemon_mapa) {
-		t_pokemon_mapa* un_pokemon_mapa = another_pokemon_mapa;
-		return pokemon_mapa -> nombre == un_pokemon_mapa -> nombre &&
-				pokemon_mapa -> posicion[0] == un_pokemon_mapa -> posicion[0] &&
-				pokemon_mapa -> posicion[1] == un_pokemon_mapa -> posicion[1];
-	}
-	t_pokemon_mapa* otro_pokemon_mapa = list_find(mapa_pokemons, esta_en_el_mapa);
+	bool es_el_pokemon(void* another_pokemon) {
+		char* un_pokemon = another_pokemon;
 
-	if(otro_pokemon_mapa == NULL) {
-		pokemon_mapa -> cantidad = 1;
-		list_add(mapa_pokemons, pokemon_mapa);
-	} else {
-		(otro_pokemon_mapa -> cantidad)++;
+		return string_equals_ignore_case(mensaje_recibido -> pokemon, un_pokemon);
 	}
+
+	if(list_find(objetivo_global, es_el_pokemon)) {
+
+		pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
+		pokemon_mapa -> posicion[0] = mensaje_recibido -> posicion[0];
+		pokemon_mapa -> posicion[1] = mensaje_recibido -> posicion[1];
+
+		bool esta_en_el_mapa(void* another_pokemon_mapa) {
+			t_pokemon_mapa* un_pokemon_mapa = another_pokemon_mapa;
+			return pokemon_mapa -> nombre == un_pokemon_mapa -> nombre &&
+					pokemon_mapa -> posicion[0] == un_pokemon_mapa -> posicion[0] &&
+					pokemon_mapa -> posicion[1] == un_pokemon_mapa -> posicion[1];
+		}
+		t_pokemon_mapa* otro_pokemon_mapa = list_find(mapa_pokemons, esta_en_el_mapa);
+
+		if(otro_pokemon_mapa == NULL) {
+			pokemon_mapa -> cantidad = 1;
+			list_add(mapa_pokemons, pokemon_mapa);
+		} else {
+			(otro_pokemon_mapa -> cantidad)++;
+		}
+
+		sem_post(&sem_cont_mapa);
+
+	} else if(list_find(objetivo_global_pendiente, es_el_pokemon)) {
+
+		pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
+		pokemon_mapa -> posicion[0] = mensaje_recibido -> posicion[0];
+		pokemon_mapa -> posicion[1] = mensaje_recibido -> posicion[1];
+
+		bool esta_en_el_mapa(void* another_pokemon_mapa) {
+			t_pokemon_mapa* un_pokemon_mapa = another_pokemon_mapa;
+			return pokemon_mapa -> nombre == un_pokemon_mapa -> nombre &&
+					pokemon_mapa -> posicion[0] == un_pokemon_mapa -> posicion[0] &&
+					pokemon_mapa -> posicion[1] == un_pokemon_mapa -> posicion[1];
+		}
+		t_pokemon_mapa* otro_pokemon_mapa = list_find(mapa_pokemons_pendiente, esta_en_el_mapa);
+
+		if(otro_pokemon_mapa == NULL) {
+			pokemon_mapa -> cantidad = 1;
+			list_add(mapa_pokemons_pendiente, pokemon_mapa);
+		} else {
+			(otro_pokemon_mapa -> cantidad)++;
+		}
+	}
+
+	free(mensaje_recibido);
 }
 
 void procesar_mensaje_caught(t_caught_pokemon* mensaje_recibido) {
@@ -1576,6 +1623,8 @@ void procesar_mensaje_caught(t_caught_pokemon* mensaje_recibido) {
 	} else {
 		log_error(logger, "NO TENGO AL ENTRENADOR DEL MENSAJE RECIBIDO EN BLOCK.");
 	}
+
+	free(mensaje_recibido);
 }
 
 void procesar_localized(t_localized_pokemon* mensaje_recibido) {
@@ -1591,6 +1640,7 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 		agregar_localized_al_mapa(mensaje_recibido);
 	}
 
+	free(mensaje_recibido);
 }
 
 void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
@@ -1602,7 +1652,6 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 	while(cabeza_lista) {
 		t_pokemon_mapa* pokemon_mapa = malloc(sizeof(t_pokemon_mapa));
 
-		pokemon_mapa -> nombre = malloc(strlen(mensaje_recibido -> pokemon));
 		pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
 		pokemon_mapa -> posicion[0] = *(int*)cabeza_lista -> data;
 		cabeza_lista = cabeza_lista -> next;
@@ -1679,13 +1728,13 @@ void liberar_semaforos() {
 }
 
 void liberar_listas() {
-	list_destroy(objetivo_global); // puede ser solo free
+	list_destroy(objetivo_global);
 	list_destroy(pedidos_intercambio);
 	list_destroy(pedidos_captura);
 	list_destroy(especies_objetivo_global);
 	list_destroy(especies_ya_localizadas);
 	list_destroy(objetivo_global_pendiente);
-	list_destroy_and_destroy_elements(mapa_pokemons_pendiente, destruir_pokemon_mapa);
+	list_destroy(mapa_pokemons_pendiente);
 }
 
 void terminar_hilos() {
@@ -1727,11 +1776,10 @@ void loggear_resultados() {
 	log_info(logger, "La cantidad de deadlocks producidos es %d y la cantidad de resueltos es %d", deadlocks_totales, deadlocks_resueltos);
 }
 
-void terminar_programa(/*uint32_t conexion*/) {
+void terminar_programa() {
 	terminar_hilos();
 	loggear_resultados();
-	free(mapa_pokemons); // ver, se va destruyendo como objetivo global?
-	//liberar_conexion(conexion);
+	free(mapa_pokemons);
 	liberar_listas();
 	liberar_estados();
 	liberar_semaforos();
