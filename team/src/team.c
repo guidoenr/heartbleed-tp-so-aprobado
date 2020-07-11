@@ -1417,7 +1417,7 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 		close(socket);
 
 	} else { // Comportamiento default *ATRAPÓ*
-		log_info(logger, "Comportamiento default *ATRAPÓ*");
+		log_info(logger, "No se pudo establecer la conexion con broker, inicia el comportamiento default del catch");
 		pedido -> entrenador -> resultado_caught = 1;
 		sem_post(&(pedido -> entrenador -> esperar_caught));
 	}
@@ -1442,6 +1442,9 @@ void enviar_mensaje_get(char* pokemon) {
 		int id = recibir_id_de_mensaje_enviado(socket);
 
 		close(socket);
+
+	} else{
+		log_info(logger, "No se pudo establecer la conexion con broker, inicia el comportamiento default del get");
 	}
 
 	free(mensaje);
@@ -1488,17 +1491,21 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 
 	switch (cod_op) {
 		case LOCALIZED_POKEMON:
-			log_info(logger, "...ME LLEGO UN LOCALIZED JUJU");
+			log_info(logger, "Se recibio un mensaje LOCALIZED con id %d y pokemon %s",
+					((t_localized_pokemon*) mensaje_recibido) -> id_mensaje, ((t_localized_pokemon*) mensaje_recibido) -> pokemon); // faltaria la lista de posiciones
 			procesar_localized((t_localized_pokemon*) mensaje_recibido);
 			enviar_ack_broker(((t_localized_pokemon*) mensaje_recibido) -> id_mensaje, LOCALIZED_POKEMON);
 			break;
 		case CAUGHT_POKEMON:
-			log_info(logger, "...ME LLEGO UN CAUGHT JUJU");
+			log_info(logger, "Se recibio un mensaje CAUGHT con id %d y resultado %d",
+					((t_caught_pokemon*) mensaje_recibido) -> id_mensaje, ((t_caught_pokemon*) mensaje_recibido) -> resultado);
 			procesar_mensaje_caught((t_caught_pokemon*) mensaje_recibido);
 			enviar_ack_broker(((t_caught_pokemon*) mensaje_recibido) -> id_mensaje, CAUGHT_POKEMON);
 			break;
 		case APPEARED_POKEMON:
-			log_info(logger, "...ME LLEGO UN APPEARED JUJU");
+			log_info(logger, "Se recibio un mensaje APPEARED con id %d, pokemon %d y posicion [%d,%d]",
+					((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, ((t_appeared_pokemon*) mensaje_recibido) -> pokemon,
+					((t_appeared_pokemon*) mensaje_recibido) -> posicion[0], ((t_appeared_pokemon*) mensaje_recibido) -> posicion[1]);
 			procesar_mensaje_appeared((t_appeared_pokemon*) mensaje_recibido);
 			enviar_ack_broker(((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, APPEARED_POKEMON); // y si viene del gameboy?
 			break;
