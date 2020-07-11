@@ -642,14 +642,16 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 		pedido -> distancia --;
 		log_info(logger, "El entrenador %d se mueve a [%d,%d]", pedido -> entrenador -> id, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 	} else {
+
+		log_info(logger, "El entrenador %d tiro el catch para un %s en la posicion [%d,%d]",
+					pedido -> entrenador -> id,
+					pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
+
 		enviar_mensaje_catch(pedido);
 
 		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_block, pedido -> entrenador);
-		log_info(logger, "El entrenador %d tiro el catch para un %s en la posicion [%d,%d]",
-				pedido -> entrenador -> id,
-				pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
-		log_info(logger, "El entrenador %d se mueve a block para esperar la respuesta del catch", pedido -> entrenador -> id);
+		log_info(logger, "El entrenador %d se mueve a block para esperar el resultado del catch", pedido -> entrenador -> id);
 		sem_post(&mx_estados);
 
 		//sleep(config -> retardo_cpu * 4); //dsp decomentar CREO
@@ -1417,7 +1419,7 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 		close(socket);
 
 	} else { // Comportamiento default *ATRAPÓ*
-		log_info(logger, "No se pudo establecer la conexion con broker, inicia el comportamiento default del catch");
+		log_info(logger, "No se pudo establecer la conexion con broker, se realiza el comportamiento default del catch");
 		pedido -> entrenador -> resultado_caught = 1;
 		sem_post(&(pedido -> entrenador -> esperar_caught));
 	}
@@ -1444,7 +1446,7 @@ void enviar_mensaje_get(char* pokemon) {
 		close(socket);
 
 	} else{
-		log_info(logger, "No se pudo establecer la conexion con broker, inicia el comportamiento default del get");
+		log_info(logger, "No se pudo establecer la conexion con broker, se realiza el comportamiento default del get");
 	}
 
 	free(mensaje);
@@ -1503,7 +1505,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			enviar_ack_broker(((t_caught_pokemon*) mensaje_recibido) -> id_mensaje, CAUGHT_POKEMON);
 			break;
 		case APPEARED_POKEMON:
-			log_info(logger, "Se recibio un mensaje APPEARED con id %d, pokemon %d y posicion [%d,%d]",
+			log_info(logger, "Se recibio un mensaje APPEARED con id %d, pokemon %d y posicion [%d, %d]",
 					((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, ((t_appeared_pokemon*) mensaje_recibido) -> pokemon,
 					((t_appeared_pokemon*) mensaje_recibido) -> posicion[0], ((t_appeared_pokemon*) mensaje_recibido) -> posicion[1]);
 			procesar_mensaje_appeared((t_appeared_pokemon*) mensaje_recibido);
