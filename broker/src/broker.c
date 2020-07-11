@@ -43,8 +43,8 @@ void iniciar_programa(){
 	iniciar_semaforos_broker();
 	crear_colas_de_mensajes();
     crear_listas_de_suscriptores();
-    //crear_hilo_segun_algoritmo();
-    //crear_hilo_por_mensaje();
+    //crear_hilo_por_mensaje(); --> en el serve client
+    //crear_hilo_envio_mensajes(); --> tiene como main enviar_mensajes
 	log_info(logger, "IP: %s", config_broker -> ip_broker);
 	iniciar_servidor(config_broker -> ip_broker, config_broker -> puerto);
 
@@ -63,6 +63,8 @@ void reservar_memoria(){
         iniciar_memoria_particiones(memoria_con_particiones);
         //Al principio la lista tiene un unico elemento que es la memoria entera.
 	}
+
+	//hilo_de_compactacion(); --> va a tener un semaforo para saber cunado compactar
 }
 
 void crear_colas_de_mensajes(){
@@ -860,7 +862,8 @@ void agregar_suscriptor_a_enviados_confirmados(t_mensaje* mensaje, uint32_t conf
 	}
 }
 
-void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){
+void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){ // hilo
+	// sem_wait(&mensajes_a_enviar); --> le das post cada vez q un mensaje es agregado a memoria
 
 	void mensajear_suscriptores(void* mensaje){
 			t_mensaje* un_mensaje = mensaje;
@@ -869,19 +872,38 @@ void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){
 				t_suscripcion* un_suscriptor = suscriptor;
 
 				if(no_tiene_el_mensaje(un_mensaje, un_suscriptor -> id_proceso)){
-					uint32_t tamanio_mensaje = size_mensaje(un_mensaje -> payload, un_mensaje -> codigo_operacion);
-					void* mensaje_a_enviar = preparar_mensaje(un_mensaje);
-					enviar_mensaje(un_mensaje -> codigo_operacion, mensaje_a_enviar, un_suscriptor -> socket, tamanio_mensaje);
-					//actualizar_ultima_referencia(un_mensaje);
-					actualizar_ultima_referencia(mensaje);
-					agregar_suscriptor_a_enviados_sin_confirmar(un_mensaje, un_suscriptor -> id_proceso);
-					free(mensaje_a_enviar);
+
+					t_envio_mensaje* datos_de_mensaje = malloc(sizeof(t_envio_mensaje));
+
+					datos_de_mensaje -> suscriptor = un_suscriptor;
+					datos_de_mensaje -> mensaje = un_mensaje;
+
+					uint32_t err = pthread_create(&hilo_envio_mensajes, NULL, main_hilo_mesaje, datos_de_mensaje);
+						if(err != 0) {
+							log_error(logger, "El hilo no pudo ser creado!!");
+					}
 				}
 			}
 			list_iterate(lista_suscriptores, mandar_mensaje);
 	}
 
 	list_iterate(cola_de_mensajes, mensajear_suscriptores);
+}
+
+void* main_hilo_mensaje(void* unos_datos_de_mensaje) {
+
+	t_envio_mensaje* datos_de_mensaje = unos_datos_de_mensaje;
+
+	uint32_t tamanio_mensaje = size_mensaje(datos_de_mensaje -> mensaje -> payload, datos_de_mensaje -> mensaje -> codigo_operacion);
+	void* mensaje_a_enviar = preparar_mensaje(datos_de_mensaje -> mensaje);
+	enviar_mensaje(datos_de_mensaje -> mensaje -> codigo_operacion, mensaje_a_enviar, datos_de_mensaje -> suscriptor -> socket, tamanio_mensaje);
+	//actualizar_ultima_referencia(un_mensaje);
+	actualizar_ultima_referencia(datos_de_mensaje -> mensaje);
+	agregar_suscriptor_a_enviados_sin_confirmar(datos_de_mensaje -> mensaje, datos_de_mensaje -> suscriptor -> id_proceso);
+
+	free(mensaje_a_enviar);
+
+	return NULL;
 }
 
 bool no_tiene_el_mensaje(t_mensaje* mensaje, uint32_t un_suscripto){
@@ -945,20 +967,6 @@ void compactar_memoria(){
     }
 
 }
-
-void arrancar_memoria(){
-    if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
-        //ARMO LA ESTRUCTURA INICIAL DEL BS, SIN GUARDAR NADA TODAVIA. DESPUÉS CUANDO TENGA QUE
-        //GUARDAR ALGO SE REUTILIZA LA ESTRUCTURA QUE SE DEFINIÓ ACÁ.
-    }
-
-    if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
-		t_list* memoria_con_particiones = list_create();
-        iniciar_memoria_particiones(memoria_con_particiones);
-        //Al principio la lista tiene un unico elemento que es la memoria entera.
-	}
-}
-
 
 void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 
@@ -2029,20 +2037,7 @@ void consolidacion_buddy_systeam(t_node*  nodo)
       }
 }
 
-
-
-/*void crear_hilo_segun_algoritmo() {
-	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS") ||
-			string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-		uint32_t err = pthread_create(&hilo_algoritmo_memoria, NULL, reservar_memoria, NULL);
-		if(err != 0) {
-			log_error(logger, "El hilo no pudo ser creado!!"); // preguntar si estos logs se pueden hacer
-		}
-	} else {
-		log_error(logger, "wtf?? Algoritmo de memoria recibido: %s", config_broker -> algoritmo_memoria);
-	}
-}
-void crear_hilo_por_mensaje() {
+/*void crear_hilo_por_mensaje() {
 	uint32_t err = pthread_create(&hilo_mensaje, NULL, gestionar_mensaje, NULL);
 	if(err != 0) {
 		log_error(logger, "El hilo no pudo ser creado!!");

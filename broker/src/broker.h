@@ -70,6 +70,12 @@ struct t_node{
 struct t_node;
 typedef struct t_node t_node;
 
+/*typedef struct {
+	t_suscripcion* suscriptor;
+	t_mensaje* mensaje;
+}t_envio_mensaje;*/
+
+
 t_list* cola_catch;
 t_list* cola_caught;
 t_list* cola_get;
@@ -100,6 +106,7 @@ uint32_t numero_particion = 0;
 
 pthread_t hilo_algoritmo_memoria;
 pthread_t hilo_mensaje;
+//pthread_t hilo_envio_mensajes;
 
 //---semaforos---//
 sem_t semaforo;
@@ -137,7 +144,6 @@ void crear_hilo_por_mensaje		 (void);
 void gestionar_mensaje			 (void);
 void terminar_hilos_broker		 (void);
 void liberar_semaforos_broker	 (void);
-
 
 
 //Administracion de mensajes
