@@ -38,15 +38,14 @@ void iniciar_programa(){
 
 	leer_config();
 	iniciar_logger(config_broker->log_file, "broker");
+	reservar_memoria();
+	crear_colas_de_mensajes();
+	crear_listas_de_suscriptores();
 	iniciar_servidor(config_broker -> ip_broker, config_broker -> puerto);
 
 	log_info(logger, "...tam memoria: d%", config_broker->size_memoria);
 	log_info(logger,"... algoritmo: s%", config_broker -> algoritmo_memoria);
 
-	reservar_memoria();
-
-	crear_colas_de_mensajes();
-    crear_listas_de_suscriptores();
     //crear_hilo_envio_mensajes(); --> tiene como main enviar_mensajes
     //crear_hilo_por_mensaje(); --> en el serve client
 
@@ -242,9 +241,9 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 	sem_wait(&mutex_id);
 	send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
 	sem_post(&mutex_id);
-	log_error(logger, "Hasta aca llegue1");
+
     guardar_en_memoria(mensaje_a_agregar, mensaje);
-    log_error(logger, "Hasta aca llegue");
+
 	sem_wait(&semaforo);
 	encolar_mensaje(mensaje_a_agregar, cod_op);
 	sem_post(&semaforo);
@@ -1059,7 +1058,7 @@ void* armar_contenido_de_mensaje(void* mensaje, uint32_t codigo){
 
 
 void* armar_contenido_get(t_get_pokemon* mensaje){
-    uint32_t tamanio = strlen(mensaje -> pokemon) + 1;
+    uint32_t tamanio = strlen(mensaje -> pokemon);
     void* contenido = malloc(tamanio);
 
     memcpy(contenido, (mensaje -> pokemon), tamanio);
@@ -1075,7 +1074,7 @@ void* armar_contenido_catch(t_catch_pokemon* mensaje){
     uint32_t offset = 0;
 
     memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
-    offset += tamanio;
+    offset += tamanio_pokemon;
 
     memcpy(contenido + offset, &(mensaje -> posicion[0]), sizeof(uint32_t));
     offset += sizeof(uint32_t);
@@ -1088,7 +1087,23 @@ void* armar_contenido_catch(t_catch_pokemon* mensaje){
 
 
 void* armar_contenido_localized(t_localized_pokemon* mensaje){
-    void* contenido = 0;
+    uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
+    uint32_t tamanio_lista = list_size(mensaje -> posiciones) * sizeof(uint32_t);
+    uint32_t tamanio = tamanio_pokemon + tamanio_lista;
+	void* contenido = malloc(tamanio);
+	uint32_t offset = 0;
+
+	memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
+	offset += tamanio_pokemon;
+
+	void grabar_numero(void* un_numero){
+		uint32_t* numero = un_numero;
+		memcpy(contenido + offset, numero, sizeof(uint32_t));
+		offset += sizeof(uint32_t);
+	}
+
+	list_iterate(mensaje -> posiciones, grabar_numero);
+
     return contenido;
 }
 
@@ -1108,7 +1123,7 @@ void* armar_contenido_appeared(t_appeared_pokemon* mensaje){
     uint32_t offset = 0;
 
     memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
-    offset += tamanio;
+    offset += tamanio_pokemon;
 
     memcpy(contenido + offset, &(mensaje -> posicion[0]), sizeof(uint32_t));
     offset += sizeof(uint32_t);
@@ -1127,7 +1142,7 @@ void* armar_contenido_new(t_new_pokemon* mensaje){
     uint32_t offset = 0;
 
     memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
-    offset += tamanio;
+    offset += tamanio_pokemon;
 
     memcpy(contenido + offset, &(mensaje -> posicion[0]), sizeof(uint32_t));
     offset += sizeof(uint32_t);
@@ -1149,7 +1164,8 @@ void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje
 	t_memoria_dinamica* particion_a_reemplazar;
 
     particion_a_reemplazar = seleccionar_particion_victima_de_reemplazo();
-
+    /*log_error(logger, "Base: %d", particion_a_reemplazar -> base);
+    log_error(logger, "Codigo: %d", particion_a_reemplazar -> codigo_operacion);*/
     uint32_t indice = encontrar_indice(particion_a_reemplazar);
 	t_mensaje* mensaje_a_eliminar = encontrar_mensaje(particion_a_reemplazar -> base, particion_a_reemplazar -> codigo_operacion);
 
@@ -1170,16 +1186,15 @@ void liberar_particion_en_cache(t_memoria_dinamica* una_particion){
 
     uint32_t posicion_inicial_a_borrar = una_particion -> base;
     uint32_t limite                    = una_particion -> tamanio;
-    void* contenido_vacio = malloc(limite);
-	guardar_contenido_de_mensaje(posicion_inicial_a_borrar, contenido_vacio, limite);
-    log_info(logger, "El mensaje fue eliminado correctamente: %s", memoria + posicion_inicial_a_borrar);
-    free(contenido_vacio);
+
+	guardar_contenido_de_mensaje(posicion_inicial_a_borrar, NULL, limite);
+    log_info(logger, "El mensaje fue eliminado correctamente.");
     liberar_particion_dinamica(una_particion);
 }
 
 
 t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
-	//Sabiendo que el payload es el contenido del mensaje incluido el id...
+
     t_memoria_dinamica* particion_victima;
 
     bool fue_cargada_primero(void* particion2){
@@ -1187,7 +1202,7 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
 
 		bool tiempo_de_carga_menor_o_igual(void* particion1){
         t_memoria_dinamica* otra_particion = particion1;
-        return (otra_particion -> ultima_referencia) >= (una_particion -> tiempo_de_carga);
+        return ((otra_particion -> ultima_referencia) >= (una_particion -> tiempo_de_carga));// && ((una_particion -> ocupado) != 0);
 		//Se chequea que el tiempo de carga sea menor o igual.
     	}
 
@@ -1200,7 +1215,7 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
 
 		bool tiempo_de_acceso_menor_o_igual(void* particion3){
         t_memoria_dinamica* particion = particion3;
-        return (particion -> ultima_referencia) >= (one_particion -> ultima_referencia);
+        return ((particion -> ultima_referencia) >= (one_particion -> ultima_referencia));// && ((one_particion -> ocupado) != 0);
 		//Se chequea el tiempo de acceso menor o igual.
     	}
 
@@ -1217,7 +1232,7 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
 }
 
 t_memoria_buddy* seleccionar_particion_victima_de_reemplazo_buddy(){
-	//Sabiendo que el payload es el contenido del mensaje incluido el id...
+
     t_memoria_buddy* buddy_victima;
 
     bool fue_cargada_primero(void* buddy2){
@@ -1424,11 +1439,10 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
 
 void guardar_contenido_de_mensaje(uint32_t offset, void* contenido, uint32_t tamanio){
 
-	sem_wait(&mx_memoria_cache);
-	memcpy(memoria + offset, contenido, tamanio);
-	sem_post(&mx_memoria_cache);
-
 	if(contenido != NULL){
+		sem_wait(&mx_memoria_cache);
+		memcpy(memoria + offset, contenido, tamanio);
+		sem_post(&mx_memoria_cache);
 		log_info(logger, "Se guardó un mensaje en la particion de tamaño %d que comienza en la posicion %d.", tamanio, memoria + offset);
 	} else {
 		log_info(logger, "Se libera una partición de tamaño %d que comienza en la posicion %d.", tamanio, memoria + offset);
@@ -1460,18 +1474,17 @@ uint32_t chequear_espacio_memoria_particiones(uint32_t tamanio_mensaje){
 void ubicar_particion(uint32_t posicion_a_ubicar, t_memoria_dinamica* particion){
 
         t_memoria_dinamica* particion_reemplazada = list_replace(memoria_con_particiones, posicion_a_ubicar, particion);
-        void* contenido_vacio;
+
+        guardar_contenido_de_mensaje(particion -> base, particion -> contenido, particion -> tamanio);
 
         uint32_t total = particion_reemplazada -> tamanio;
         if(particion -> tamanio < total) {
         uint32_t nueva_base = (particion_reemplazada -> base) + particion -> tamanio + 1;
-        t_memoria_dinamica* nueva_particion_vacia = armar_particion(total - particion ->tamanio, nueva_base, NULL, 0, contenido_vacio);
+        t_memoria_dinamica* nueva_particion_vacia = armar_particion(total - particion ->tamanio, nueva_base, NULL, 0, NULL);
         list_add_in_index(memoria_con_particiones, posicion_a_ubicar + 1, nueva_particion_vacia);
-		contenido_vacio = malloc(total - (particion -> tamanio));
-        guardar_contenido_de_mensaje(nueva_base, contenido_vacio, (total - (particion -> tamanio)));
+
         }
 
-        free(contenido_vacio);
         liberar_particion_dinamica(particion_reemplazada);
 }
 
@@ -1484,7 +1497,8 @@ t_memoria_dinamica* armar_particion(uint32_t tamanio, uint32_t base, t_mensaje* 
 		nueva_particion-> tamanio = tamanio;
 		nueva_particion-> base = base;
 		nueva_particion-> ocupado = ocupacion;
-		nueva_particion-> codigo_operacion = mensaje->codigo_operacion;
+		nueva_particion-> codigo_operacion = mensaje -> codigo_operacion;
+		log_error(logger, "COdigo: %d", nueva_particion -> codigo_operacion);
 		nueva_particion-> contenido = contenido;
     	nueva_particion = mensaje -> payload;
     } else {
@@ -1610,13 +1624,10 @@ void consolidar_particiones(uint32_t primer_elemento, uint32_t elemento_siguient
     t_memoria_dinamica* particion_siguiente = list_remove(memoria_con_particiones, elemento_siguiente);
 
     uint32_t tamanio_particion_consolidada    = (una_particion -> tamanio) + (particion_siguiente -> tamanio);
-    void* contenido_vacio = malloc(tamanio_particion_consolidada);
-    t_memoria_dinamica* particion_consolidada = armar_particion(tamanio_particion_consolidada, (una_particion -> base), NULL, 0, contenido_vacio);
+     t_memoria_dinamica* particion_consolidada = armar_particion(tamanio_particion_consolidada, (una_particion -> base), NULL, 0, NULL);
 
     list_add_in_index(memoria_con_particiones, primer_elemento, particion_consolidada);
 
-
-    free(contenido_vacio);
 	destruir_particion(una_particion);
     destruir_particion(particion_siguiente);
 }
@@ -1747,8 +1758,8 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 		t_memoria_dinamica* particion_a_liberar = list_find(memoria_con_particiones, es_la_particion);
 
 		uint32_t indice = encontrar_indice(particion_a_liberar);
-		void* contenido;
-		t_memoria_dinamica* particion_vacia = armar_particion(particion_a_liberar -> tamanio, particion_a_liberar -> base, NULL, 0, contenido);
+
+		t_memoria_dinamica* particion_vacia = armar_particion(particion_a_liberar -> tamanio, particion_a_liberar -> base, NULL, 0, NULL);
 
 		particion_a_liberar = list_replace(memoria_con_particiones, indice, particion_vacia);
 		liberar_particion_en_cache(particion_a_liberar);
@@ -1764,7 +1775,7 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 			exit(-90);
 		}*/
 
-		free(contenido);
+
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
 		//Falta hacer
 	} else {

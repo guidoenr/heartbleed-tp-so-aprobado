@@ -217,8 +217,9 @@ t_suscripcion* armar_mensaje_suscripcion(char * parametros[]) {
 
 t_get_pokemon* armar_mensaje_get_pokemon(char * parametros[]) {
 
-  uint32_t tamanio = sizeof(uint32_t) + strlen(parametros[3]) + 1;
-  t_get_pokemon* a_enviar = malloc(tamanio);
+  uint32_t tamanio = strlen(parametros[3]);
+  t_get_pokemon* a_enviar = malloc(sizeof(t_get_pokemon));
+  a_enviar -> pokemon = malloc(tamanio);
 
   a_enviar -> pokemon = parametros[3];
   if(parametros[4] != NULL ){
@@ -231,7 +232,7 @@ t_get_pokemon* armar_mensaje_get_pokemon(char * parametros[]) {
 }
 
 t_catch_pokemon* armar_mensaje_catch_pokemon(char * parametros[]) {
-  uint32_t tamanio = strlen(parametros[3]) + 1;
+  uint32_t tamanio = strlen(parametros[3]);
   t_catch_pokemon* a_enviar = malloc(sizeof(t_catch_pokemon));
   a_enviar -> pokemon = malloc(tamanio);
 
@@ -259,7 +260,7 @@ t_caught_pokemon* armar_mensaje_caught_pokemon(char * parametros[]) {
 }
 
 t_appeared_pokemon* armar_mensaje_appeared_pokemon(char * parametros[]) {
-  uint32_t tamanio = strlen(parametros[3]) + 1;
+  uint32_t tamanio = strlen(parametros[3]);
   t_appeared_pokemon* a_enviar = malloc(sizeof(t_appeared_pokemon));
   a_enviar -> pokemon = malloc(tamanio);
 
@@ -275,7 +276,7 @@ t_appeared_pokemon* armar_mensaje_appeared_pokemon(char * parametros[]) {
 }
 
 t_new_pokemon* armar_mensaje_new_pokemon(char * parametros[]) {
-  uint32_t tamanio = strlen(parametros[3]) + 1;
+  uint32_t tamanio = strlen(parametros[3]);
   t_new_pokemon* a_enviar = malloc(sizeof(t_new_pokemon));
   a_enviar -> pokemon = malloc(tamanio);
 

@@ -74,8 +74,7 @@ typedef struct {
 	uint32_t id_mensaje;
 	uint32_t id_mensaje_correlativo;
 	char* pokemon;
-	t_list* posiciones; // [4,22,44,55,22,221,12,512,21]
-	// sizeof(t_list) + elements.count * (sizeof(uint32_t)) tamaño de la lista
+	t_list* posiciones;
 } t_localized_pokemon;
 
 

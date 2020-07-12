@@ -683,47 +683,37 @@ void* serializar_localized_pokemon(void* mensaje_localized, uint32_t size_mensaj
 
     op_code codigo_operacion = LOCALIZED_POKEMON;
     memcpy(stream + offset, &codigo_operacion, sizeof(op_code));
-    log_info(logger,"Sereliazacion codigo de operacion: %d", *(int*) (stream + offset));
+    log_info(logger,"Serialiazacion codigo de operacion: %d", *(int*) (stream + offset));
 	offset += sizeof(op_code);
 
     memcpy(stream + offset, size_serializado, sizeof(uint32_t));
-    log_info(logger,"Sereliazacion size: %d", *(int*) (stream + offset));
+    log_info(logger,"Serialiazacion size: %d", *(int*) (stream + offset));
     offset += sizeof(uint32_t);
 
     memcpy(stream + offset, &(mensaje_a_enviar -> id_mensaje), sizeof(uint32_t));
-    log_info(logger,"Sereliazacion idmensaje: %d", *(int*) (stream + offset));
+    log_info(logger,"Serialiazacion idmensaje: %d", *(int*) (stream + offset));
 	offset += sizeof(uint32_t);
 
     memcpy(stream + offset, &tamanio_pokemon, sizeof(uint32_t));
-    log_info(logger,"Sereliazacion tamaniopokemon: %d", *(int*) (stream + offset));
+    log_info(logger,"Serialiazacion tamaniopokemon: %d", *(int*) (stream + offset));
 	offset += sizeof(uint32_t);
     
     memcpy(stream + offset, mensaje_a_enviar -> pokemon, tamanio_pokemon);
-    log_info(logger,"Sereliazacion pokemon %s:", (char*) stream + offset);
+    log_info(logger,"Serialiazacion pokemon %s:", (char*) stream + offset);
 	offset += tamanio_pokemon;
 
-	//esto pinta mal:
-    uint32_t tamanio_lista = list_size(mensaje_a_enviar -> posiciones) * sizeof(uint32_t);
-    void* contenido_lista = malloc(tamanio_lista);
-    uint32_t desplazamiento = 0;
-
-    void serializar_numero(void* numero){
+	void serializar_numero(void* numero){
     	uint32_t* un_numero = numero;
 
-    	memcpy(contenido_lista + desplazamiento, un_numero, sizeof(uint32_t));
-    	desplazamiento += sizeof(uint32_t);
+    	memcpy(stream + offset, un_numero, sizeof(uint32_t));
+    	offset += sizeof(uint32_t);
     }
 
     list_iterate(mensaje_a_enviar -> posiciones, serializar_numero);
 
-   	memcpy(stream + offset, contenido_lista, tamanio_lista);
-   	log_info(logger, "Lista serializada de tamaño: %d", tamanio_lista);
-   	offset += tamanio_lista;
-
     log_info(logger, "...Codigo de operacion a enviar: %d", LOCALIZED_POKEMON);
 	log_info(logger, "...Tamaño a enviar: %d", malloc_size);
     liberar_mensaje_localized(mensaje_a_enviar);
-    //free(contenido_lista);
 	return stream;
 }
 
