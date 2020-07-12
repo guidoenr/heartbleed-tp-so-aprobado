@@ -258,6 +258,7 @@ char* concatenar(char* str1,char* str2){
 	} else {
 	    log_error(logger,"error al concatenar");
 	}
+
 	return new_str;
 }
 

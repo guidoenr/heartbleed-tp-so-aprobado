@@ -95,6 +95,7 @@ void crear_metadata_fs();
 int tamanio_de_metadata(t_metadata metadata);
 int tamanio_file_metadata(t_file_metadata fileMeta);
 t_file_metadata leer_file_metadata(char* path);
+char* leer_linea(FILE* archivo);
 
 /* COMMONS */
 void terminar_programa(int, t_config_game_card*);
