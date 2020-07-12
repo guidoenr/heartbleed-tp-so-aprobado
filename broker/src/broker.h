@@ -236,7 +236,7 @@ void actualizar_ultima_referencia(t_mensaje*);
 void dump_de_memoria(void);
 void consolidar_particiones(uint32_t, uint32_t);
 void liberar_mensaje_de_memoria(t_mensaje*);
-void liberar_particion_en_cache(t_memoria_dinamica*);
+void eliminar_de_message_queue(t_mensaje*, op_code);
 
 uint32_t obtener_tamanio_contenido_mensaje(void*, uint32_t);
 void dump_info_buddy(void*);
