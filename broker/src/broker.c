@@ -16,7 +16,6 @@ int main(void) {
 	enviar_mensajes(cola_appeared, lista_suscriptores_appeared);
 	enviar_mensajes(cola_new, lista_suscriptores_new);*/
 
-	//uint32_t thread = pthread_create(&hilo_mensaje, NULL, gestionar_mensaje, NULL);
 
 	terminar_programa(logger);
 	return 0;
@@ -566,7 +565,10 @@ void* preparar_mensaje_desde_buddy(t_mensaje* un_mensaje){
 			memcpy(&(mensaje_armado -> posicion[1]), (memoria + (buddy_del_mensaje -> base) + tamanio + sizeof(uint32_t)), sizeof(uint32_t));
 			break;
 
-			case LOCALIZED_POKEMON://REHACER
+			case
+
+
+_POKEMON://REHACER
 			mensaje_armado = malloc(sizeof(t_localized_pokemon));
 			break;
 
@@ -641,8 +643,12 @@ void* preparar_mensaje_desde_particion(t_mensaje* un_mensaje){
 
 			case LOCALIZED_POKEMON:
 			mensaje_localized = malloc(sizeof(t_localized_pokemon));
+			mensaje_localized -> id_mensaje = un_mensaje -> id_mensaje;
+			mensaje_localized -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
+			tamanio = 0;
+			mensaje_localized -> pokemon = malloc(tamanio);
+			memcpy(mensaje_catch -> pokemon, contenido_a_enviar, tamanio);
 			//FALTA HACER
-
 			return mensaje_localized;
 			break;
 
@@ -1506,14 +1512,20 @@ t_memoria_dinamica* armar_particion(uint32_t tamanio, uint32_t base, t_mensaje* 
 
 	if(mensaje != NULL){
 		nueva_particion = (t_memoria_dinamica*) mensaje->payload;
-		nueva_particion-> tamanio = tamanio;
-		nueva_particion-> base = base;
-		nueva_particion-> ocupado = ocupacion;
-		nueva_particion-> codigo_operacion = mensaje -> codigo_operacion;
-		nueva_particion-> contenido = contenido;
+		nueva_particion -> tamanio = tamanio;
+		if(tamanio < (config_broker -> size_min_memoria)){
+			nueva_particion -> tamanio_part = config_broker -> size_min_memoria;
+		} else {
+			nueva_particion -> tamanio_part = tamanio;
+		}
+		nueva_particion -> base = base;
+		nueva_particion -> ocupado = ocupacion;
+		nueva_particion -> codigo_operacion = mensaje -> codigo_operacion;
+		nueva_particion -> contenido = contenido;
 		nueva_particion = mensaje -> payload;
     } else {
 		nueva_particion -> tamanio = tamanio;
+		nueva_particion -> tamanio_part = tamanio;
 		nueva_particion -> base = base;
 		nueva_particion -> ocupado = 0;
 		nueva_particion -> codigo_operacion = 0;

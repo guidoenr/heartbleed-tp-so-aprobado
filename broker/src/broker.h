@@ -9,12 +9,6 @@
 #include <signal.h>
 #include <sys/time.h>
 
-
-typedef struct {
-    uint32_t indice;
-    uint32_t id_mensaje;
-} t_indice_lru;
-
 typedef struct {
     uint32_t indice;
     uint32_t tamanio;
@@ -45,6 +39,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t tamanio;
+	uint32_t tamanio_part;
 	uint32_t base;
 	uint32_t ocupado;
 	uint32_t ultima_referencia;
