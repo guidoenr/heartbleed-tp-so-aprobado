@@ -47,8 +47,8 @@ int main(void) {
 	list_add(mapa_pokemons, gengar);
 	sem_post(&sem_cont_mapa);
 
-	sleep(300);
-
+	//sleep(300);
+	sem_wait(&fin_programa);
 	return 0;
 }
 
@@ -115,6 +115,7 @@ void inicializar_semaforos() {
 	sem_init(&sem_cont_entrenadores_a_replanif, 0, 0);
 	sem_init(&mx_contexto, 0, 1);
 	sem_init(&mx_paquete, 0, 1);
+	sem_init(&fin_programa, 0, 0);
 }
 
 void leer_config(void) {
@@ -439,6 +440,7 @@ void asignar_estado_luego_de_trade(t_entrenador* entrenador) {
 		if(config -> entrenadores -> elements_count == estado_exit -> elements_count) {
 			log_info(logger, "ENTRE LPM");
 			terminar_programa();
+			sem_post(&fin_programa);
 		}
 
 	} else {
@@ -1725,6 +1727,7 @@ void liberar_semaforos() {
 	sem_destroy(&sem_cont_entrenadores_a_replanif);
 	sem_destroy(&mx_contexto);
 	sem_destroy(&mx_paquete);
+	sem_destroy(&fin_programa);
 }
 
 void liberar_listas() {

@@ -171,6 +171,7 @@ sem_t sem_cont_mapa;
 sem_t sem_cont_entrenadores_a_replanif;
 sem_t mx_contexto;
 sem_t mx_paquete;
+sem_t fin_programa;
 
 
 // pedido
