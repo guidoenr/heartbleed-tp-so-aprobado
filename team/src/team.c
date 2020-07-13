@@ -438,7 +438,6 @@ void asignar_estado_luego_de_trade(t_entrenador* entrenador) {
 		sem_post(&mx_estados);
 
 		if(config -> entrenadores -> elements_count == estado_exit -> elements_count) {
-			log_info(logger, "ENTRE LPM");
 			terminar_programa();
 			sem_post(&fin_programa);
 		}

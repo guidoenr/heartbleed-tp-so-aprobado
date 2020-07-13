@@ -31,21 +31,23 @@ uint32_t seleccionar_proceso(char * parametros[]) {
   void* mensaje;
 
   if (string_equals_ignore_case(proceso, "")) {
-    log_info(logger, "No ha ingresado un proceso correcto");
+    log_error(logger, "No ha ingresado un proceso correcto");
     exit(-4);
   }
   op_code cod_op = obtener_enum_de_string(parametros[2]);
 
   if (string_equals_ignore_case(parametros[2], "")) {
-    log_info(logger, "No ha ingresado un codigo de operacion");
+    log_error(logger, "No ha ingresado un codigo de operacion");
     exit(-4);
   }
 
   if (string_equals_ignore_case(proceso, "BROKER")) {
     conexion = crear_conexion(config_game_boy -> ip_broker, config_game_boy -> puerto_broker);
-
+    if(conexion != -1) {
+		log_info(logger, "Conexion creada con el proceso Broker");
+	}
     if (config_game_boy == NULL) {
-      printf("No se pudo leer el archivo config.");
+      log_error("No se pudo leer el archivo config.");
       exit(-9);
     }
 
@@ -85,6 +87,10 @@ uint32_t seleccionar_proceso(char * parametros[]) {
 
   if (string_equals_ignore_case(proceso, "GAMECARD")) {
     conexion = crear_conexion(config_game_boy -> ip_gameCard, config_game_boy -> puerto_gameCard);
+    if(conexion != -1) {
+    	log_info(logger, "Conexion creada con el proceso Game Card");
+    }
+
     switch (cod_op) {
        case GET_POKEMON:
 		  tamanio_mensaje = size_mensaje(armar_mensaje_get_pokemon(parametros), GET_POKEMON);
@@ -110,6 +116,9 @@ uint32_t seleccionar_proceso(char * parametros[]) {
 
   if (string_equals_ignore_case(proceso, "TEAM")) {
     conexion = crear_conexion(config_game_boy -> ip_team, config_game_boy -> puerto_team);
+    if(conexion != -1) {
+    	log_info(logger, "Conexion creada con el proceso Team");
+    }
     tamanio_mensaje = size_mensaje(armar_mensaje_appeared_pokemon(parametros), APPEARED_POKEMON);
 	mensaje = armar_mensaje_appeared_pokemon(parametros);
 	enviar_mensaje(APPEARED_POKEMON, mensaje, conexion, tamanio_mensaje);
@@ -117,6 +126,9 @@ uint32_t seleccionar_proceso(char * parametros[]) {
 
   if (string_equals_ignore_case(proceso, "SUSCRIPTOR")) {
     conexion = crear_conexion(config_game_boy -> ip_broker, config_game_boy -> puerto_broker);
+    if(conexion != -1) {
+		log_info(logger, "Conexion creada con el proceso Broker");
+    }
     tamanio_mensaje = size_mensaje(armar_mensaje_suscripcion(parametros), SUBSCRIPTION);
     mensaje = armar_mensaje_suscripcion(parametros);
     enviar_mensaje(SUBSCRIPTION, mensaje, conexion, tamanio_mensaje);
@@ -127,7 +139,6 @@ uint32_t seleccionar_proceso(char * parametros[]) {
     return conexion;
   }
 
-  log_info(logger, "Se pudo realizar la conexion");
   return conexion;
 }
 
