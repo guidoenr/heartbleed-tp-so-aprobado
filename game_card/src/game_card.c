@@ -8,27 +8,29 @@
 #include <stdlib.h>
 #include <string.h>
 
-
+//
 
 int main(void) {
 	config_gc = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
-
+	iniciar_servidor("127.0.0.3", "5663");
 	punto_montaje = config_gc->punto_montaje_tallgrass;
-	int socket_br;
 
-	//conectarse(socket_br);
+	int socket_br;
+	//conectarse_a_br(socket_br);
 	iniciar_tall_grass();
+
+	//iniciar_conexion_game_boy();
+
 /*
 	pruebas_new_pokemon(socket_br);
 	pruebas_catch_pokemon(socket_br);
 	pruebas_get_pokemon(socket_br);
+	sem_init(&mx_bitmap,0,1);
+	pruebas_get_pokemon(socket_br);
 */
 
 
-
-	sem_init(&mx_bitmap,0,1);
-	pruebas_get_pokemon(socket_br);
 	terminar_programa(socket_br, config_gc);
 
 }
@@ -85,17 +87,17 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 
 	switch (cod_op) {
 		case NEW_POKEMON:
-			informar_al_broker(cliente_fd, NEW_POKEMON,msg,size);
+			informar_al_broker(msg, NEW_POKEMON);
 			funcion_hilo_new_pokemon(msg,cliente_fd);
 			free(msg);
 			break;
 		case GET_POKEMON:
-			informar_al_broker(cliente_fd, GET_POKEMON,msg,size);
+			informar_al_broker(msg, GET_POKEMON);
 			funcion_hilo_get_pokemon(msg,cliente_fd);
 			free(msg);
 			break;
 		case CATCH_POKEMON:
-			informar_al_broker(cliente_fd, CATCH_POKEMON,msg,size);
+			informar_al_broker(msg, CATCH_POKEMON);
 			funcion_hilo_catch_pokemon(msg,cliente_fd);
 			free(msg);
 			break;
@@ -108,7 +110,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 }
 
 
-void informar_al_broker(uint32_t id_mensaje, op_code codigo) {
+void informar_al_broker(uint32_t id_mensaje, op_code codigo){
 
 	t_ack* ack = malloc(sizeof(t_ack));
 
@@ -126,6 +128,27 @@ void informar_al_broker(uint32_t id_mensaje, op_code codigo) {
 	}
 	free(ack);
 }
+
+void conexion_inicial_broker() {
+
+	uint32_t err = pthread_create(&hilo_game_boy, NULL, suscribirme_a_colas, NULL);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+}
+
+void* conexion_con_game_boy() {
+	iniciar_servidor("127.0.0.2", "5662");
+	return NULL;
+}
+
+void iniciar_conexion_game_boy() {
+	uint32_t err = pthread_create(&hilo_game_boy, NULL, conexion_con_game_boy, NULL);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+}
+
 
 
 void conectarse_a_br(int socket){
@@ -194,7 +217,7 @@ t_config_game_card* leer_config() {
 	config_game_card -> ip_gameCard= strdup(config_get_string_value(config, "IP_GAMEBOY"));
 	config_game_card -> puerto_gameCard= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
 	config_game_card -> tiempo_retardo_operacion = config_get_int_value(config,"TIEMPO_RETARDO_OPERACION");
-	config_game_card -> id_proceso = config_get_in_value(config,"ID_PROCESO");
+	config_game_card -> id_proceso = config_get_int_value(config,"ID_PROCESO");
 	config_destroy(config);
 	return config_game_card;
 }

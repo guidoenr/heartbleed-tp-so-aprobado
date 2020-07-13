@@ -1007,22 +1007,28 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
     	  pudoGuardarlo = recorrer_best_fit(primer_nodo,exponente, contenido, mensaje);
     	  reemplazo_buddy(pudoGuardarlo, exponente, contenido, mensaje);
       }
+	}
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
+
 	 if(list_size(memoria_con_particiones) > 1){
+
          guardar_particion(mensaje, contenido);
+
      } else {
     	 t_memoria_dinamica* nueva_particion;
     	 nueva_particion = armar_particion(mensaje -> tamanio_mensaje, 0, mensaje, 1, contenido);
     	 ubicar_particion(0, nueva_particion);
     	 guardar_contenido_de_mensaje(0, contenido, mensaje -> tamanio_mensaje);
      }
+	} else {
+		log_info(logger,"LOG GGG G DE PRUEBA");
 	}
 
 	free(contenido);
 
 }
-}
+
 void reemplazo_buddy(uint32_t pudoGuardarlo, uint32_t exponente, void* contenido, t_mensaje* mensaje){
 		if(!pudoGuardarlo){
   do

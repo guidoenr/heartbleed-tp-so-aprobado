@@ -15,7 +15,7 @@ t_log* logger;
 char* punto_montaje;
 t_new_pokemon* luken;
 sem_t mx_bitmap;
-
+pthread_t hilo_game_boy;
 
 typedef struct {
     int tiempo_reintento_conexion;
@@ -50,7 +50,7 @@ typedef struct{
 //package sending
 void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente);
 t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size);
-void informar_al_broker(int socket,op_code codigo,void* mensaje,uint32_t size);
+void informar_al_broker(uint32_t id_mensaje, op_code codigo);
 t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon);
 bool existePokemonEnPosicion(t_new_pokemon* pokemon);
 void enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket);
