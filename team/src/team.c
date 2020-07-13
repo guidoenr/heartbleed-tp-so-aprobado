@@ -1544,7 +1544,7 @@ void enviar_ack_broker(uint32_t id_mensaje, op_code codigo) {
 	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
 
 	if(socket != -1) {
-		enviar_mensaje(codigo, ack, socket, size_mensaje);
+		enviar_mensaje(ACK, ack, socket, size_mensaje);
 		close(socket);
 	}
 	free(ack);

@@ -74,6 +74,7 @@ typedef struct {
 	uint32_t id_mensaje;
 	uint32_t id_mensaje_correlativo;
 	char* pokemon;
+	uint32_t tamanio_lista;
 	t_list* posiciones;
 } t_localized_pokemon;
 

@@ -81,34 +81,24 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
 	cod_op = (*codigo_op);
 	log_info(logger,"Codigo de operacion %d", cod_op);
-	void* mensaje = deserealizar_paquete(stream, *codigo_op, size);
+	void* msg = deserealizar_paquete(stream, *codigo_op, size);
 
 	switch (cod_op) {
 		case NEW_POKEMON:
-			log_info(logger,"CASE: NEW POKEMON");
-
-			informar_al_broker(cliente_fd, NEW_POKEMON,mensaje,size);
-
-			funcion_hilo_new_pokemon(mensaje,cliente_fd);
-
-			free(mensaje);
+			informar_al_broker(cliente_fd, NEW_POKEMON,msg,size);
+			funcion_hilo_new_pokemon(msg,cliente_fd);
+			free(msg);
 			break;
 		case GET_POKEMON:
-//			msg = malloc(sizeof(t_get_pokemon));
-//			msg = recibir_mensaje(cliente_fd, &size);
-//			informarAlBroker(msg,cliente_fd,GET_POKEMON);
-//			agregar_mensaje(GET_POKEMON, size, msg, cliente_fd);
-//			free(msg);
+			informar_al_broker(cliente_fd, GET_POKEMON,msg,size);
+			funcion_hilo_get_pokemon(msg,cliente_fd);
+			free(msg);
 			break;
 		case CATCH_POKEMON:
-//			msg = malloc(sizeof(t_catch_pokemon));
-//			msg = recibir_mensaje(cliente_fd, &size);
-//			informarAlBroker(msg,cliente_fd,CATCH_POKEMON);
-//			agregar_mensaje(CATCH_POKEMON, size, msg, cliente_fd);
-//			free(msg);
+			informar_al_broker(cliente_fd, CATCH_POKEMON,msg,size);
+			funcion_hilo_catch_pokemon(msg,cliente_fd);
+			free(msg);
 			break;
-
-
 		case 0:
 			log_info(logger,"No se encontro el tipo de mensaje");
 			pthread_exit(NULL);
@@ -117,16 +107,26 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 	}
 }
 
-void informar_al_broker(int socket,op_code codigo,void* mensaje,uint32_t size){
-	t_ack acknowledgement;
-	acknowledgement.tipo_mensaje = codigo;
-	acknowledgement.id_proceso = 666; //gamecard es uno solo
-	acknowledgement.id_mensaje = 7030; //TODO y esto?
 
+void informar_al_broker(uint32_t id_mensaje, op_code codigo) {
 
-	//enviar_mensaje(codigo, acknowledgement, socket, size); //todo JULI mica
+	t_ack* ack = malloc(sizeof(t_ack));
 
+	ack -> id_mensaje = id_mensaje;
+	ack -> tipo_mensaje = codigo;
+	ack -> id_proceso = config_gc -> id_proceso;
+
+	uint32_t size_mensaje = size_ack(ack);
+
+	uint32_t socket = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
+
+	if(socket != -1) {
+		enviar_mensaje(ACK, ack, socket, size_mensaje);
+		close(socket);
+	}
+	free(ack);
 }
+
 
 void conectarse_a_br(int socket){
 	socket = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
@@ -194,7 +194,7 @@ t_config_game_card* leer_config() {
 	config_game_card -> ip_gameCard= strdup(config_get_string_value(config, "IP_GAMEBOY"));
 	config_game_card -> puerto_gameCard= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
 	config_game_card -> tiempo_retardo_operacion = config_get_int_value(config,"TIEMPO_RETARDO_OPERACION");
-
+	config_game_card -> id_proceso = config_get_in_value(config,"ID_PROCESO");
 	config_destroy(config);
 	return config_game_card;
 }
@@ -1286,20 +1286,24 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,int socket_br){
 		 char* temporary_file = generar_archivo_temporal(meta_path,get_pokemon->pokemon);
 
 		 t_list* posiciones = obtener_posiciones_y_cantidades(meta_path,temporary_file);
-
 		 localized_pokemon->posiciones = posiciones;
+		 localized_pokemon->tamanio_lista = posiciones->elements_count * 4 ;
 		 remove(temporary_file);
 
 	 }else{
 
 		 log_info(logger,"El pokemon %s no existe en el filesystem, te mando la lista vacia",get_pokemon->pokemon);
+		 localized_pokemon->tamanio_lista = 0;
 		 localized_pokemon->posiciones = list_create();
 
 	 }
 
 	 localized_pokemon->id_mensaje = get_pokemon->id_mensaje;
 	 localized_pokemon->pokemon = get_pokemon->pokemon;
-	 //TODO enviar localized pokemon
+
+
+
+
 	 free(dir_path);
 	 free(meta_path);
 }
@@ -1337,7 +1341,7 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 
 	int elements_count = lista_de_todo->elements_count;
 
-	list_add_in_index(lista_de_todo,0,(elements_count-1)/2);
+	list_add_in_index(lista_de_todo,0,(elements_count+1)/2);
 	fclose(temporary);
 }
 
