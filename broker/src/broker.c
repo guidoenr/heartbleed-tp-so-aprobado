@@ -1,3 +1,36 @@
+Skip to content
+Search or jump to…
+
+Pull requests
+Issues
+Marketplace
+Explore
+ 
+@thomykut 
+sisoputnfrba
+/
+tp-2020-1c-heartbleed
+Private
+14
+2
+1
+Code
+Issues
+Pull requests
+Actions
+Projects
+Wiki
+Security
+Insights
+tp-2020-1c-heartbleed/broker/src/broker.c
+@guidoenr4
+guidoenr4 bug del if fixed ft juli
+Latest commit 1cd2b01 2 hours ago
+ History
+ 5 contributors
+@micaelaraiter@JudeNov@guidoenr4@thomykut@martirolon
+2226 lines (1813 sloc)  74.7 KB
+  
 #include "broker.h"
 
 int main(void) {
@@ -554,7 +587,6 @@ void* preparar_mensaje_desde_buddy(t_mensaje* un_mensaje){
 			mensaje_armado -> pokemon = malloc(tamanio);
 			memcpy(mensaje_armado -> pokemon, (memoria + (buddy_del_mensaje -> base)), tamanio);
 			break;
-
 			case CATCH_POKEMON:
 			mensaje_armado = malloc(sizeof(t_catch_pokemon));
 			mensaje_armado -> id_mensaje = un_mensaje -> id_mensaje;
@@ -564,21 +596,16 @@ void* preparar_mensaje_desde_buddy(t_mensaje* un_mensaje){
 			memcpy(&(mensaje_armado -> posicion[0]), (memoria + (buddy_del_mensaje -> base) + tamanio), sizeof(uint32_t));
 			memcpy(&(mensaje_armado -> posicion[1]), (memoria + (buddy_del_mensaje -> base) + tamanio + sizeof(uint32_t)), sizeof(uint32_t));
 			break;
-
 			case
-
-
 _POKEMON://REHACER
 			mensaje_armado = malloc(sizeof(t_localized_pokemon));
 			break;
-
 			case CAUGHT_POKEMON:
 			mensaje_armado = malloc(sizeof(t_caught_pokemon));
 			mensaje_armado -> id_mensaje = un_mensaje -> id_mensaje;
 			mensaje_armado -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
 			memcpy(mensaje_armado -> resultado, (memoria + (buddy_del_mensaje -> base)), sizeof(uint32_t));
 			break;
-
 			case APPEARED_POKEMON:
 			mensaje_armado = malloc(sizeof(t_appeared_pokemon));
 			mensaje_armado -> id_mensaje = un_mensaje -> id_mensaje;
@@ -589,7 +616,6 @@ _POKEMON://REHACER
 			memcpy(&(mensaje_armado -> posicion[0]), (memoria + (buddy_del_mensaje -> base) + tamanio), sizeof(uint32_t));
 			memcpy(&(mensaje_armado -> posicion[1]), (memoria + (buddy_del_mensaje -> base) + tamanio + sizeof(uint32_t)), sizeof(uint32_t));
 			break;
-
 			case NEW_POKEMON:
 			mensaje_armado = malloc(sizeof(t_new_pokemon));
 			mensaje_armado -> id_mensaje = un_mensaje -> id_mensaje;
@@ -600,12 +626,10 @@ _POKEMON://REHACER
 			memcpy(&(mensaje_armado -> posicion[1]), (memoria + (buddy_del_mensaje -> base) + tamanio + sizeof(uint32_t)), sizeof(uint32_t));
 			memcpy(&(mensaje_armado -> cantidad), (memoria + (buddy_del_mensaje -> base) + tamanio + sizeof(uint32_t)*2), sizeof(uint32_t));
 			break;
-
 			default:
 			log_error(logger, "...No se puede preparar el mensaje desde el broker para enviar a otro modulo.");
 			break;
 	}
-
 	return mensaje_armado;
 }*/
 
@@ -1616,24 +1640,23 @@ void destruir_particion(void* una_particion){
 
 uint32_t encontrar_indice(t_memoria_dinamica* posible_particion){
     uint32_t indice_disponible = 0;
-    uint32_t indice_buscador = -1;
+    uint32_t indice_buscador = 0;
     t_list* indices = list_create();
 
     void obtener_indices(void* particion){
-    	indice_buscador += 1;
         t_memoria_dinamica* particion_a_transformar = particion;
         t_indice* un_indice = malloc(sizeof(t_indice));
         un_indice -> indice = indice_buscador;
         un_indice -> tamanio = particion_a_transformar -> tamanio;
         list_add(indices, un_indice);
+    	indice_buscador ++;
     }
+    list_iterate(memoria_con_particiones, obtener_indices);
 
     bool es_el_tamanio_necesario(void* indice){
         t_indice* otro_indice = indice;
         return (otro_indice -> tamanio) == (posible_particion -> tamanio);
     }
-
-    list_iterate(memoria_con_particiones, obtener_indices);
     t_indice* indice_elegido = list_find(indices, es_el_tamanio_necesario);
     //FIJARSE SI ES UN DESTROY A LOS ELEMENTOS TAMBIEN.
 
