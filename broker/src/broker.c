@@ -986,31 +986,21 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
 		uint32_t exponente = 0;
-		if(mensaje -> tamanio_mensaje > config_broker -> size_min_memoria)
+		if(mensaje -> tamanio_mensaje > config_broker -> size_min_memoria){
 			exponente = obtenerPotenciaDe2(mensaje->tamanio_mensaje);
+			}
 		else
 			exponente = config_broker -> size_min_memoria;
       t_node* primer_nodo = (t_node*) memoria_cache->head->data;
       uint32_t pudoGuardarlo =0;
       if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
          pudoGuardarlo = recorrer_first_fit(primer_nodo, exponente,  contenido, mensaje);
+         reemplazo_buddy(pudoGuardarlo, exponente, contenido, mensaje);
       }
       if(string_equals_ignore_case(config_broker ->algoritmo_particion_libre, "BF")){
     	  pudoGuardarlo = recorrer_best_fit(primer_nodo,exponente, contenido, mensaje);
+    	  reemplazo_buddy(pudoGuardarlo, exponente, contenido, mensaje);
       }
-
-	  do
-	  {
-		t_memoria_buddy* buddy_victima = seleccionar_particion_victima_de_reemplazo_buddy();
-		if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
-		         pudoGuardarlo = recorrer_first_fit(buddy_victima, exponente,  contenido, mensaje);
-	     }
-	    if(string_equals_ignore_case(config_broker ->algoritmo_particion_libre, "BF")){
-		    	  pudoGuardarlo = recorrer_best_fit(buddy_victima,exponente, contenido, mensaje);
-	    }
-	  } while(!pudoGuardarlo);
-	}
-
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 	 if(list_size(memoria_con_particiones) > 1){
@@ -1026,7 +1016,21 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 	free(contenido);
 
 }
-
+}
+void reemplazo_buddy(uint32_t pudoGuardarlo, uint32_t exponente, void* contenido, t_mensaje* mensaje){
+		if(!pudoGuardarlo){
+  do
+	  {
+		t_memoria_buddy* buddy_victima = seleccionar_particion_victima_de_reemplazo_buddy();
+		if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
+		         pudoGuardarlo = recorrer_first_fit(buddy_victima, exponente,  contenido, mensaje);
+	     }
+	    if(string_equals_ignore_case(config_broker ->algoritmo_particion_libre, "BF")){
+		    	  pudoGuardarlo = recorrer_best_fit(buddy_victima,exponente, contenido, mensaje);
+	    }
+	  } while(!pudoGuardarlo);
+	}
+}
 void* armar_contenido_de_mensaje(void* mensaje, uint32_t codigo){
     void* contenido;
     switch(codigo){
@@ -1520,6 +1524,32 @@ t_memoria_dinamica* armar_particion(uint32_t tamanio, uint32_t base, t_mensaje* 
 
     return nueva_particion;
 }
+t_memoria_buddy* armar_buddy(uint32_t tamanio, uint32_t base, t_mensaje* mensaje, uint32_t ocupacion, void* contenido){
+
+	t_memoria_buddy* nuevo_buddy = malloc(sizeof(t_memoria_dinamica));
+
+	if(mensaje != NULL){
+		nuevo_buddy = (t_memoria_dinamica*) mensaje->payload;
+		nuevo_buddy-> tamanio_exponente = tamanio;
+		nuevo_buddy -> tamanio_mensaje = mensaje -> tamanio_mensaje;
+		nuevo_buddy-> base = base;
+		nuevo_buddy-> ocupado = ocupacion;
+		nuevo_buddy-> codigo_operacion = mensaje -> codigo_operacion;
+		nuevo_buddy-> contenido = contenido;
+		nuevo_buddy = mensaje -> payload;
+    } else {
+    	nuevo_buddy -> tamanio_exponente = tamanio;
+    	nuevo_buddy -> base = base;
+    	nuevo_buddy -> tamanio_mensaje =0;
+		nuevo_buddy -> ocupado = 0;
+		nuevo_buddy -> codigo_operacion = 0;
+		nuevo_buddy -> contenido = contenido;
+		nuevo_buddy -> tiempo_de_carga = 0;
+		nuevo_buddy -> ultima_referencia = 0;
+	}
+
+    return nuevo_buddy;
+}
 
 uint32_t encontrar_primer_ajuste(uint32_t tamanio){
     uint32_t indice_seleccionado = 0;
@@ -1758,7 +1788,6 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 		t_memoria_dinamica* particion_buscada = mensaje -> payload;
-
 		bool es_la_particion(void* particion){
 			t_memoria_dinamica* una_particion = particion;
 			return (una_particion -> base) == (particion_buscada -> base);
@@ -1787,7 +1816,22 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 
 
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-		//Falta hacer
+		t_memoria_buddy* buddy_buscado = mensaje ->payload;
+		bool es_el_buddy(void* buddy){
+					t_memoria_dinamica* un_buddy = buddy;
+					return (un_buddy -> base) == (buddy_buscado -> base);
+	  }
+		t_memoria_buddy* buddy_a_liberar = list_find(memoria_con_particiones, es_el_buddy);
+
+				uint32_t indice = encontrar_indice( buddy_a_liberar );
+
+				t_memoria_buddy* buddy_vacio = armar_particion(buddy_a_liberar -> tamanio_exponente, buddy_a_liberar -> base, NULL, 0, NULL);
+
+				buddy_a_liberar = list_replace(memoria_con_particiones, indice, buddy_vacio);
+				eliminar_de_message_queue(mensaje, mensaje -> codigo_operacion);
+				log_info(logger, "El mensaje fue eliminado correctamente.");
+
+
 	} else {
 		log_error(logger, "...No se reconoce el algoritmo de memoria.");
 	}
@@ -1955,13 +1999,24 @@ uint64_t timestamp(void) {
 
 //-------------BUDDY_SYSTEM-------------//
 
-uint32_t obtenerPotenciaDe2(uint32_t tamanio_proceso)
+uint32_t obtenerPotenciaDe2(uint32_t n)
 {
-	uint32_t contador = 0 ;
-	while((2^contador) <= tamanio_proceso){
-      contador ++;
-	}
-	return (2^contador) ;
+	//pregunto si el size es pot de 2
+if( (n & (n - 1)) == 0){
+	return n;
+}
+
+	  int res = 0;
+	    for (int i=n; i>=1; i--)
+	    {
+	        // If i is a power of 2
+	        if ((i & (i-1)) == 0)
+	        {
+	            res = i;
+	            break;
+	        }
+	    }
+	    return (res*2);
 }
 
 
@@ -1994,6 +2049,7 @@ void asignar_nodo(t_node* node,void* contenido, t_mensaje* mensaje, uint32_t exp
     node ->  bloque-> ultima_referencia =  timestamp();
     node -> bloque -> tamanio_mensaje = mensaje ->tamanio_mensaje;
     node -> bloque -> codigo_operacion = mensaje -> codigo_operacion;
+    node -> bloque -> contenido = contenido;
     log_info(logger, "....me guardo en el tamanio:%d", node->bloque->tamanio_exponente);
    //mensaje -> payload = node -> bloque;  RESOLVER MAS ADELANTE.
     if(list_size(memoria_cache) > 1){
@@ -2016,6 +2072,7 @@ uint32_t recorrer_first_fit(t_node* nodo, uint32_t exponente, void* contenido, t
     if (nodo->bloque->ocupado == 0) {
     	if(nodo -> bloque -> tamanio_exponente == exponente){
         asignar_nodo(nodo, contenido, mensaje, exponente);
+        asignado = 1;
         return 1;
     	}
     	else {
@@ -2024,16 +2081,11 @@ uint32_t recorrer_first_fit(t_node* nodo, uint32_t exponente, void* contenido, t
         }
     }
 
-    if (exponente > config_broker-> size_min_memoria && nodo -> izquierda == NULL) {
-        nodo -> izquierda = crear_nodo(nodo -> bloque -> tamanio_exponente / 2);
-    }
-
-    if (nodo -> izquierda != NULL && nodo -> izquierda -> bloque -> tamanio_exponente > exponente) {
+   if (asignado ==0 &&nodo -> izquierda != NULL && nodo -> izquierda -> bloque -> tamanio_exponente > exponente) {
     	recorrer_first_fit(nodo->izquierda, exponente,contenido,mensaje);
     }
 
-    asignado = recorrer_first_fit(nodo -> izquierda, exponente, contenido,mensaje);
-    if(asignado == 0) {
+   if(asignado == 0) {
     	if (nodo -> derecha == NULL) {
     		if(nodo -> bloque->tamanio_exponente > exponente) {
     	        nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio_exponente / 2);

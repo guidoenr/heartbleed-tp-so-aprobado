@@ -61,6 +61,7 @@ typedef struct{
 	uint32_t ultima_referencia;
 	uint32_t tiempo_de_carga;
 	op_code codigo_operacion;
+	void* contenido;
 } t_memoria_buddy;
 
 struct t_node{
@@ -197,6 +198,7 @@ void 		   		asignar_nodo						 (struct t_node*, void*,t_mensaje*, uint32_t);
 uint32_t 	   		recorrer_first_fit					 (t_node*, uint32_t ,void*, t_mensaje*);
 uint32_t            recorrer_best_fit                    (t_node* , uint32_t , void*, t_mensaje* );
 void 		   		ubicar_particion					 (uint32_t, t_memoria_dinamica* );
+void                reemplazo_buddy                      (uint32_t,uint32_t, void*, t_mensaje* );
 void 		   		liberar_particion_dinamica			 (t_memoria_dinamica*);
 void 		   		iniciar_memoria_particiones			 (t_list*);
 uint32_t 	   		encontrar_primer_ajuste				 (uint32_t);
@@ -247,3 +249,4 @@ t_memoria_buddy* seleccionar_particion_victima_de_reemplazo_buddy();
 void* main_hilo_mensaje(void* );
 uint32_t obtener_nueva_base(t_memoria_dinamica*);
 bool es_el_primer_elemento(t_memoria_dinamica*);
+t_memoria_buddy* armar_buddy(uint32_t , uint32_t , t_mensaje* , uint32_t , void* );
