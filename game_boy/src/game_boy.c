@@ -337,7 +337,7 @@ void liberar_config(t_config_game_boy * config_game_boy) {
 }
 
 void terminar_programa(uint32_t conexion, t_log * logger, t_config_game_boy * config_game_boy) {
-  liberar_config(config_game_boy);
+  //liberar_config(config_game_boy);
   liberar_logger(logger);
   liberar_conexion(conexion);
   config_destroy(config);
