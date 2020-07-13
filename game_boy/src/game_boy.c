@@ -16,11 +16,11 @@ void iniciar_programa(uint32_t argc) {
   iniciar_logger(config_game_boy -> log_file, "gameboy");
 
   if (argc == 1) {
-    printf("\n No se han ingresado parametros. \n");
+    log_error("\n No se han ingresado parametros. \n");
     exit(-1);
   }
 
-  log_info(logger, "El size del comando es: %i", argc);
+  log_info(logger, "El size del comando es: %i", argc); // delete
 }
 ///char*  parametros[] = BROKER GET_POKEMON PIKACHU 2 5 // vector de punteros de char === vector de strings
 uint32_t seleccionar_proceso(char * parametros[]) {
@@ -309,10 +309,10 @@ void leer_config() {
 
   config_game_boy = malloc(sizeof(t_config_game_boy));
 
-  config = config_create("game_boy.config"); ///Si queres debaguear agrega el path seria Debug/game_boy.config
+  config = config_create("game_boy.config"); ///Si queres debuguear agrega el path seria Debug/game_boy.config
 
   if (config == NULL) {
-    printf("no se pudo encontrar el path del config");
+    log_error("no se pudo encontrar el path del config");
     exit(-2);
   }
   config_game_boy -> ip_broker = config_get_string_value(config, "IP_BROKER");
@@ -349,5 +349,5 @@ void recibir_id_de_mensaje_enviado(uint32_t socket_cliente, uint32_t id_mensaje_
   uint32_t id = 0;
   recv(socket_cliente, & id, sizeof(uint32_t), MSG_WAITALL);
   id_mensaje_enviado = id;
-  log_info(logger, "El ID de mensaje enviado es: %d", id_mensaje_enviado);
+  log_info(logger, "El ID de mensaje enviado es: %d", id_mensaje_enviado); // delete?
 }
