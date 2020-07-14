@@ -58,26 +58,26 @@ void enviar_mensaje(op_code codigo_op, void* mensaje, uint32_t socket_cliente, u
 
 void* recibir_paquete(uint32_t socket_cliente, uint32_t* size, op_code* codigo_operacion){
 
-    log_info(logger, "Recibiendo mensaje.");
+    //log_info(logger, "Recibiendo mensaje.");
 
     //sem_wait(&semaforo);
 
     recv(socket_cliente, codigo_operacion, sizeof(op_code), MSG_WAITALL);
     op_code codigo = (*codigo_operacion);
-    log_info(logger, "Codigo de operacion recibido: %d", codigo);
+    //log_info(logger, "Codigo de operacion recibido: %d", codigo);
 
     recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
 
     uint32_t tamanio_mensaje = (*size)-sizeof(uint32_t)-sizeof(op_code);
-    log_info(logger, "Tamanio de paquete recibido: %d", tamanio_mensaje);
+    //log_info(logger, "Tamanio de paquete recibido: %d", tamanio_mensaje);
 
 	void* stream = malloc(tamanio_mensaje);
 	(*size) = tamanio_mensaje;
     recv(socket_cliente, stream, tamanio_mensaje, MSG_WAITALL);
-    log_info(logger, "recibir_paquete stream: %d", *(int*) (stream +4));
+    //log_info(logger, "recibir_paquete stream: %d", *(int*) (stream +4));
 
     //sem_post(&semaforo);
-    log_info(logger, "Mensaje recibido: %s", stream);
+    //log_info(logger, "Mensaje recibido: %s", stream);
     return stream;
 
 }
@@ -234,7 +234,7 @@ void esperar_cliente(uint32_t socket_servidor) {
 void serve_client(uint32_t* socket) {
 	uint32_t cod_op = 0;
 
-	log_info(logger,"Se conecto un cliente con socket: %d",*socket);
+	//log_info(logger,"Se conecto un cliente con socket: %d",*socket);
 	process_request(cod_op, *socket);
 	close(*socket);
 }

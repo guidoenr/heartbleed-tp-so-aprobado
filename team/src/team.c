@@ -4,7 +4,7 @@ int main(void) {
 
 	iniciar_programa();
 
-	t_pokemon_mapa* pikachu = malloc(sizeof(t_pokemon_mapa));
+	/*t_pokemon_mapa* pikachu = malloc(sizeof(t_pokemon_mapa));
 	pikachu -> nombre = "Pikachu";
 	pikachu -> posicion[0] = 1;
 	pikachu -> posicion[1] = 1;
@@ -45,9 +45,8 @@ int main(void) {
 	gengar -> posicion[1] = 5;
 	gengar -> cantidad = 1;
 	list_add(mapa_pokemons, gengar);
-	sem_post(&sem_cont_mapa);
+	sem_post(&sem_cont_mapa);*/
 
-	//sleep(300);
 	sem_wait(&fin_programa);
 	return 0;
 }
@@ -510,7 +509,7 @@ void procesar_caught(t_pedido_captura* pedido){
 	list_remove_by_condition(objetivo_global_pendiente, es_el_pokemon);
 
 	if(pedido -> entrenador -> resultado_caught) {
-		log_info(logger, "...ATRAPE :)");
+		//log_info(logger, "...ATRAPE :)");
 		list_add(pedido -> entrenador -> pokemons, pedido -> pokemon -> nombre);
 
 		if(tengo_la_mochila_llena(pedido -> entrenador)){
@@ -532,7 +531,7 @@ void procesar_caught(t_pedido_captura* pedido){
 		}
 
 	} else {
-		log_info(logger, "...NO ATRAPE :(");
+		//log_info(logger, "...NO ATRAPE :(");
 		sem_post(&sem_cont_entrenadores_a_replanif);
 
 		list_add(objetivo_global, pedido -> pokemon -> nombre);
@@ -875,7 +874,7 @@ void planificar_deadlocks_rr() {
 
 t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 
-	log_info(logger, "....somos %d en deadlock, armo pedido", estado_block -> elements_count);
+	//log_info(logger, "....somos %d en deadlock, armo pedido", estado_block -> elements_count);
 	t_pedido_intercambio* pedido = malloc(sizeof(t_pedido_intercambio));
 
 	t_link_element* cabeza_block = estado_block -> head;
