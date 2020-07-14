@@ -239,7 +239,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 
     if(cod_op == LOCALIZED_POKEMON){
     	t_localized_pokemon* localized = mensaje;
-    	//mensaje_a_agregar -> tamanio_lista_localized = localized -> tamanio_lista;
+    	mensaje_a_agregar -> tamanio_lista_localized = localized -> tamanio_lista;
     }
 
 
@@ -1084,17 +1084,9 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 
-	 /*if(list_size(memoria_con_particiones) > 1){*/
+	guardar_particion(mensaje, contenido);
 
-         guardar_particion(mensaje, contenido);
-
-    /* } else {
-    	 t_memoria_dinamica* nueva_particion;
-    	 nueva_particion = armar_particion(mensaje -> tamanio_mensaje, 0, mensaje, 1, contenido);
-    	 ubicar_particion(0, nueva_particion);
-    	 guardar_contenido_de_mensaje(0, contenido, mensaje -> tamanio_mensaje);
-     }*/
-	} else {
+    } else {
 		log_info(logger,"LOG GGG G DE PRUEBA");
 	}
 
@@ -1165,10 +1157,15 @@ void* armar_contenido_de_mensaje(void* mensaje, uint32_t codigo){
 
 
 void* armar_contenido_get(t_get_pokemon* mensaje){
-    uint32_t tamanio = strlen(mensaje -> pokemon);
+    uint32_t tamanio = strlen(mensaje -> pokemon) + sizeof(uint32_t);
     void* contenido = malloc(tamanio);
+    uint32_t offset = 0;
 
-    memcpy(contenido, (mensaje -> pokemon), tamanio);
+    op_code codigo = GET_POKEMON;
+    memcpy(contenido + offset, &codigo, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+    memcpy(contenido + offset, (mensaje -> pokemon), tamanio);
+    offset += tamanio;
 
     return contenido;
 }
@@ -1176,9 +1173,12 @@ void* armar_contenido_get(t_get_pokemon* mensaje){
 
 void* armar_contenido_catch(t_catch_pokemon* mensaje){
     uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
-    uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 2);
+    uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 2) + sizeof(uint32_t);
     void* contenido = malloc(tamanio);
     uint32_t offset = 0;
+
+    op_code codigo = CATCH_POKEMON;
+    //memcpy(conteni)
 
     memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
     offset += tamanio_pokemon;
@@ -1310,10 +1310,9 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
     }
 
     bool fue_referenciada_antes(void* particion1, void* particion2){
-        	t_memoria_dinamica* una_particion = particion1;
-        	t_memoria_dinamica* otra_particion = particion2;
-        	return (una_particion -> tiempo_de_carga) < (otra_particion -> tiempo_de_carga) ;
-
+		t_memoria_dinamica* una_particion = particion1;
+		t_memoria_dinamica* otra_particion = particion2;
+		return (una_particion -> tiempo_de_carga) < (otra_particion -> tiempo_de_carga) ;
     }
 
     if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "FIFO")){
@@ -1323,7 +1322,7 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
 		memoria_ordenada = list_sorted(memoria_duplicada, fue_referenciada_antes);
 		particion_victima = list_get(memoria_ordenada, 0);
 	}
-    log_error(logger,"Tamanio: %d", particion_victima -> tamanio);
+    log_error(logger,"Tamanio: %d", particion_victima -> tamanio_part);
     log_error(logger,"Base: %d", particion_victima -> base);
 
     return particion_victima;
@@ -1332,37 +1331,37 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
 t_memoria_buddy* seleccionar_particion_victima_de_reemplazo_buddy(){
 
     t_memoria_buddy* buddy_victima;
+    t_list* memoria_ordenada = list_create();
+	t_list* memoria_duplicada = list_create();
 
-    bool fue_cargada_primero(void* buddy2){
-        t_memoria_buddy* un_buddy = buddy2;
+	bool buddy_ocupado(void* buddy){
+	   t_memoria_buddy* un_buddy = buddy;
+	   return (un_buddy -> ocupado) != 0;
+	}
 
-		bool tiempo_de_carga_menor_o_igual(void* buddy1){
-        t_memoria_buddy* otro_buddy = buddy1;
-        return ( otro_buddy -> ultima_referencia) >= (un_buddy -> tiempo_de_carga && otro_buddy->ocupado);
-		//Se chequea que el tiempo de carga sea menor o igual.
-    	}
+	memoria_duplicada = list_filter(memoria_cache, buddy_ocupado);
 
-		return list_all_satisfy(memoria_cache, tiempo_de_carga_menor_o_igual);
-    }
+	 bool fue_cargada_antes(void* buddy1, void* buddy2){
+		t_memoria_buddy* un_buddy = buddy1;
+		t_memoria_buddy* otro_buddy = buddy2;
 
+		return (un_buddy -> tiempo_de_carga) < (otro_buddy -> tiempo_de_carga);
+	}
 
-    bool fue_accedida_hace_mas_tiempo(void* buddy4){
-        t_memoria_buddy* one_buddy = buddy4;
+	bool fue_referenciada_antes(void* buddy1, void* buddy2){
+		t_memoria_buddy* un_buddy = buddy1;
+		t_memoria_buddy* otro_buddy = buddy2;
+		return (un_buddy -> tiempo_de_carga) < (otro_buddy -> tiempo_de_carga) ;
 
-		bool tiempo_de_acceso_menor_o_igual(void* buddy3){
-        t_memoria_buddy* buddy = buddy3;
-        return (buddy -> ultima_referencia) >= (one_buddy -> ultima_referencia )&& buddy->ocupado;
-		//Se chequea el tiempo de acceso menor o igual.
-    	}
-
-        return list_all_satisfy(memoria_cache, tiempo_de_acceso_menor_o_igual);
-    }
+	}
 
     if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "FIFO")){
-    	buddy_victima = list_find(memoria_cache, fue_cargada_primero);
-	} else if (string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "LRU")){
-		buddy_victima = list_find(memoria_cache, fue_accedida_hace_mas_tiempo);
-	}
+   		memoria_ordenada = list_sorted(memoria_duplicada, fue_cargada_antes);
+       	buddy_victima = list_get(memoria_ordenada, 0);
+   	} else if (string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "LRU")){
+   		memoria_ordenada = list_sorted(memoria_duplicada, fue_referenciada_antes);
+   		buddy_victima = list_get(memoria_ordenada, 0);
+   	}
 
     return buddy_victima;
 }
@@ -1492,16 +1491,13 @@ void iniciar_memoria_particiones(t_list* memoria_de_particiones){
 
 void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
     uint32_t posicion_a_ubicar = 0;
+    t_memoria_dinamica* particion_prueba = un_mensaje -> payload;
 	t_memoria_dinamica* particion_a_ubicar;
 	t_memoria_dinamica* nueva_particion;
 
-    /*if(!chequear_espacio_memoria_particiones(un_mensaje -> tamanio_mensaje)){
-		log_error(logger, "..No hay memoria");
-    	reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
-    }*/
 
     if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre, "FF")){
-        posicion_a_ubicar = encontrar_primer_ajuste(un_mensaje -> tamanio_mensaje);
+        posicion_a_ubicar = encontrar_primer_ajuste(particion_prueba -> tamanio_part);
 
         if(posicion_a_ubicar == -1){
             log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
@@ -1519,7 +1515,7 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
     }
 
     if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"BF")){
-        posicion_a_ubicar = encontrar_mejor_ajuste(un_mensaje -> tamanio_mensaje);
+        posicion_a_ubicar = encontrar_mejor_ajuste(particion_prueba -> tamanio_part);
 
         if(posicion_a_ubicar == -1){
             log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
@@ -1553,7 +1549,7 @@ void liberar_particion_dinamica(t_memoria_dinamica* particion_vacia){
     free(particion_vacia);
 }
 
-uint32_t chequear_espacio_memoria_particiones(uint32_t tamanio_mensaje){
+/*uint32_t chequear_espacio_memoria_particiones(uint32_t tamanio_mensaje){
 	uint32_t tamanio_ocupado = -1;
 	t_list* lista_duplicada = list_create();
 
@@ -1567,7 +1563,7 @@ uint32_t chequear_espacio_memoria_particiones(uint32_t tamanio_mensaje){
 	void sumar(void* particion){
 		tamanio_ocupado+=1;
 		t_memoria_dinamica* una_particion = particion;
-		tamanio_ocupado += una_particion -> tamanio;
+		tamanio_ocupado += una_particion -> tamanio_part;
 	}
 
 	list_iterate(lista_duplicada, sumar);
@@ -1578,17 +1574,17 @@ uint32_t chequear_espacio_memoria_particiones(uint32_t tamanio_mensaje){
 	list_destroy(lista_duplicada);
 	return tamanio_ocupado;
 
-}
+}*/
 
 void ubicar_particion(uint32_t posicion_a_ubicar, t_memoria_dinamica* particion){
 
         t_memoria_dinamica* particion_reemplazada = list_replace(memoria_con_particiones, posicion_a_ubicar, particion);
 
 
-        uint32_t total = particion_reemplazada -> tamanio;
-        if(particion -> tamanio < total) {
-        uint32_t nueva_base = (particion_reemplazada -> base) + particion -> tamanio + 1;
-        t_memoria_dinamica* nueva_particion_vacia = armar_particion(total - particion ->tamanio, nueva_base, NULL, 0, NULL);
+        uint32_t total = particion_reemplazada -> tamanio_part;
+        if(particion -> tamanio_part < total) {
+        uint32_t nueva_base = (particion_reemplazada -> base) + particion -> tamanio_part + 1;
+        t_memoria_dinamica* nueva_particion_vacia = armar_particion(total - particion ->tamanio_part, nueva_base, NULL, 0, NULL);
         list_add_in_index(memoria_con_particiones, posicion_a_ubicar + 1, nueva_particion_vacia);
 
         }
@@ -1655,7 +1651,7 @@ uint32_t encontrar_primer_ajuste(uint32_t tamanio){
 
     bool tiene_tamanio_suficiente(void* particion){
         t_memoria_dinamica* una_particion = particion;
-        return tamanio <= (una_particion -> tamanio);
+        return tamanio <= (una_particion -> tamanio_part);
     }
 
     t_memoria_dinamica* posible_particion = list_find(lista_duplicada, tiene_tamanio_suficiente);
@@ -1675,17 +1671,24 @@ uint32_t encontrar_mejor_ajuste(uint32_t tamanio){
     bool es_de_menor_tamanio(void* una_particion, void* otra_particion){
         t_memoria_dinamica* particion1 = una_particion;
         t_memoria_dinamica* particion2 = otra_particion;
-        return (particion1 -> tamanio) < (particion2 -> tamanio);
+        return (particion1 -> tamanio_part) < (particion2 -> tamanio_part);
     }
 
     bool tiene_tamanio_suficiente(void* particion){
         t_memoria_dinamica* una_particion = particion;
-        return tamanio <= (una_particion -> tamanio) && una_particion -> ocupado == 0 ;
+        return tamanio <= (una_particion -> tamanio_part);
     }
 
     t_list* particiones_en_orden_creciente = list_sorted(memoria_con_particiones, es_de_menor_tamanio);
 
-    t_memoria_dinamica* posible_particion = list_find(particiones_en_orden_creciente, tiene_tamanio_suficiente);
+    bool es_particion_vacia(void* part){
+    	t_memoria_dinamica* part2 = part;
+    	return !(part2 -> ocupado);
+    }
+
+    t_list* particiones_ordenadas = list_filter(particiones_en_orden_creciente, es_particion_vacia);
+    t_memoria_dinamica* posible_particion = list_find(particiones_ordenadas, tiene_tamanio_suficiente);
+
     if(posible_particion!=NULL){
     	indice_seleccionado = encontrar_indice(posible_particion);
     } else {
@@ -1771,8 +1774,8 @@ void consolidar_particiones(uint32_t primer_elemento, uint32_t elemento_siguient
     t_memoria_dinamica* una_particion = list_remove(memoria_con_particiones, primer_elemento);
     t_memoria_dinamica* particion_siguiente = list_remove(memoria_con_particiones, elemento_siguiente);
 
-    uint32_t tamanio_particion_consolidada    = (una_particion -> tamanio) + (particion_siguiente -> tamanio);
-     t_memoria_dinamica* particion_consolidada = armar_particion(tamanio_particion_consolidada, (una_particion -> base), NULL, 0, NULL);
+    uint32_t tamanio_particion_consolidada    = (una_particion -> tamanio_part) + (particion_siguiente -> tamanio_part);
+    t_memoria_dinamica* particion_consolidada = armar_particion(tamanio_particion_consolidada, (una_particion -> base), NULL, 0, NULL);
 
     list_add_in_index(memoria_con_particiones, primer_elemento, particion_consolidada);
 
