@@ -12,11 +12,11 @@ int main(int argc, char * argv[]) {
 
 void iniciar_programa(uint32_t argc) {
 
+
   leer_config();
   iniciar_logger(config_game_boy -> log_file, "gameboy");
-
   if (argc == 1) {
-    log_error("\n No se han ingresado parametros. \n");
+    log_error(logger, "\n No se han ingresado parametros. \n");
     exit(-1);
   }
 
@@ -47,7 +47,7 @@ uint32_t seleccionar_proceso(char * parametros[]) {
 		log_info(logger, "Conexion creada con el proceso Broker");
 	}
     if (config_game_boy == NULL) {
-      log_error("No se pudo leer el archivo config.");
+      log_error(logger, "No se pudo leer el archivo config.");
       exit(-9);
     }
 
@@ -312,7 +312,7 @@ void leer_config() {
   config = config_create("game_boy.config"); ///Si queres debuguear agrega el path seria Debug/game_boy.config
 
   if (config == NULL) {
-    log_error("no se pudo encontrar el path del config");
+    log_error(logger, "no se pudo encontrar el path del config");
     exit(-2);
   }
   config_game_boy -> ip_broker = config_get_string_value(config, "IP_BROKER");
