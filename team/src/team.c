@@ -4,51 +4,8 @@ int main(void) {
 
 	iniciar_programa();
 
-	/*t_pokemon_mapa* pikachu = malloc(sizeof(t_pokemon_mapa));
-	pikachu -> nombre = "Pikachu";
-	pikachu -> posicion[0] = 1;
-	pikachu -> posicion[1] = 1;
-	pikachu -> cantidad = 1;
-	list_add(mapa_pokemons, pikachu);
-	sem_post(&sem_cont_mapa);
-
-	t_pokemon_mapa* squirtle = malloc(sizeof(t_pokemon_mapa));
-	squirtle -> nombre = "Pikachu";
-	squirtle -> posicion[0] = 9;
-	squirtle -> posicion[1] = 7;
-	squirtle -> cantidad = 1;
-	list_add(mapa_pokemons, squirtle);
-	sem_post(&sem_cont_mapa);
-
-
-	t_pokemon_mapa* onix = malloc(sizeof(t_pokemon_mapa));
-	onix -> nombre = "Pikachu";
-	onix -> posicion[0] = 2;
-	onix -> posicion[1] = 2;
-	onix -> cantidad = 1;
-	list_add(mapa_pokemons, onix);
-	sem_post(&sem_cont_mapa);
-
-	sleep(25*1);
-
-	t_pokemon_mapa* squirtle2 = malloc(sizeof(t_pokemon_mapa));
-	squirtle2 -> nombre = "Squirtle";
-	squirtle2 -> posicion[0] = 3;
-	squirtle2 -> posicion[1] = 5;
-	squirtle2 -> cantidad = 1;
-	list_add(mapa_pokemons, squirtle2);
-	sem_post(&sem_cont_mapa);
-
-	t_pokemon_mapa* gengar = malloc(sizeof(t_pokemon_mapa));
-	gengar -> nombre = "Gengar";
-	gengar -> posicion[0] = 7;
-	gengar -> posicion[1] = 5;
-	gengar -> cantidad = 1;
-	list_add(mapa_pokemons, gengar);
-	sem_post(&sem_cont_mapa);*/
-
 	sem_wait(&fin_programa);
-	sem_destroy(&fin_programa);
+	terminar_programa();
 	return 0;
 }
 
@@ -438,7 +395,6 @@ void asignar_estado_luego_de_trade(t_entrenador* entrenador) {
 		sem_post(&mx_estados);
 
 		if(config -> entrenadores -> elements_count == estado_exit -> elements_count) {
-			terminar_programa();
 			sem_post(&fin_programa);
 		}
 
@@ -655,13 +611,11 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 					pedido -> entrenador -> id,
 					pedido -> pokemon -> nombre, pedido -> entrenador -> posicion[0], pedido -> entrenador -> posicion[1]);
 
-		enviar_mensaje_catch(pedido);
-
 		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_block, pedido -> entrenador);
 		log_info(logger, "El entrenador %d se mueve a block para esperar el resultado del catch", pedido -> entrenador -> id);
 		sem_post(&mx_estados);
-
+		enviar_mensaje_catch(pedido);
 		//sleep(config -> retardo_cpu * 4); //dsp decomentar CREO
 	}
 
@@ -1464,7 +1418,7 @@ void enviar_get_pokemon() {
 
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 
-	uint32_t size;
+	uint32_t size = 0; // check if 0, si no inicializo se queja valgrind
 	op_code* codigo_op = malloc(sizeof(op_code));
 
 	sem_wait(&mx_paquete);
@@ -1701,6 +1655,7 @@ void liberar_semaforos() {
 	sem_destroy(&sem_cont_entrenadores_a_replanif);
 	sem_destroy(&mx_contexto);
 	sem_destroy(&mx_paquete);
+	sem_destroy(&fin_programa);
 }
 
 void liberar_listas() {
