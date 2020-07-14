@@ -48,6 +48,7 @@ int main(void) {
 	sem_post(&sem_cont_mapa);*/
 
 	sem_wait(&fin_programa);
+	sem_destroy(&fin_programa);
 	return 0;
 }
 
@@ -1719,7 +1720,6 @@ void liberar_semaforos() {
 	sem_destroy(&sem_cont_entrenadores_a_replanif);
 	sem_destroy(&mx_contexto);
 	sem_destroy(&mx_paquete);
-	sem_destroy(&fin_programa);
 }
 
 void liberar_listas() {
