@@ -703,7 +703,7 @@ void* serializar_localized_pokemon(void* mensaje_localized, uint32_t size_mensaj
     log_info(logger,"Serialiazacion pokemon %s:", (char*) stream + offset);
 	offset += tamanio_pokemon;
 
-	memcpy(stream + offset, mensaje_a_enviar->tamanio_lista, sizeof(uint32_t));
+	memcpy(stream + offset, &(mensaje_a_enviar->tamanio_lista), sizeof(uint32_t));
 	    log_info(logger,"Serializacion tamanio de la lista %d:", *(int*) (stream + offset));
 		offset += sizeof(uint32_t);
 
@@ -762,6 +762,7 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_
 
     for(i = 0; i < cantidad_elementos; i ++){
     	memcpy(&(posicion[i]), stream + offset, sizeof(uint32_t));
+    	offset+= sizeof(uint32_t);
     	list_add(mensaje_localized_pokemon -> posiciones, &posicion[i]);
     }
 

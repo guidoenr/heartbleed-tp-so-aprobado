@@ -664,6 +664,9 @@ void* preparar_mensaje_desde_particion(t_mensaje* un_mensaje){
 	t_appeared_pokemon* mensaje_appeared;
 	t_new_pokemon* mensaje_new;
     t_localized_pokemon* mensaje_localized;
+    uint32_t posicion[(un_mensaje -> tamanio_lista_localized)];
+    uint32_t offset = 0;
+    void* contenido_a_enviar;
 
     switch(un_mensaje -> codigo_operacion){
 			case GET_POKEMON:
@@ -679,7 +682,7 @@ void* preparar_mensaje_desde_particion(t_mensaje* un_mensaje){
 			mensaje_catch = malloc(sizeof(t_catch_pokemon));
 			mensaje_catch -> id_mensaje = un_mensaje -> id_mensaje;
 			tamanio =  particion_del_mensaje -> tamanio - sizeof(uint32_t) * 2;
-			void* contenido_a_enviar = particion_del_mensaje -> contenido;
+			contenido_a_enviar = particion_del_mensaje -> contenido;
 			mensaje_catch -> pokemon = malloc(tamanio);
 			memcpy(mensaje_catch -> pokemon, contenido_a_enviar, tamanio);
 			memcpy(&(mensaje_catch -> posicion[0]), contenido_a_enviar + tamanio , sizeof(uint32_t));
@@ -691,10 +694,19 @@ void* preparar_mensaje_desde_particion(t_mensaje* un_mensaje){
 			mensaje_localized = malloc(sizeof(t_localized_pokemon));
 			mensaje_localized -> id_mensaje = un_mensaje -> id_mensaje;
 			mensaje_localized -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
-			tamanio = 0;
+			tamanio = (particion_del_mensaje -> tamanio) - ((un_mensaje -> tamanio_lista_localized)*sizeof(uint32_t));
+			contenido_a_enviar = particion_del_mensaje -> contenido;
 			mensaje_localized -> pokemon = malloc(tamanio);
-			memcpy(mensaje_catch -> pokemon, contenido_a_enviar, tamanio);
-			//FALTA HACER
+			memcpy(mensaje_localized -> pokemon, contenido_a_enviar, tamanio);
+			mensaje_localized -> tamanio_lista = un_mensaje -> tamanio_lista_localized;
+			mensaje_localized -> posiciones = list_create();
+			offset+=tamanio;
+
+			for(int i=0;i<(un_mensaje -> tamanio_lista_localized);i++){
+				memcpy(&(posicion[i]), contenido_a_enviar + offset, sizeof(uint32_t));
+				offset += sizeof(uint32_t);
+				list_add(mensaje_localized -> posiciones, &posicion[i]);
+			}
 			return mensaje_localized;
 			break;
 
@@ -1797,7 +1809,7 @@ bool existen_particiones_contiguas_vacias(t_list* memoria_cache){
 void compactar_particiones_dinamicas(){
     t_list* particiones_vacias = list_create();
     t_list* particiones_ocupadas = list_create();
-    uint32_t tamanio_vacio = 0;//obtener_tamanio_vacio(particiones_vacias);
+    //uint32_t tamanio_vacio = 0;//obtener_tamanio_vacio(particiones_vacias);
 
 	bool es_particion_vacia(void* particion){
         t_memoria_dinamica* una_particion = particion;
@@ -1842,23 +1854,25 @@ bool es_el_primer_elemento(t_memoria_dinamica* una_particion){
 
 uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion){
 	uint32_t nueva_base = 0;
-	//--> Revisar si hay que crear las listas y destruirlas.
+
 	void* obtener_tamanio(void* alguna_particion){
 		t_memoria_dinamica* part = alguna_particion;
-		return part -> tamanio;
+		uint32_t* tamanio = malloc(sizeof(uint32_t));
+		(*tamanio) = part -> tamanio_part;
+		return tamanio;
 	}
 
 	uint32_t indice_tope = encontrar_indice(una_particion);
 	t_list* particiones_anteriores = list_take(memoria_con_particiones, indice_tope); //--> Revisar que no se pase ni se quede corto
 
-	t_list* lista_de_tamanios = list_map(memoria_con_particiones, obtener_tamanio);
+	t_list* lista_de_tamanios = list_map(particiones_anteriores, obtener_tamanio);
 
-	void sumar_tamanio(void* particion_memoria){
-		t_memoria_dinamica* particion_dinamica = particion_memoria;
-		nueva_base+= (particion_dinamica -> tamanio);
+	void sumar_tamanio(void* cantidad){
+		uint32_t* size = cantidad;
+		nueva_base+= (*size);
 	}
 
-	list_iterate(particiones_anteriores, sumar_tamanio);
+	list_iterate(lista_de_tamanios, sumar_tamanio);
 
 	nueva_base ++;
 	return nueva_base;
@@ -1924,9 +1938,9 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 
 				uint32_t indice = encontrar_indice( buddy_a_liberar );
 
-				t_memoria_buddy* buddy_vacio = armar_particion(buddy_a_liberar -> tamanio_exponente, buddy_a_liberar -> base, NULL, 0, NULL);
+				t_memoria_buddy* buddy_vacio = armar_buddy(buddy_a_liberar -> tamanio_exponente, buddy_a_liberar -> base, NULL, 0, NULL);
 
-				buddy_a_liberar = list_replace(memoria_con_particiones, indice, buddy_vacio);
+				buddy_a_liberar = list_replace(memoria_cache, indice, buddy_vacio);
 				eliminar_de_message_queue(mensaje, mensaje -> codigo_operacion);
 				log_info(logger, "El mensaje fue eliminado correctamente.");
 
@@ -1971,14 +1985,15 @@ void eliminar_de_message_queue(t_mensaje* mensaje, op_code codigo){
 
 void dump_info_particion(void* particion){
     t_memoria_dinamica* una_particion = particion;
-    char* ocupado = "L";
+    char* ocupado = malloc(sizeof(char));
+    ocupado = "L";
 
     if(una_particion -> ocupado != 0) {
-        (*ocupado) = "X";
+        ocupado = "X";
     }
 
-    uint32_t base = memoria + (una_particion -> base);//Revisar que apunte al malloc
-	uint32_t limite = base + (una_particion -> tamanio);
+    uint32_t* base = memoria + (una_particion -> base);//Revisar que apunte al malloc
+	//uint32_t* limite = memoria + (una_particion -> base) + (una_particion -> tamanio);
     uint32_t tamanio = una_particion -> tamanio;
     uint32_t valor_lru = una_particion -> ultima_referencia;
     //Relacionar al mensaje con la partición
@@ -1986,7 +2001,7 @@ void dump_info_particion(void* particion){
     uint32_t id_del_mensaje = obtener_id(una_particion);
 
     //Revisar el tema de la dirección de memoria para loggear-->(&base?).
-    log_info(logger_memoria, "Particion %d: %p.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, limite, (*ocupado), tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
+    log_info(logger_memoria, "Particion %d: %p.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, (*ocupado), tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
     numero_particion++;
     free(cola_del_mensaje);
     //Revisar si hay que liberar la partición!
@@ -1994,15 +2009,14 @@ void dump_info_particion(void* particion){
 
 void dump_info_buddy(void* buddy){
     t_memoria_buddy* un_buddy = buddy;
-    char* ocupado;
+    char* ocupado = malloc(sizeof(char));
+    ocupado = "L";
 
     if(un_buddy -> ocupado != 0) {
-        (*ocupado) = "X";
-    } else {
-    	(*ocupado) = "L";
+        ocupado = "X";
     }
-    uint32_t base = memoria + (un_buddy -> base);//Revisar que apunte al malloc
-	uint32_t limite = base + (un_buddy -> tamanio_exponente);
+    uint32_t* base = memoria + (un_buddy -> base);//Revisar que apunte al malloc
+	//uint32_t* limite = memoria + (un_buddy -> base) + (un_buddy -> tamanio_exponente);
     uint32_t tamanio = un_buddy -> tamanio_exponente;
     uint32_t valor_lru = un_buddy -> ultima_referencia;
     //Relacionar al mensaje con la partición
@@ -2010,9 +2024,10 @@ void dump_info_buddy(void* buddy){
     uint32_t id_del_mensaje = obtener_id_buddy(un_buddy);
 
     //Revisar el tema de la dirección de memoria para loggear-->(&base?).
-    log_info(logger_memoria, "Buddy %d: %d - %d.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, limite, (*ocupado), tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
+    log_info(logger_memoria, "Buddy %d: %p.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, (*ocupado), tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
     numero_particion++;
     free(cola_del_mensaje);
+    free(ocupado);
     //Revisar si hay que liberar la partición!
 }
 
