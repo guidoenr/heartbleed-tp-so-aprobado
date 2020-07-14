@@ -422,7 +422,7 @@ void manejar_desalojo_captura(t_pedido_captura* pedido){
 
 	} else if(!(pedido -> entrenador -> tire_accion)) { // SJF Con Desalojo DESALOJADO
 
-		log_info(logger, "El entrenador %d fue desalojado ante un nuevo entrenador en ready", pedido -> entrenador -> id);
+		log_info(logger, "El entrenador %d fue desalojado por otro entrenador", pedido -> entrenador -> id);
 		sem_post(&mx_desalojo_exec);
 
 	} else { // FIFO o SJF Sin Desalojo // RR/SJF NO DESALOJADO
@@ -832,7 +832,7 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 	pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon_y_esta_libre);
 
 	if(!(pedido -> entrenador_esperando)) {
-		return NULL;
+		//return NULL;
 		bool entrenador_que_le_sobra_pokemon(void* un_entrenador){
 			t_entrenador* entrenador = un_entrenador;
 
@@ -841,8 +841,10 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 		pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon);
 
 		if(!(pedido -> entrenador_esperando)) {
+			return NULL;
 			log_error(logger, "A nadie le sobra mi pokemon!! (lo debe tener alguien que se este moviendo)"); // si se llega a este log handlear el case para perseguir.
 		}
+		log_error(logger, "Mira q lindo como pase y nadie me vio");
 	}
 
 	pedido -> pokemon_a_dar = encontrar_pokemon_sobrante(pedido -> entrenador_buscando);
