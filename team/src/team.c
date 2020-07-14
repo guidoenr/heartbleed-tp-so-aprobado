@@ -832,31 +832,12 @@ void planificar_deadlocks() {
 		}
 
 		t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
-		list_add(pedidos_intercambio, pedido);
-
-		sem_wait(&mx_estados);
-		cambiar_a_estado(estado_ready, pedido -> entrenador_buscando);
-		log_info(logger, "El entrenador %d se mueve a ready para resolver deadlock con el %d", pedido -> entrenador_buscando -> id, pedido -> entrenador_esperando -> id);
-		sem_post(&entrenadores_ready);
-		sem_post(&mx_estados);
-	}
-}
-
-void planificar_deadlocks_rr() {
-
-	while(estado_exit -> elements_count < config -> entrenadores -> elements_count) {
-
-		sem_wait(&sem_cont_entrenadores_a_replanif);
-		sem_wait(&sem_cont_entrenadores_a_replanif);
-
-		if(config -> entrenadores -> elements_count - estado_exit -> elements_count < 2) {
-			log_error(logger, "Tengo poca gente para resolver deadlocks!!");
+		if(!pedido) {
+			sleep(1);
+			sem_post(&sem_cont_entrenadores_a_replanif);
+			sem_post(&sem_cont_entrenadores_a_replanif);
+			continue;
 		}
-		if(estado_block -> elements_count < 2) {
-			log_error(logger, "Me mandaste a planificar deadlock y no tengo 2 pibes en block!!");
-		}
-
-		t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
 		list_add(pedidos_intercambio, pedido);
 
 		sem_wait(&mx_estados);
@@ -897,7 +878,7 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 	pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon_y_esta_libre);
 
 	if(!(pedido -> entrenador_esperando)) {
-
+		return NULL;
 		bool entrenador_que_le_sobra_pokemon(void* un_entrenador){
 			t_entrenador* entrenador = un_entrenador;
 
