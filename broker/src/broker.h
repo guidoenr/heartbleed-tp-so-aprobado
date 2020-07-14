@@ -11,7 +11,7 @@
 
 typedef struct {
     uint32_t indice;
-    uint32_t tamanio;
+    uint32_t base;
 } t_indice;
 
 typedef struct {
@@ -35,6 +35,7 @@ typedef struct {
 	t_list*  suscriptor_recibido;
 	op_code  codigo_operacion;
 	uint32_t tamanio_mensaje;
+	uint32_t tamanio_lista_localized;
 } t_mensaje;
 
 typedef struct {
@@ -245,3 +246,4 @@ void* main_hilo_mensaje(void* );
 uint32_t obtener_nueva_base(t_memoria_dinamica*);
 bool es_el_primer_elemento(t_memoria_dinamica*);
 t_memoria_buddy* armar_buddy(uint32_t , uint32_t , t_mensaje* , uint32_t , void* );
+bool puede_guardarse_mensaje(t_mensaje*);

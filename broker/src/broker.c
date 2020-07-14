@@ -1,4 +1,3 @@
-
 #include "broker.h"
 
 int main(void) {
@@ -238,15 +237,61 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 	mensaje_a_agregar -> suscriptor_recibido = list_create();
     mensaje_a_agregar -> tamanio_mensaje     = obtener_tamanio_contenido_mensaje(mensaje, cod_op);
 
+    if(cod_op == LOCALIZED_POKEMON){
+    	t_localized_pokemon* localized = mensaje;
+    	mensaje_a_agregar -> tamanio_lista_localized = localized -> tamanio_lista;
+    }
+
+
 	sem_wait(&mutex_id);
 	send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
 	sem_post(&mutex_id);
 
-    guardar_en_memoria(mensaje_a_agregar, mensaje);
+	if(puede_guardarse_mensaje(mensaje_a_agregar)){
+		guardar_en_memoria(mensaje_a_agregar, mensaje);
+	}
 
 	sem_wait(&semaforo);
 	encolar_mensaje(mensaje_a_agregar, cod_op);
 	sem_post(&semaforo);
+}
+
+bool puede_guardarse_mensaje(t_mensaje* un_mensaje){
+	uint32_t no_se_repite_correlativo = 0;
+
+	bool tiene_mismo_id_correlativo(void* mensaje){
+		t_mensaje* msg = mensaje;
+		return (msg -> id_correlativo) == (un_mensaje -> id_correlativo);
+	}
+
+	switch(un_mensaje -> codigo_operacion){
+		case LOCALIZED_POKEMON:
+			if(list_find(cola_localized, tiene_mismo_id_correlativo)){
+				no_se_repite_correlativo = 0;
+			} else {
+				no_se_repite_correlativo = 1;
+			}
+			break;
+		case CAUGHT_POKEMON:
+			if(list_find(cola_caught, tiene_mismo_id_correlativo)){
+				no_se_repite_correlativo = 0;
+			} else {
+				no_se_repite_correlativo = 1;
+			}
+			break;
+		case APPEARED_POKEMON:
+			if(list_find(cola_localized, tiene_mismo_id_correlativo)){
+				no_se_repite_correlativo = 0;
+			} else {
+				no_se_repite_correlativo = 1;
+			}
+			break;
+		default:
+			no_se_repite_correlativo = 1;
+			break;
+	}
+
+	return !(un_mensaje -> id_correlativo) || no_se_repite_correlativo;
 }
 
 uint32_t obtener_tamanio_contenido_mensaje(void* mensaje, uint32_t codigo){
@@ -555,6 +600,7 @@ void* preparar_mensaje_desde_buddy(t_mensaje* un_mensaje){
 			mensaje_armado -> pokemon = malloc(tamanio);
 			memcpy(mensaje_armado -> pokemon, (memoria + (buddy_del_mensaje -> base)), tamanio);
 			break;
+
 			case CATCH_POKEMON:
 			mensaje_armado = malloc(sizeof(t_catch_pokemon));
 			mensaje_armado -> id_mensaje = un_mensaje -> id_mensaje;
@@ -564,16 +610,21 @@ void* preparar_mensaje_desde_buddy(t_mensaje* un_mensaje){
 			memcpy(&(mensaje_armado -> posicion[0]), (memoria + (buddy_del_mensaje -> base) + tamanio), sizeof(uint32_t));
 			memcpy(&(mensaje_armado -> posicion[1]), (memoria + (buddy_del_mensaje -> base) + tamanio + sizeof(uint32_t)), sizeof(uint32_t));
 			break;
+
 			case
+
+
 _POKEMON://REHACER
 			mensaje_armado = malloc(sizeof(t_localized_pokemon));
 			break;
+
 			case CAUGHT_POKEMON:
 			mensaje_armado = malloc(sizeof(t_caught_pokemon));
 			mensaje_armado -> id_mensaje = un_mensaje -> id_mensaje;
 			mensaje_armado -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
 			memcpy(mensaje_armado -> resultado, (memoria + (buddy_del_mensaje -> base)), sizeof(uint32_t));
 			break;
+
 			case APPEARED_POKEMON:
 			mensaje_armado = malloc(sizeof(t_appeared_pokemon));
 			mensaje_armado -> id_mensaje = un_mensaje -> id_mensaje;
@@ -584,6 +635,7 @@ _POKEMON://REHACER
 			memcpy(&(mensaje_armado -> posicion[0]), (memoria + (buddy_del_mensaje -> base) + tamanio), sizeof(uint32_t));
 			memcpy(&(mensaje_armado -> posicion[1]), (memoria + (buddy_del_mensaje -> base) + tamanio + sizeof(uint32_t)), sizeof(uint32_t));
 			break;
+
 			case NEW_POKEMON:
 			mensaje_armado = malloc(sizeof(t_new_pokemon));
 			mensaje_armado -> id_mensaje = un_mensaje -> id_mensaje;
@@ -594,10 +646,12 @@ _POKEMON://REHACER
 			memcpy(&(mensaje_armado -> posicion[1]), (memoria + (buddy_del_mensaje -> base) + tamanio + sizeof(uint32_t)), sizeof(uint32_t));
 			memcpy(&(mensaje_armado -> cantidad), (memoria + (buddy_del_mensaje -> base) + tamanio + sizeof(uint32_t)*2), sizeof(uint32_t));
 			break;
+
 			default:
 			log_error(logger, "...No se puede preparar el mensaje desde el broker para enviar a otro modulo.");
 			break;
 	}
+
 	return mensaje_armado;
 }*/
 
@@ -1003,16 +1057,16 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 
-	 if(list_size(memoria_con_particiones) > 1){
+	 /*if(list_size(memoria_con_particiones) > 1){*/
 
          guardar_particion(mensaje, contenido);
 
-     } else {
+    /* } else {
     	 t_memoria_dinamica* nueva_particion;
     	 nueva_particion = armar_particion(mensaje -> tamanio_mensaje, 0, mensaje, 1, contenido);
     	 ubicar_particion(0, nueva_particion);
     	 guardar_contenido_de_mensaje(0, contenido, mensaje -> tamanio_mensaje);
-     }
+     }*/
 	} else {
 		log_info(logger,"LOG GGG G DE PRUEBA");
 	}
@@ -1234,7 +1288,6 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
     log_error(logger,"Tamanio: %d", particion_victima -> tamanio);
     log_error(logger,"Base: %d", particion_victima -> base);
 
-    list_destroy(memoria_duplicada);
     return particion_victima;
 }
 
@@ -1404,9 +1457,10 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
 	t_memoria_dinamica* particion_a_ubicar;
 	t_memoria_dinamica* nueva_particion;
 
-    if(!chequear_espacio_memoria_particiones(un_mensaje -> tamanio_mensaje)){
-			reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
-    }
+    /*if(!chequear_espacio_memoria_particiones(un_mensaje -> tamanio_mensaje)){
+		log_error(logger, "..No hay memoria");
+    	reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
+    }*/
 
     if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre, "FF")){
         posicion_a_ubicar = encontrar_primer_ajuste(un_mensaje -> tamanio_mensaje);
@@ -1414,13 +1468,16 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
         if(posicion_a_ubicar == -1){
             log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
             reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
+        } else {
+
+        	particion_a_ubicar = list_get(memoria_con_particiones, posicion_a_ubicar);
+
+			nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1, contenido_mensaje);
+			ubicar_particion(posicion_a_ubicar, nueva_particion);
+			guardar_contenido_de_mensaje(nueva_particion -> base, contenido_mensaje, nueva_particion -> tamanio);
+
         }
 
-		particion_a_ubicar = list_get(memoria_con_particiones, posicion_a_ubicar);
-
-		nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1, contenido_mensaje);
-        ubicar_particion(posicion_a_ubicar, nueva_particion);
-		guardar_contenido_de_mensaje(nueva_particion -> base, contenido_mensaje, nueva_particion -> tamanio);
     }
 
     if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"BF")){
@@ -1448,12 +1505,9 @@ void guardar_contenido_de_mensaje(uint32_t offset, void* contenido, uint32_t tam
 		memcpy(memoria + offset, contenido, tamanio);
 		sem_post(&mx_memoria_cache);
 		log_info(logger, "Se guardó un mensaje en la particion de tamaño %d que comienza en la posicion %d.", tamanio, memoria + offset);
-	} /*else {
+	} else {
 		log_info(logger, "Se libera una partición de tamaño %d que comienza en la posicion %d.", tamanio, memoria + offset);
-	}*/
-
-
-
+	}
 	//free(contenido);
 }
 
@@ -1564,13 +1618,25 @@ t_memoria_buddy* armar_buddy(uint32_t tamanio, uint32_t base, t_mensaje* mensaje
 uint32_t encontrar_primer_ajuste(uint32_t tamanio){
     uint32_t indice_seleccionado = 0;
 
-    bool tiene_tamanio_suficiente(void* particion){
-        t_memoria_dinamica* una_particion = particion;
-        return tamanio <= (una_particion -> tamanio) && una_particion -> ocupado == 0;
+    bool es_particion_vacia(void* particion){
+            t_memoria_dinamica* una_particion = particion;
+            return !(una_particion -> ocupado);
     }
 
-    t_memoria_dinamica* posible_particion = list_find(memoria_con_particiones, tiene_tamanio_suficiente);
-    indice_seleccionado = encontrar_indice(posible_particion);
+    t_list* lista_duplicada = list_filter(memoria_con_particiones, es_particion_vacia);
+
+    bool tiene_tamanio_suficiente(void* particion){
+        t_memoria_dinamica* una_particion = particion;
+        return tamanio <= (una_particion -> tamanio);
+    }
+
+    t_memoria_dinamica* posible_particion = list_find(lista_duplicada, tiene_tamanio_suficiente);
+
+    if(posible_particion!=NULL){
+    	indice_seleccionado = encontrar_indice(posible_particion);
+    } else {
+    	indice_seleccionado = -1;
+    }
 
     return indice_seleccionado;
 }
@@ -1589,13 +1655,14 @@ uint32_t encontrar_mejor_ajuste(uint32_t tamanio){
         return tamanio <= (una_particion -> tamanio) && una_particion -> ocupado == 0 ;
     }
 
-    t_list* particiones_en_orden_creciente = list_duplicate(memoria_con_particiones);
-    list_sort(particiones_en_orden_creciente, es_de_menor_tamanio);
+    t_list* particiones_en_orden_creciente = list_sorted(memoria_con_particiones, es_de_menor_tamanio);
 
     t_memoria_dinamica* posible_particion = list_find(particiones_en_orden_creciente, tiene_tamanio_suficiente);
-    indice_seleccionado = encontrar_indice(posible_particion);
-    //REVISAR ESTO
-    list_destroy(particiones_en_orden_creciente);
+    if(posible_particion!=NULL){
+    	indice_seleccionado = encontrar_indice(posible_particion);
+    } else {
+    	indice_seleccionado = -1;
+    }
 
     return indice_seleccionado;
 }
@@ -1612,25 +1679,24 @@ uint32_t encontrar_indice(t_memoria_dinamica* posible_particion){
     t_list* indices = list_create();
 
     void obtener_indices(void* particion){
-        t_memoria_dinamica* particion_a_transformar = particion;
+    	t_memoria_dinamica* particion_a_transformar = particion;
         t_indice* un_indice = malloc(sizeof(t_indice));
         un_indice -> indice = indice_buscador;
-        un_indice -> tamanio = particion_a_transformar -> tamanio;
+        un_indice -> base = particion_a_transformar -> base;
         list_add(indices, un_indice);
-    	indice_buscador ++;
+        indice_buscador++;
     }
-    list_iterate(memoria_con_particiones, obtener_indices);
 
     bool es_el_tamanio_necesario(void* indice){
         t_indice* otro_indice = indice;
-        return (otro_indice -> tamanio) == (posible_particion -> tamanio);
+        return (otro_indice -> base) == (posible_particion -> base);
     }
+
+    list_iterate(memoria_con_particiones, obtener_indices);
     t_indice* indice_elegido = list_find(indices, es_el_tamanio_necesario);
-    //FIJARSE SI ES UN DESTROY A LOS ELEMENTOS TAMBIEN.
 
     indice_disponible = indice_elegido -> indice;
-    //free(indice_elegido;)
-    list_destroy(indices);
+
     return indice_disponible;
 }
 
