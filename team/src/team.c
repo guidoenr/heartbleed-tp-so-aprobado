@@ -784,13 +784,7 @@ void* planificar_entrenadores() {
 			for(int i = 0; i <= estado_block -> elements_count; i++) {
 				sem_post(&sem_cont_entrenadores_a_replanif);
 			}
-
-			if(string_equals_ignore_case(config -> algoritmo_planificacion, "RR")){
-				//planificar_deadlocks_rr();
-				planificar_deadlocks_fifo_o_sjf(); // may remove in future.
-			} else {
-				planificar_deadlocks_fifo_o_sjf();
-			}
+			planificar_deadlocks();
 			deadlocks = 0;
 		}
 	}
@@ -822,7 +816,7 @@ void eliminar_del_objetivo_global(t_pokemon_mapa* pokemon) {
 	list_add(objetivo_global_pendiente, pokemon -> nombre);
 }
 
-void planificar_deadlocks_fifo_o_sjf() {
+void planificar_deadlocks() {
 
 	while(estado_exit -> elements_count < config -> entrenadores -> elements_count) {
 
