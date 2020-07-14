@@ -1306,7 +1306,7 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
 
 		bool tiempo_de_carga_menor_o_igual(void* particion1){
         t_memoria_dinamica* otra_particion = particion1;
-        return ((otra_particion -> tiempo_de_carga) >= (una_particion -> tiempo_de_carga));
+        return ((otra_particion -> tiempo_de_carga)- (una_particion -> tiempo_de_carga) >= 0) ;
 		//Se chequea que el tiempo de carga sea menor o igual.
     	}
 
@@ -1319,7 +1319,7 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
 
 		bool tiempo_de_acceso_menor_o_igual(void* particion3){
         t_memoria_dinamica* particion = particion3;
-        return ((particion -> ultima_referencia) >= (one_particion -> ultima_referencia));
+        return ((particion -> ultima_referencia) - (one_particion -> ultima_referencia) >= 0);
 		//Se chequea el tiempo de acceso menor o igual.
     	}
 

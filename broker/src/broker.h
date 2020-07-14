@@ -43,8 +43,8 @@ typedef struct {
 	uint32_t tamanio_part;
 	uint32_t base;
 	uint32_t ocupado;
-	uint32_t ultima_referencia;
-	uint32_t tiempo_de_carga;
+	uint64_t ultima_referencia;
+	uint64_t tiempo_de_carga;
 	op_code codigo_operacion;
 	void* contenido;
 } t_memoria_dinamica;
@@ -54,8 +54,8 @@ typedef struct{
 	uint32_t tamanio_mensaje;
 	uint32_t base;
 	uint32_t ocupado;
-	uint32_t ultima_referencia;
-	uint32_t tiempo_de_carga;
+	uint64_t ultima_referencia;
+	uint64_t tiempo_de_carga;
 	op_code codigo_operacion;
 	void* contenido;
 } t_memoria_buddy;
