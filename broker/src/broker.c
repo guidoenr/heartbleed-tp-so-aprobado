@@ -1785,7 +1785,7 @@ bool existen_particiones_contiguas_vacias(t_list* memoria_cache){
 void compactar_particiones_dinamicas(){
     t_list* particiones_vacias = list_create();
     t_list* particiones_ocupadas = list_create();
-    uint32_t tamanio_vacio = 0;//obtener_tamanio_vacio(particiones_vacias);
+    //uint32_t tamanio_vacio = 0;//obtener_tamanio_vacio(particiones_vacias);
 
 	bool es_particion_vacia(void* particion){
         t_memoria_dinamica* una_particion = particion;
@@ -1830,23 +1830,25 @@ bool es_el_primer_elemento(t_memoria_dinamica* una_particion){
 
 uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion){
 	uint32_t nueva_base = 0;
-	//--> Revisar si hay que crear las listas y destruirlas.
+
 	void* obtener_tamanio(void* alguna_particion){
 		t_memoria_dinamica* part = alguna_particion;
-		return part -> tamanio;
+		uint32_t* tamanio = malloc(sizeof(uint32_t));
+		(*tamanio) = part -> tamanio_part;
+		return tamanio;
 	}
 
 	uint32_t indice_tope = encontrar_indice(una_particion);
 	t_list* particiones_anteriores = list_take(memoria_con_particiones, indice_tope); //--> Revisar que no se pase ni se quede corto
 
-	t_list* lista_de_tamanios = list_map(memoria_con_particiones, obtener_tamanio);
+	t_list* lista_de_tamanios = list_map(particiones_anteriores, obtener_tamanio);
 
-	void sumar_tamanio(void* particion_memoria){
-		t_memoria_dinamica* particion_dinamica = particion_memoria;
-		nueva_base+= (particion_dinamica -> tamanio);
+	void sumar_tamanio(void* cantidad){
+		uint32_t* size = cantidad;
+		nueva_base+= (*size);
 	}
 
-	list_iterate(particiones_anteriores, sumar_tamanio);
+	list_iterate(lista_de_tamanios, sumar_tamanio);
 
 	nueva_base ++;
 	return nueva_base;
