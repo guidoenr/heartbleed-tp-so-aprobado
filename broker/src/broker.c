@@ -239,7 +239,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 
     if(cod_op == LOCALIZED_POKEMON){
     	t_localized_pokemon* localized = mensaje;
-    	mensaje_a_agregar -> tamanio_lista_localized = localized -> tamanio_lista;
+    	//mensaje_a_agregar -> tamanio_lista_localized = localized -> tamanio_lista;
     }
 
 
@@ -1043,8 +1043,11 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 			}
 		else
 			exponente = config_broker -> size_min_memoria;
-      t_node* primer_nodo = (t_node*) memoria_cache->head->data;
-      uint32_t pudoGuardarlo =0;
+      t_memoria_buddy* primer_buddy = (t_memoria_buddy*) memoria_cache->head->data;
+      t_node* primer_nodo = malloc(sizeof(t_node));
+      primer_nodo ->bloque = primer_buddy;
+      uint32_t pudoGuardarlo =chequear_memoria();
+      if(pudoGuardarlo){
       if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
          pudoGuardarlo = recorrer_first_fit(primer_nodo, exponente,  contenido, mensaje);
          reemplazo_buddy(pudoGuardarlo, exponente, contenido, mensaje);
@@ -1052,6 +1055,18 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
       if(string_equals_ignore_case(config_broker ->algoritmo_particion_libre, "BF")){
     	  pudoGuardarlo = recorrer_best_fit(primer_nodo,exponente, contenido, mensaje);
     	  reemplazo_buddy(pudoGuardarlo, exponente, contenido, mensaje);
+      }
+      }else{
+    	  t_memoria_buddy* buddy_victima = seleccionar_particion_victima_de_reemplazo_buddy();
+    	  t_node* nodo_victima = malloc(sizeof(t_memoria_buddy*));
+    	  nodo_victima->bloque=buddy_victima;
+    	  //turbio reveer
+    	  if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
+    	  		         pudoGuardarlo = recorrer_first_fit(nodo_victima, exponente,  contenido, mensaje);
+    	  }
+    	  if(string_equals_ignore_case(config_broker ->algoritmo_particion_libre, "BF")){
+    	  		    	  pudoGuardarlo = recorrer_best_fit(nodo_victima,exponente, contenido, mensaje);
+    	 }
       }
 	}
 
@@ -1074,11 +1089,28 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 	free(contenido);
 
 }
+uint32_t chequear_memoria(){
+	uint32_t size_memoria=0;
+     void sumar_buddy(void* buddy){
+    	 t_memoria_buddy* un_buddy = buddy;
+    	 if(un_buddy->ocupado)
+    	 size_memoria = size_memoria + un_buddy->tamanio_exponente;
+     }
+
+	list_iterate(memoria_cache,sumar_buddy);
+	if(size_memoria == config_broker->size_memoria){
+		log_error(logger,"no hay memoria");
+		return 0;
+	}
+
+   return 1;
+}
 
 void reemplazo_buddy(uint32_t pudoGuardarlo, uint32_t exponente, void* contenido, t_mensaje* mensaje){
 		if(!pudoGuardarlo){
-  do
-	  {
+  while(!pudoGuardarlo)
+	  {  t_node* primer_nodo = (t_node*) memoria_cache->head->data;
+	     consolidacion_buddy_systeam(primer_nodo);
 		t_memoria_buddy* buddy_victima = seleccionar_particion_victima_de_reemplazo_buddy();
 		if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
 		         pudoGuardarlo = recorrer_first_fit(buddy_victima, exponente,  contenido, mensaje);
@@ -1086,7 +1118,9 @@ void reemplazo_buddy(uint32_t pudoGuardarlo, uint32_t exponente, void* contenido
 	    if(string_equals_ignore_case(config_broker ->algoritmo_particion_libre, "BF")){
 		    	  pudoGuardarlo = recorrer_best_fit(buddy_victima,exponente, contenido, mensaje);
 	    }
-	  } while(!pudoGuardarlo);
+
+
+	  }
 	}
 }
 void* armar_contenido_de_mensaje(void* mensaje, uint32_t codigo){
@@ -1300,7 +1334,7 @@ t_memoria_buddy* seleccionar_particion_victima_de_reemplazo_buddy(){
 
 		bool tiempo_de_carga_menor_o_igual(void* buddy1){
         t_memoria_buddy* otro_buddy = buddy1;
-        return ( otro_buddy -> ultima_referencia) >= (un_buddy -> tiempo_de_carga);
+        return ( otro_buddy -> ultima_referencia) >= (un_buddy -> tiempo_de_carga && otro_buddy->ocupado);
 		//Se chequea que el tiempo de carga sea menor o igual.
     	}
 
@@ -1313,7 +1347,7 @@ t_memoria_buddy* seleccionar_particion_victima_de_reemplazo_buddy(){
 
 		bool tiempo_de_acceso_menor_o_igual(void* buddy3){
         t_memoria_buddy* buddy = buddy3;
-        return (buddy -> ultima_referencia) >= (one_buddy -> ultima_referencia);
+        return (buddy -> ultima_referencia) >= (one_buddy -> ultima_referencia )&& buddy->ocupado;
 		//Se chequea el tiempo de acceso menor o igual.
     	}
 
@@ -1321,9 +1355,9 @@ t_memoria_buddy* seleccionar_particion_victima_de_reemplazo_buddy(){
     }
 
     if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "FIFO")){
-    	buddy_victima = list_find(memoria_con_particiones, fue_cargada_primero);
+    	buddy_victima = list_find(memoria_cache, fue_cargada_primero);
 	} else if (string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "LRU")){
-		buddy_victima = list_find(memoria_con_particiones, fue_accedida_hace_mas_tiempo);
+		buddy_victima = list_find(memoria_cache, fue_accedida_hace_mas_tiempo);
 	}
 
     return buddy_victima;
@@ -1601,17 +1635,7 @@ t_memoria_buddy* armar_buddy(uint32_t tamanio, uint32_t base, t_mensaje* mensaje
 		nuevo_buddy-> codigo_operacion = mensaje -> codigo_operacion;
 		nuevo_buddy-> contenido = contenido;
 		nuevo_buddy = mensaje -> payload;
-    } else {
-    	nuevo_buddy -> tamanio_exponente = tamanio;
-    	nuevo_buddy -> base = base;
-    	nuevo_buddy -> tamanio_mensaje =0;
-		nuevo_buddy -> ocupado = 0;
-		nuevo_buddy -> codigo_operacion = 0;
-		nuevo_buddy -> contenido = contenido;
-		nuevo_buddy -> tiempo_de_carga = 0;
-		nuevo_buddy -> ultima_referencia = 0;
-	}
-
+    }
     return nuevo_buddy;
 }
 
@@ -2103,8 +2127,13 @@ t_node* crear_nodo(uint32_t tamanio)
   // Assign data to this node
   node -> bloque = malloc(sizeof(t_memoria_buddy));
   node -> bloque -> tamanio_exponente = tamanio;
+  node->bloque->tamanio_mensaje = 0;
+  node -> bloque ->base = 0;
   node -> bloque -> ocupado =0;
-
+  node ->bloque ->codigo_operacion =0;
+  node -> bloque->contenido ="";
+  node-> bloque->tiempo_de_carga = 0;
+  node->bloque -> ultima_referencia = 0;
   // Initialize left and right children as NULL
   node -> izquierda = NULL;
   node -> derecha = NULL;
@@ -2115,7 +2144,7 @@ t_node* crear_nodo(uint32_t tamanio)
 void arrancar_buddy(){
 	memoria_cache = list_create();
 	t_node* root = crear_nodo(config_broker -> size_memoria);
-	list_add(memoria_cache, root);
+	list_add(memoria_cache, root->bloque);
 }
 
 void asignar_nodo(t_node* node,void* contenido, t_mensaje* mensaje, uint32_t exponente){
@@ -2128,15 +2157,15 @@ void asignar_nodo(t_node* node,void* contenido, t_mensaje* mensaje, uint32_t exp
     log_info(logger, "....me guardo en el tamanio:%d", node->bloque->tamanio_exponente);
    //mensaje -> payload = node -> bloque;  RESOLVER MAS ADELANTE.
     if(list_size(memoria_cache) > 1){
-    	t_node* ultimo_nodo = list_get( memoria_cache, list_size(memoria_cache)-1);
-    	node->bloque->base =  ultimo_nodo->bloque ->base +  ultimo_nodo -> bloque -> tamanio_exponente + 1;
+    	t_memoria_buddy* ultimo_buddy= list_get( memoria_cache, list_size(memoria_cache)-1);
+    	node->bloque->base =  ultimo_buddy ->base +  ultimo_buddy -> tamanio_exponente + 1;
     	guardar_contenido_de_mensaje(exponente, contenido, mensaje -> tamanio_mensaje);
     }else{
         node -> bloque-> base = 0;
     	guardar_contenido_de_mensaje(0, contenido, exponente);
     }
 
-    list_add(memoria_cache, node);
+    list_add(memoria_cache, node->bloque);
 }
 
 uint32_t recorrer_first_fit(t_node* nodo, uint32_t exponente, void* contenido, t_mensaje*  mensaje){
@@ -2219,6 +2248,8 @@ void consolidacion_buddy_systeam(t_node*  nodo)
           nodo->izquierda =NULL;
           nodo->derecha =NULL;
           t_node* primer_nodo = (t_node*) memoria_cache->head->data;
+          log_info(logger_memoria,"el buddy derecho era de %d:", (nodo->bloque->tamanio_exponente/2) );
+          log_info(logger_memoria,"el buddy izquierdo era de %d:", (nodo->bloque->tamanio_exponente/2) );
           consolidacion_buddy_systeam(primer_nodo);
       }
       if(nodo -> izquierda && nodo->izquierda ->bloque -> ocupado ==0)

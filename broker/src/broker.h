@@ -247,3 +247,5 @@ uint32_t obtener_nueva_base(t_memoria_dinamica*);
 bool es_el_primer_elemento(t_memoria_dinamica*);
 t_memoria_buddy* armar_buddy(uint32_t , uint32_t , t_mensaje* , uint32_t , void* );
 bool puede_guardarse_mensaje(t_mensaje*);
+uint32_t chequear_memoria();
+
