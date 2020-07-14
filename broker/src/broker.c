@@ -1292,6 +1292,7 @@ void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje
 t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
 
     t_memoria_dinamica* particion_victima;
+    t_list* memoria_ordenada = list_create();
     t_list* memoria_duplicada = list_create();
 
     bool particion_ocupada(void* particion){
@@ -1301,35 +1302,26 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
 
     memoria_duplicada = list_filter(memoria_con_particiones, particion_ocupada);
 
-    bool fue_cargada_primero(void* particion2){
-        t_memoria_dinamica* una_particion = particion2;
+    bool fue_cargada_antes(void* particion1, void* particion2){
+    	t_memoria_dinamica* una_particion = particion1;
+    	t_memoria_dinamica* otra_particion = particion2;
 
-		bool tiempo_de_carga_menor_o_igual(void* particion1){
-        t_memoria_dinamica* otra_particion = particion1;
-        return ((otra_particion -> tiempo_de_carga)- (una_particion -> tiempo_de_carga) >= 0) ;
-		//Se chequea que el tiempo de carga sea menor o igual.
-    	}
-
-		return list_all_satisfy(memoria_duplicada, tiempo_de_carga_menor_o_igual);
+    	return (una_particion -> tiempo_de_carga) < (otra_particion -> tiempo_de_carga) ;
     }
 
+    bool fue_referenciada_antes(void* particion1, void* particion2){
+        	t_memoria_dinamica* una_particion = particion1;
+        	t_memoria_dinamica* otra_particion = particion2;
+        	return (una_particion -> tiempo_de_carga) < (otra_particion -> tiempo_de_carga) ;
 
-    bool fue_accedida_hace_mas_tiempo(void* particion4){
-        t_memoria_dinamica* one_particion = particion4;
-
-		bool tiempo_de_acceso_menor_o_igual(void* particion3){
-        t_memoria_dinamica* particion = particion3;
-        return ((particion -> ultima_referencia) - (one_particion -> ultima_referencia) >= 0);
-		//Se chequea el tiempo de acceso menor o igual.
-    	}
-
-        return  list_all_satisfy(memoria_duplicada, tiempo_de_acceso_menor_o_igual);
     }
 
     if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "FIFO")){
-		particion_victima = list_find(memoria_duplicada, fue_cargada_primero);
+		memoria_ordenada = list_sorted(memoria_duplicada, fue_cargada_antes);
+    	particion_victima = list_get(memoria_ordenada, 0);
 	} else if (string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "LRU")){
-    	particion_victima = list_find(memoria_duplicada, fue_accedida_hace_mas_tiempo);
+		memoria_ordenada = list_sorted(memoria_duplicada, fue_referenciada_antes);
+		particion_victima = list_get(memoria_ordenada, 0);
 	}
     log_error(logger,"Tamanio: %d", particion_victima -> tamanio);
     log_error(logger,"Base: %d", particion_victima -> base);
@@ -1731,7 +1723,12 @@ uint32_t encontrar_indice(t_memoria_dinamica* posible_particion){
     list_iterate(memoria_con_particiones, obtener_indices);
     t_indice* indice_elegido = list_find(indices, es_el_tamanio_necesario);
 
-    indice_disponible = indice_elegido -> indice;
+    if(indice_elegido!=NULL){
+    	indice_disponible = indice_elegido -> indice;
+    } else {
+    	indice_disponible = 0;
+    	log_error(logger, "El indice no pudo obtenerse correctamente.");
+    }
 
     return indice_disponible;
 }
@@ -2103,11 +2100,11 @@ char* obtener_cola_del_mensaje_buddy(t_memoria_buddy* un_buddy){
     return una_cola;
 }
 
-uint64_t timestamp(void) {
+uint32_t timestamp(void) {
 	struct timeval valor;
 	gettimeofday(&valor, NULL);
-	unsigned long long result = (((unsigned long long )valor.tv_sec) * 1000 + ((unsigned long) valor.tv_usec));
-	uint64_t tiempo = result;
+	unsigned long long result = ((unsigned long long )valor.tv_sec) * 1000 + ((unsigned long) valor.tv_usec) / 1000;
+	uint32_t tiempo = result;
 	return tiempo;
 }
 
