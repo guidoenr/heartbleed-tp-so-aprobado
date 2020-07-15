@@ -130,6 +130,7 @@ void desalojar_ejecucion();
 void ordenar_ready_segun_estimacion();
 void* ejecutar_algoritmo();
 void planificar_deadlocks();
+void loggear_entrenadores_deadlock();
 
 // hilos
 pthread_t hilo_algoritmo;

@@ -690,7 +690,6 @@ void ejecutar_trade(t_pedido_intercambio* pedido) {
 			pedido -> entrenador_buscando -> id, pedido -> pokemon_a_dar,
 			pedido -> entrenador_esperando -> id, pedido -> pokemon_a_recibir);
 
-	deadlocks_resueltos ++;
 	eliminar_pedido_intercambio(pedido);
 }
 
@@ -734,17 +733,29 @@ void* planificar_entrenadores() {
 
 		} else {
 			log_info(logger, "Inicio del algoritmo de deteccion de deadlocks");
-			//matar hilo gameboy
-			//matar suscripciones broker
+
 			for(int i = 0; i <= estado_block -> elements_count; i++) {
 				sem_post(&sem_cont_entrenadores_a_replanif);
 			}
+			loggear_entrenadores_deadlock();
 			planificar_deadlocks();
 			deadlocks = 0;
 		}
 	}
 
 	return 0;
+}
+
+void loggear_entrenadores_deadlock() {
+
+	void imprimir_deadlock(void* un_entrenador) {
+		t_entrenador* entrenador = un_entrenador;
+
+		log_info(logger, "El entrenador %d esta en deadlock", entrenador -> id);
+	}
+	list_iterate(estado_block, imprimir_deadlock);
+
+	deadlocks_totales ++;
 }
 
 bool entrenadores_con_mochila_llena() {
@@ -796,7 +807,7 @@ void planificar_deadlocks() {
 
 		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_ready, pedido -> entrenador_buscando);
-		log_info(logger, "El entrenador %d se mueve a ready para resolver deadlock con el %d", pedido -> entrenador_buscando -> id, pedido -> entrenador_esperando -> id);
+		log_info(logger, "El entrenador %d se mueve a ready para realizar el intercambio con el %d", pedido -> entrenador_buscando -> id, pedido -> entrenador_esperando -> id);
 		sem_post(&entrenadores_ready);
 		sem_post(&mx_estados);
 	}
@@ -832,7 +843,7 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 	pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon_y_esta_libre);
 
 	if(!(pedido -> entrenador_esperando)) {
-		//return NULL;
+		return NULL;
 		bool entrenador_que_le_sobra_pokemon(void* un_entrenador){
 			t_entrenador* entrenador = un_entrenador;
 
@@ -857,8 +868,6 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo(){
 	} else {
 		pedido -> entrenador_buscando -> pasos_a_moverse = pedido -> distancia;
 	}
-
-	deadlocks_totales ++;
 
 	return pedido;
 }
@@ -1710,6 +1719,7 @@ void loggear_resultados() {
 }
 
 void terminar_programa() {
+	deadlocks_resueltos ++;
 	terminar_hilos();
 	loggear_resultados();
 	free(mapa_pokemons);
