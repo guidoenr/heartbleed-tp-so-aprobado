@@ -1298,6 +1298,7 @@ void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje
     particion_a_reemplazar = list_replace(memoria_con_particiones, indice, particion_vacia);
 
     eliminar_mensaje(mensaje_a_eliminar);
+
     //free(particion_a_reemplazar);
     log_info(logger, "... Se libera una partición y se intenta ubicar nuevamente el mensaje.");
 
@@ -1724,13 +1725,14 @@ uint32_t encontrar_mejor_ajuste(uint32_t tamanio){
 void destruir_particion(void* una_particion){
    t_memoria_dinamica* particion = una_particion;
    free(particion);
-   // free(una_particion);
 }
 
 uint32_t encontrar_indice(t_memoria_dinamica* posible_particion){
     uint32_t indice_disponible = 0;
     uint32_t indice_buscador = 0;
     t_list* indices = list_create();
+    t_list* memoria_duplicada = list_create();
+	memoria_duplicada = list_duplicate(memoria_con_particiones);
 
     void obtener_indices(void* particion){
     	t_memoria_dinamica* particion_a_transformar = particion;
@@ -1741,13 +1743,13 @@ uint32_t encontrar_indice(t_memoria_dinamica* posible_particion){
         indice_buscador++;
     }
 
-    bool es_el_tamanio_necesario(void* indice){
+    bool es_la_particion(void* indice){
         t_indice* otro_indice = indice;
         return (otro_indice -> base) == (posible_particion -> base);
     }
 
-    list_iterate(memoria_con_particiones, obtener_indices);
-    t_indice* indice_elegido = list_find(indices, es_el_tamanio_necesario);
+    list_iterate(memoria_duplicada, obtener_indices);
+    t_indice* indice_elegido = list_find(indices, es_la_particion);
 
     if(indice_elegido!=NULL){
     	indice_disponible = indice_elegido -> indice;
@@ -1764,46 +1766,60 @@ uint32_t encontrar_indice(t_memoria_dinamica* posible_particion){
 //ENORME.
 
 void consolidar_particiones_dinamicas(){
-
+	t_list* memoria_duplicada = list_create();
+	memoria_duplicada = list_duplicate(memoria_con_particiones);
+	uint32_t contador = 0;
     void consolidar_particiones_contiguas(void* particion){
         t_memoria_dinamica* una_particion = particion;
-        uint32_t indice = encontrar_indice(una_particion);
-        if(tiene_siguiente(indice) && ambas_estan_vacias(indice, indice + 1)){
-            //Siempre asumo que es consolidable porque tiene un valor a la derecha que también es vacío.
-            consolidar_particiones(indice, indice + 1);
+        if(tiene_siguiente(contador)){
+        	if(ambas_estan_vacias(contador, contador + 1)){
+        		//Siempre asumo que es consolidable porque tiene un valor a la derecha que también es vacío.
+        		consolidar_particiones(contador, contador + 1);
+        	}
         }
+        contador++;
     }
 
-    list_iterate(memoria_con_particiones, consolidar_particiones_contiguas);
+    list_iterate(memoria_duplicada, consolidar_particiones_contiguas);
 
-    if(existen_particiones_contiguas_vacias(memoria_con_particiones)){
+    /*if(existen_particiones_contiguas_vacias(memoria_con_particiones)){
             consolidar_particiones_dinamicas();
-    }
+    }*/
     //Tendría que llamar recursivamente? --> revisar
 }
 
 bool tiene_siguiente(uint32_t posicion){
-    return list_get(memoria_con_particiones, posicion + 1) != NULL;
+    return (list_size(memoria_con_particiones) - 1) > posicion;
 }
 
 bool ambas_estan_vacias(uint32_t una_posicion, uint32_t posicion_siguiente){
 
     t_memoria_dinamica* una_particion       = list_get(memoria_con_particiones, una_posicion);
     t_memoria_dinamica* particion_siguiente = list_get(memoria_con_particiones, posicion_siguiente);
-    return !((una_particion -> ocupado) && (particion_siguiente -> ocupado));
+    uint32_t resultado = 0;
+
+    if(una_particion != NULL){
+    	if(particion_siguiente!= NULL){
+    		resultado = (!(una_particion -> ocupado)) && (!(particion_siguiente -> ocupado));
+    	} else {
+    		log_error(logger, "La segunda particion a consolidar no fue encontrada.");
+    	}
+    } else {
+    	log_error(logger, "La primer particion a consolidar no fue encontrada.");
+    }
+
+    return resultado;
 }
 
 void consolidar_particiones(uint32_t primer_elemento, uint32_t elemento_siguiente){
-    t_memoria_dinamica* una_particion = list_remove(memoria_con_particiones, primer_elemento);
+    t_memoria_dinamica* una_particion = list_get(memoria_con_particiones, primer_elemento);
     t_memoria_dinamica* particion_siguiente = list_remove(memoria_con_particiones, elemento_siguiente);
 
     uint32_t tamanio_particion_consolidada    = (una_particion -> tamanio_part) + (particion_siguiente -> tamanio_part);
     t_memoria_dinamica* particion_consolidada = armar_particion(tamanio_particion_consolidada, (una_particion -> base), NULL, 0, NULL);
 
-    list_add_in_index(memoria_con_particiones, primer_elemento, particion_consolidada);
-
-	destruir_particion(una_particion);
-    destruir_particion(particion_siguiente);
+    ubicar_particion(primer_elemento, particion_consolidada);
+    log_info(logger, "... Se consolidan las particiones de base %d y base %d en una particion de tamanio %d", una_particion -> base, particion_siguiente -> base, tamanio_particion_consolidada);
 }
 
 bool existen_particiones_contiguas_vacias(t_list* memoria_cache){
@@ -1938,6 +1954,7 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 		particion_a_liberar = list_replace(memoria_con_particiones, indice, particion_vacia);
 		eliminar_de_message_queue(mensaje, mensaje -> codigo_operacion);
 		log_info(logger, "El mensaje fue eliminado correctamente.");
+		consolidar_particiones_dinamicas();
 		//liberar_particion_dinamica(particion_a_liberar);
 
 		//particiones_liberadas++;
