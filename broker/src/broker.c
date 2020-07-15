@@ -1033,13 +1033,11 @@ void dump_de_memoria(){
 }
 
 void compactar_memoria(){
-	//Esto debería ser un hilo que periódicamente haga la compactación?
-	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
 
-    } else if (string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
+    if (string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
         //compactar_particiones_dinamicas();
     } else {
-        log_error(logger, "??? No se reconoce el algoritmo de memoria.");
+        log_error(logger, "??? No se compacta porque no estamos en particiones.");
     }
 
 }
@@ -1848,31 +1846,35 @@ bool existen_particiones_contiguas_vacias(t_list* memoria_cache){
 void compactar_particiones_dinamicas(){
     t_list* particiones_vacias = list_create();
     t_list* particiones_ocupadas = list_create();
+    uint32_t posicion_lista = 0;
     //uint32_t tamanio_vacio = 0;//obtener_tamanio_vacio(particiones_vacias);
 
 	bool es_particion_vacia(void* particion){
         t_memoria_dinamica* una_particion = particion;
-        return (una_particion -> ocupado) == 0;
+        return !(una_particion -> ocupado);
     }
 
-    bool no_es_particion_vacia(void* particion){
+    bool es_particion_ocupada(void* particion){
         t_memoria_dinamica* una_particion = particion;
-        return (una_particion -> ocupado) != 0;
+        return (una_particion -> ocupado);
     }
 
     particiones_vacias = list_filter(memoria_con_particiones, es_particion_vacia);
-	particiones_ocupadas = list_filter(memoria_con_particiones, no_es_particion_vacia);
+	particiones_ocupadas = list_filter(memoria_con_particiones, es_particion_ocupada);
 
     list_clean(memoria_con_particiones);
 
+    list_add_all(memoria_con_particiones, particiones_ocupadas);
     list_add_all(memoria_con_particiones, particiones_vacias);
-	list_add_all(memoria_con_particiones, particiones_ocupadas);
 
 	void actualizar_base(void* particion){
 		t_memoria_dinamica* una_particion = particion;
-		if(!es_el_primer_elemento(una_particion)){
+		if(posicion_lista){
 			una_particion -> base = obtener_nueva_base(una_particion);
+		} else {
+			una_particion -> base = 0;
 		}
+		posicion_lista++;
 	}
 
 	list_iterate(memoria_con_particiones, actualizar_base);
@@ -1880,8 +1882,8 @@ void compactar_particiones_dinamicas(){
     compactar_memoria_cache(memoria_con_particiones);
     consolidar_particiones_dinamicas();
 
-    list_destroy(particiones_vacias);
-    list_destroy(particiones_ocupadas);
+    /*list_destroy(particiones_vacias);
+    list_destroy(particiones_ocupadas);*/
 
     particiones_liberadas = 0;
 }
@@ -1893,6 +1895,9 @@ bool es_el_primer_elemento(t_memoria_dinamica* una_particion){
 
 uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion){
 	uint32_t nueva_base = 0;
+	t_list* memoria_duplicada = list_create();
+	t_list* particiones_anteriores = list_create();
+	memoria_duplicada = list_duplicate(memoria_con_particiones);
 
 	void* obtener_tamanio(void* alguna_particion){
 		t_memoria_dinamica* part = alguna_particion;
@@ -1902,9 +1907,10 @@ uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion){
 	}
 
 	uint32_t indice_tope = encontrar_indice(una_particion);
-	t_list* particiones_anteriores = list_take(memoria_con_particiones, indice_tope); //--> Revisar que no se pase ni se quede corto
+	particiones_anteriores = list_take(memoria_duplicada, indice_tope); //--> Revisar que no se pase ni se quede corto
 
-	t_list* lista_de_tamanios = list_map(particiones_anteriores, obtener_tamanio);
+	t_list* lista_de_tamanios = list_create();
+	lista_de_tamanios = list_map(particiones_anteriores, obtener_tamanio);
 
 	void sumar_tamanio(void* cantidad){
 		uint32_t* size = cantidad;
@@ -1913,7 +1919,7 @@ uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion){
 
 	list_iterate(lista_de_tamanios, sumar_tamanio);
 
-	nueva_base ++;
+	//nueva_base ++;
 	return nueva_base;
 }
 
@@ -1921,10 +1927,11 @@ void compactar_memoria_cache(t_list* lista_particiones){
 
     void reescribir_memoria(void* particion){
         t_memoria_dinamica* una_particion = particion;
-		guardar_contenido_de_mensaje((una_particion -> base), (una_particion -> contenido),(una_particion -> tamanio));
+        if(una_particion -> ocupado){
+        	guardar_contenido_de_mensaje((una_particion -> base), (una_particion -> contenido),(una_particion -> tamanio));
+        }
     }
-	//--> Revisar si hace falta un semaforo.
-    list_iterate(lista_particiones, reescribir_memoria);
+	list_iterate(lista_particiones, reescribir_memoria);
 }
 
 void eliminar_mensaje(void* mensaje){
