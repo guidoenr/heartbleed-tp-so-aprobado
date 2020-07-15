@@ -124,6 +124,7 @@ sem_t mx_suscrip_appeared;
 sem_t mx_suscrip_new;
 sem_t mx_memoria_cache;
 sem_t mx_copia_memoria;
+sem_t sem_particion_liberada;
 
 uint32_t id_mensaje_univoco;
 
@@ -182,7 +183,6 @@ void enviar_mensajes_cacheados_en_buddy_system(op_code tipo_mensaje, uint32_t so
 
 //Memoria
 void 	 	  		eliminar_particion_de_memoria		 (void);
-void 	 	   		compactar_memoria 			  		 (void);
 void 	 	   		guardar_en_memoria			  		 (t_mensaje*,void*);
 uint32_t 	   		obtenerPotenciaDe2					 (uint32_t);
 struct t_node* 		crear_nodo							 (uint32_t);
@@ -198,10 +198,10 @@ uint32_t 	   		encontrar_primer_ajuste				 (uint32_t);
 uint32_t 	   		encontrar_mejor_ajuste			   	 (uint32_t);
 void 		   		destruir_particion					 (void*);
 uint32_t 	   		encontrar_indice				 	 (t_memoria_dinamica*);
-void 		   		consolidar_particiones_dinamicas	 (void);
+void 		   		consolidar_particiones_dinamicas	 (t_list*);
 bool 		   		existen_particiones_contiguas_vacias (t_list* memoria_cache);
 void 		   		compactar_memoria_cache				 (t_list*);
-void 		   		compactar_particiones_dinamicas		 (void);
+void 		   		compactar_particiones_dinamicas		 (t_list*);
 t_memoria_dinamica* seleccionar_victima_de_reemplazo_fifo(void);
 t_memoria_dinamica* seleccionar_victima_de_reemplazo_lru (void);
 void guardar_particion(t_mensaje*, void*);
