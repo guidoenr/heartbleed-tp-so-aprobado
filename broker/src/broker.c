@@ -305,26 +305,26 @@ uint32_t obtener_tamanio_contenido_mensaje(void* mensaje, uint32_t codigo){
 	switch(codigo){
 	case GET_POKEMON:
 		get = mensaje;
-		tamanio = strlen(get -> pokemon);
+		tamanio = strlen(get -> pokemon) + sizeof(uint32_t);
 		break;
 	case CATCH_POKEMON:
 		catch = mensaje;
-		tamanio = strlen(catch -> pokemon) + (2*sizeof(uint32_t));
+		tamanio = strlen(catch -> pokemon) + (3*sizeof(uint32_t));
 		break;
 	case LOCALIZED_POKEMON:
 		localized = mensaje;
-		tamanio = strlen(localized -> pokemon) + (list_size(localized -> posiciones) * sizeof(uint32_t));
+		tamanio = strlen(localized -> pokemon) + (list_size(localized -> posiciones) * sizeof(uint32_t))+ sizeof(uint32_t);
 		break;
 	case CAUGHT_POKEMON:
-		tamanio = sizeof(uint32_t);
+		tamanio = sizeof(uint32_t)*2;
 		break;
 	case APPEARED_POKEMON:
 		appeared = mensaje;
-		tamanio = strlen(appeared -> pokemon) + (2*sizeof(uint32_t));
+		tamanio = strlen(appeared -> pokemon) + (3*sizeof(uint32_t));
 		break;
 	case NEW_POKEMON:
 		new = mensaje;
-		tamanio = strlen(new -> pokemon) + (3*sizeof(uint32_t));
+		tamanio = strlen(new -> pokemon) + (4*sizeof(uint32_t));
 		break;
 	default:
 		log_error(logger, "...No se puede obtener el tamaño del contenido del mensaje.");
@@ -1157,15 +1157,16 @@ void* armar_contenido_de_mensaje(void* mensaje, uint32_t codigo){
 
 
 void* armar_contenido_get(t_get_pokemon* mensaje){
-    uint32_t tamanio = strlen(mensaje -> pokemon) + sizeof(uint32_t);
+    uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
+    uint32_t tamanio = tamanio_pokemon + sizeof(uint32_t);
     void* contenido = malloc(tamanio);
     uint32_t offset = 0;
 
     op_code codigo = GET_POKEMON;
     memcpy(contenido + offset, &codigo, sizeof(uint32_t));
     offset += sizeof(uint32_t);
-    memcpy(contenido + offset, (mensaje -> pokemon), tamanio);
-    offset += tamanio;
+    memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
+    offset += tamanio_pokemon;
 
     return contenido;
 }
@@ -1178,7 +1179,8 @@ void* armar_contenido_catch(t_catch_pokemon* mensaje){
     uint32_t offset = 0;
 
     op_code codigo = CATCH_POKEMON;
-    //memcpy(conteni)
+    memcpy(contenido + offset, &codigo, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
 
     memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
     offset += tamanio_pokemon;
@@ -1196,9 +1198,13 @@ void* armar_contenido_catch(t_catch_pokemon* mensaje){
 void* armar_contenido_localized(t_localized_pokemon* mensaje){
     uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
     uint32_t tamanio_lista = list_size(mensaje -> posiciones) * sizeof(uint32_t);
-    uint32_t tamanio = tamanio_pokemon + tamanio_lista;
+    uint32_t tamanio = tamanio_pokemon + tamanio_lista + sizeof(uint32_t);
 	void* contenido = malloc(tamanio);
 	uint32_t offset = 0;
+
+	op_code codigo = LOCALIZED_POKEMON;
+	memcpy(contenido + offset, &codigo, sizeof(uint32_t));
+	offset += sizeof(uint32_t);
 
 	memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
 	offset += tamanio_pokemon;
@@ -1216,18 +1222,25 @@ void* armar_contenido_localized(t_localized_pokemon* mensaje){
 
 
 void* armar_contenido_caught(t_caught_pokemon* mensaje){
-    void* contenido = malloc(sizeof(uint32_t));
-
-    memcpy(contenido, &(mensaje -> resultado), sizeof(uint32_t));
-
+    void* contenido = malloc((sizeof(uint32_t)*2));
+    uint32_t offset = 0;
+    op_code codigo = CAUGHT_POKEMON;
+    memcpy(contenido + offset, &codigo, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+    memcpy(contenido + offset, &(mensaje -> resultado), sizeof(uint32_t));
+    offset += sizeof(uint32_t);
     return contenido;
 }
 
 void* armar_contenido_appeared(t_appeared_pokemon* mensaje){
     uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
-    uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 2);
+    uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 3);
     void* contenido = malloc(tamanio);
     uint32_t offset = 0;
+
+    op_code codigo = APPEARED_POKEMON;
+    memcpy(contenido + offset, &codigo, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
 
     memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
     offset += tamanio_pokemon;
@@ -1244,9 +1257,13 @@ void* armar_contenido_appeared(t_appeared_pokemon* mensaje){
 
 void* armar_contenido_new(t_new_pokemon* mensaje){
     uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
-    uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 3);
+    uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 4);
     void* contenido = malloc(tamanio);
     uint32_t offset = 0;
+
+    op_code codigo = NEW_POKEMON;
+    memcpy(contenido + offset, &codigo, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
 
     memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
     offset += tamanio_pokemon;
@@ -1491,13 +1508,18 @@ void iniciar_memoria_particiones(t_list* memoria_de_particiones){
 
 void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
     uint32_t posicion_a_ubicar = 0;
-    t_memoria_dinamica* particion_prueba = un_mensaje -> payload;
-	t_memoria_dinamica* particion_a_ubicar;
+    t_memoria_dinamica* particion_a_ubicar;
 	t_memoria_dinamica* nueva_particion;
 
+	uint32_t tamanio_a_buscar = 0;
+	if((un_mensaje -> tamanio_mensaje) < (config_broker -> size_min_memoria)){
+		tamanio_a_buscar = (config_broker -> size_min_memoria);
+	} else {
+		tamanio_a_buscar = un_mensaje -> tamanio_mensaje;
+	}
 
     if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre, "FF")){
-        posicion_a_ubicar = encontrar_primer_ajuste(particion_prueba -> tamanio_part);
+        posicion_a_ubicar = encontrar_primer_ajuste(tamanio_a_buscar);
 
         if(posicion_a_ubicar == -1){
             log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
@@ -1515,7 +1537,7 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
     }
 
     if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"BF")){
-        posicion_a_ubicar = encontrar_mejor_ajuste(particion_prueba -> tamanio_part);
+        posicion_a_ubicar = encontrar_mejor_ajuste(tamanio_a_buscar);
 
         if(posicion_a_ubicar == -1){
             log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
@@ -1538,9 +1560,9 @@ void guardar_contenido_de_mensaje(uint32_t offset, void* contenido, uint32_t tam
 		sem_wait(&mx_memoria_cache);
 		memcpy(memoria + offset, contenido, tamanio);
 		sem_post(&mx_memoria_cache);
-		log_info(logger, "Se guardó un mensaje en la particion de tamaño %d que comienza en la posicion %d.", tamanio, memoria + offset);
+		log_info(logger, "Se guardó un mensaje en la particion de tamaño %d que comienza en la posicion %d.", tamanio, offset);
 	} else {
-		log_info(logger, "Se libera una partición de tamaño %d que comienza en la posicion %d.", tamanio, memoria + offset);
+		log_info(logger, "Se libera una partición de tamaño %d que comienza en la posicion %d.", tamanio, offset);
 	}
 	//free(contenido);
 }
@@ -1583,7 +1605,7 @@ void ubicar_particion(uint32_t posicion_a_ubicar, t_memoria_dinamica* particion)
 
         uint32_t total = particion_reemplazada -> tamanio_part;
         if(particion -> tamanio_part < total) {
-        uint32_t nueva_base = (particion_reemplazada -> base) + particion -> tamanio_part + 1;
+        uint32_t nueva_base = (particion_reemplazada -> base) + particion -> tamanio_part;
         t_memoria_dinamica* nueva_particion_vacia = armar_particion(total - particion ->tamanio_part, nueva_base, NULL, 0, NULL);
         list_add_in_index(memoria_con_particiones, posicion_a_ubicar + 1, nueva_particion_vacia);
 
