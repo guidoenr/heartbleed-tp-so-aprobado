@@ -105,6 +105,7 @@ uint32_t numero_particion = 0;
 pthread_t hilo_algoritmo_memoria;
 pthread_t hilo_mensaje;
 pthread_t hilo_envio_mensajes;
+pthread_t hilo_signal;
 
 //---semaforos---//
 sem_t semaforo;
@@ -123,6 +124,7 @@ sem_t mx_suscrip_appeared;
 sem_t mx_suscrip_new;
 sem_t mx_memoria_cache;
 sem_t mx_copia_memoria;
+sem_t sem_particion_liberada;
 
 uint32_t id_mensaje_univoco;
 
@@ -181,7 +183,6 @@ void enviar_mensajes_cacheados_en_buddy_system(op_code tipo_mensaje, uint32_t so
 
 //Memoria
 void 	 	  		eliminar_particion_de_memoria		 (void);
-void 	 	   		compactar_memoria 			  		 (void);
 void 	 	   		guardar_en_memoria			  		 (t_mensaje*,void*);
 uint32_t 	   		obtenerPotenciaDe2					 (uint32_t);
 struct t_node* 		crear_nodo							 (uint32_t);
@@ -197,10 +198,10 @@ uint32_t 	   		encontrar_primer_ajuste				 (uint32_t);
 uint32_t 	   		encontrar_mejor_ajuste			   	 (uint32_t);
 void 		   		destruir_particion					 (void*);
 uint32_t 	   		encontrar_indice				 	 (t_memoria_dinamica*);
-void 		   		consolidar_particiones_dinamicas	 (void);
+void 		   		consolidar_particiones_dinamicas	 (t_list*);
 bool 		   		existen_particiones_contiguas_vacias (t_list* memoria_cache);
 void 		   		compactar_memoria_cache				 (t_list*);
-void 		   		compactar_particiones_dinamicas		 (void);
+void 		   		compactar_particiones_dinamicas		 (t_list*);
 t_memoria_dinamica* seleccionar_victima_de_reemplazo_fifo(void);
 t_memoria_dinamica* seleccionar_victima_de_reemplazo_lru (void);
 void guardar_particion(t_mensaje*, void*);
@@ -239,9 +240,11 @@ uint32_t obtener_id_buddy(t_memoria_buddy*);
 t_mensaje* encontrar_mensaje_buddy(uint32_t, op_code);
 t_memoria_buddy* seleccionar_particion_victima_de_reemplazo_buddy();
 void* main_hilo_mensaje(void* );
+void* main_hilo_signal(void);
 uint32_t obtener_nueva_base(t_memoria_dinamica*);
 bool es_el_primer_elemento(t_memoria_dinamica*);
 t_memoria_buddy* armar_buddy(uint32_t , uint32_t , t_mensaje* , uint32_t , void* );
 bool puede_guardarse_mensaje(t_mensaje*);
 uint32_t chequear_memoria();
+void crear_hilo_signal(void);
 
