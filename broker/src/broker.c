@@ -1542,13 +1542,14 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
         if(posicion_a_ubicar == -1){
             log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
             reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
+        } else {
+        	particion_a_ubicar = list_get(memoria_con_particiones, posicion_a_ubicar);
+
+			nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1, contenido_mensaje);
+			ubicar_particion(posicion_a_ubicar, nueva_particion);
+			guardar_contenido_de_mensaje(nueva_particion -> base, contenido_mensaje, nueva_particion -> tamanio);
         }
 
-		particion_a_ubicar = list_get(memoria_con_particiones, posicion_a_ubicar);
-
-		nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1, contenido_mensaje);
-		ubicar_particion(posicion_a_ubicar, nueva_particion);
-		guardar_contenido_de_mensaje(nueva_particion -> base, contenido_mensaje, nueva_particion -> tamanio);
 
     }
 
