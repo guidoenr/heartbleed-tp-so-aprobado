@@ -4,7 +4,6 @@ int main(void) {
 	iniciar_programa();
 
 
-	signal(SIGUSR1, sig_handler);
 
 	//Plantear un semaforo?
 	if(!list_is_empty(cola_get)){
@@ -41,7 +40,7 @@ void iniciar_programa(){
 	crear_colas_de_mensajes();
 	crear_listas_de_suscriptores();
 	iniciar_servidor(config_broker -> ip_broker, config_broker -> puerto);
-
+	crear_hilo_signal();
 	log_info(logger, "...tam memoria: d%", config_broker->size_memoria);
 	log_info(logger,"... algoritmo: s%", config_broker -> algoritmo_memoria);
 
@@ -50,6 +49,20 @@ void iniciar_programa(){
 
 	log_info(logger, "IP: %s", config_broker -> ip_broker);
 
+}
+
+void* main_hilo_signal(){
+
+	signal(SIGUSR1, sig_handler);
+
+	return NULL;
+}
+
+void crear_hilo_signal(){
+	uint32_t err = pthread_create(&hilo_signal, NULL, main_hilo_signal, NULL);
+	if(err != 0) {
+		log_error(logger, "El hilo no pudo ser creado!!");
+	}
 }
 
 void reservar_memoria(){
@@ -257,7 +270,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 }
 
 bool puede_guardarse_mensaje(t_mensaje* un_mensaje){
-	uint32_t no_se_repite_correlativo = 0;
+	uint32_t no_se_repite_correlativo = 1;
 
 	bool tiene_mismo_id_correlativo(void* mensaje){
 		t_mensaje* msg = mensaje;
@@ -291,7 +304,7 @@ bool puede_guardarse_mensaje(t_mensaje* un_mensaje){
 			break;
 	}
 
-	return !(un_mensaje -> id_correlativo) || no_se_repite_correlativo;
+	return no_se_repite_correlativo;
 }
 
 uint32_t obtener_tamanio_contenido_mensaje(void* mensaje, uint32_t codigo){
