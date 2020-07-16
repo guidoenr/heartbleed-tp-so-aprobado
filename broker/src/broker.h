@@ -241,7 +241,7 @@ t_mensaje* encontrar_mensaje_buddy(uint32_t, op_code);
 t_memoria_buddy* seleccionar_particion_victima_de_reemplazo_buddy();
 void* main_hilo_mensaje(void* );
 void* main_hilo_signal(void);
-uint32_t obtener_nueva_base(t_memoria_dinamica*);
+uint32_t obtener_nueva_base(t_memoria_dinamica*, uint32_t);
 bool es_el_primer_elemento(t_memoria_dinamica*);
 t_memoria_buddy* armar_buddy(uint32_t , uint32_t , t_mensaje* , uint32_t , void* );
 bool puede_guardarse_mensaje(t_mensaje*);

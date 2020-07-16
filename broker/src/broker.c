@@ -1293,15 +1293,14 @@ void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje
 
     t_memoria_dinamica* particion_vacia = armar_particion(particion_a_reemplazar -> tamanio, particion_a_reemplazar -> base, NULL, 0, contenido_mensaje);
 
-
     uint32_t indice = encontrar_indice(particion_a_reemplazar);
     t_mensaje* mensaje_a_eliminar = encontrar_mensaje(particion_a_reemplazar -> base, particion_a_reemplazar -> codigo_operacion);
     particion_a_reemplazar = list_replace(memoria_con_particiones, indice, particion_vacia);
 
     eliminar_mensaje(mensaje_a_eliminar);
-
     //free(particion_a_reemplazar);
     log_info(logger, "... Se libera una partición y se intenta ubicar nuevamente el mensaje.");
+
 
     guardar_particion(mensaje, contenido_mensaje);
 }
@@ -1850,52 +1849,41 @@ void compactar_particiones_dinamicas(t_list* memoria){
     t_list* particiones_vacias = list_create();
     t_list* particiones_ocupadas = list_create();
     t_list* memoria_duplicada = list_create();
+
     uint32_t posicion_lista = 0;
 
 
-	if(particiones_liberadas == config_broker -> frecuencia_compactacion){
-		bool es_particion_vacia(void* particion){
-			t_memoria_dinamica* una_particion = particion;
-			return !(una_particion -> ocupado);
-		}
-
-		bool es_particion_ocupada(void* particion){
-			t_memoria_dinamica* una_particion = particion;
-			return (una_particion -> ocupado);
-		}
-
-		particiones_vacias = list_filter(memoria, es_particion_vacia);
-		particiones_ocupadas = list_filter(memoria, es_particion_ocupada);
-
-
-		list_add_all(memoria_duplicada, particiones_ocupadas);
-		list_add_all(memoria_duplicada, particiones_vacias);
-
-		void actualizar_base(void* particion){
-			t_memoria_dinamica* una_particion = particion;
-			if(posicion_lista){
-				una_particion -> base = obtener_nueva_base(una_particion);
-			} else {
-				una_particion -> base = 0;
-			}
-			posicion_lista++;
-		}
-
-		list_iterate(memoria_duplicada, actualizar_base);
-		list_clean(memoria);
-		list_add_all(memoria, memoria_duplicada);
-
-		compactar_memoria_cache(memoria);
-		consolidar_particiones_dinamicas(memoria);
-		/*list_destroy(particiones_vacias);
-		list_destroy(particiones_ocupadas);*/
-
-		particiones_liberadas = 0;
-
-	} else if (particiones_liberadas > config_broker -> frecuencia_compactacion) {
-		log_error(logger, "...Debería haberse compactado la memoria :$.");
-		exit(-90);
+	bool es_particion_vacia(void* particion){
+		t_memoria_dinamica* una_particion = particion;
+		return !(una_particion -> ocupado);
 	}
+
+	bool es_particion_ocupada(void* particion){
+		t_memoria_dinamica* una_particion = particion;
+		return (una_particion -> ocupado);
+	}
+
+	particiones_vacias = list_filter(memoria, es_particion_vacia);
+	particiones_ocupadas = list_filter(memoria, es_particion_ocupada);
+
+	list_clean(memoria);
+	list_add_all(memoria, particiones_ocupadas);
+	list_add_all(memoria, particiones_vacias);
+
+	void actualizar_base(void* particion){
+		t_memoria_dinamica* una_particion = particion;
+		una_particion -> base = obtener_nueva_base(una_particion, posicion_lista);
+		posicion_lista++;
+	}
+
+	list_iterate(memoria, actualizar_base);
+
+	compactar_memoria_cache(memoria);
+	consolidar_particiones_dinamicas(memoria_con_particiones);
+	/*list_destroy(particiones_vacias);
+	list_destroy(particiones_ocupadas);*/
+
+	particiones_liberadas = 0;
 
 }
 
@@ -1903,31 +1891,21 @@ bool es_el_primer_elemento(t_memoria_dinamica* una_particion){
 	return (una_particion -> base == 0);
 }
 
-uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion){
+uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion, uint32_t indice_tope){
 	uint32_t nueva_base = 0;
 	t_list* memoria_duplicada = list_create();
-	t_list* particiones_anteriores = list_create();
 	memoria_duplicada = list_duplicate(memoria_con_particiones);
 	t_memoria_dinamica* particion_buscada;
 
-	void* obtener_tamanio(void* alguna_particion){
-		t_memoria_dinamica* part = alguna_particion;
-		uint32_t* tamanio = malloc(sizeof(uint32_t));
-		(*tamanio) = part -> tamanio_part;
-		return tamanio;
-	}
-
-	uint32_t indice_tope = encontrar_indice(una_particion) - 1;
-	if(indice_tope >= 0){
-		particion_buscada = list_get(memoria_duplicada, indice_tope);
+	if(indice_tope > 0){
+		particion_buscada = list_get(memoria_duplicada, (indice_tope-1));
+		if(particion_buscada!=NULL){
+			nueva_base = (particion_buscada -> base) + (particion_buscada -> tamanio);
+		} else {
+			log_error(logger, "No se puede actualizar la base para compactar :/");
+		}
 	} else {
 		nueva_base = 0;
-	}
-
-	if(particion_buscada!=NULL){
-		nueva_base = (particion_buscada -> base) + (particion_buscada -> tamanio);
-	} else {
-		log_error(logger, "No se puede actualizar la base para compactar :/");
 	}
 
 	//nueva_base ++;
@@ -1973,9 +1951,14 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 		eliminar_de_message_queue(mensaje, mensaje -> codigo_operacion);
 		log_info(logger, "El mensaje fue eliminado correctamente.");
 
-		compactar_particiones_dinamicas(memoria_con_particiones);
+
+		if(config_broker -> frecuencia_compactacion == 0 || (particiones_liberadas == (config_broker -> frecuencia_compactacion))){
+			compactar_particiones_dinamicas(memoria_con_particiones);
+		}
+
 		consolidar_particiones_dinamicas(memoria_con_particiones);
-		//liberar_particion_dinamica(particion_a_liberar);
+
+
 		sem_wait(&sem_particion_liberada);
 		particiones_liberadas++;
 		sem_post(&sem_particion_liberada);
