@@ -92,9 +92,11 @@ void leer_config(void) {
 	config -> retardo_cpu = config_get_int_value(config_team, "RETARDO_CICLO_CPU");
 	config -> algoritmo_planificacion = strdup(config_get_string_value(config_team, "ALGORITMO_PLANIFICACION"));
 	config -> ip_broker = strdup(config_get_string_value(config_team, "IP_BROKER"));
+	config -> puerto_broker = strdup(config_get_string_value(config_team, "PUERTO_BROKER"));
+	config -> ip_gameboy = strdup(config_get_string_value(config_team, "IP_GAMEBOY"));
+	config -> puerto_gameboy = strdup(config_get_string_value(config_team, "PUERTO_GAMEBOY"));
 	config -> quantum = config_get_int_value(config_team, "QUANTUM");
 	config -> alpha = atof(config_get_string_value(config_team, "ALPHA"));
-	config -> puerto_broker = strdup(config_get_string_value(config_team, "PUERTO_BROKER"));
 	config -> estimacion_inicial = config_get_int_value(config_team, "ESTIMACION_INICIAL");
 	config -> log_file = strdup(config_get_string_value(config_team, "LOG_FILE"));
 	config -> id_proceso = config_get_int_value(config_team, "ID_PROCESO");
@@ -290,7 +292,7 @@ void iniciar_conexion_game_boy() {
 
 void* conexion_con_game_boy() {
 
-	iniciar_servidor("127.0.0.2", "5662"); // puerto robado de la config de gameboy
+	iniciar_servidor(config -> ip_gameboy, config -> puerto_gameboy); // puerto robado de la config de gameboy
 
 	return NULL;
 }
@@ -1620,6 +1622,8 @@ void liberar_config() {
 	free(config -> log_file);
 	free(config -> ip_broker);
 	free(config -> puerto_broker);
+	free(config -> ip_gameboy);
+	free(config -> puerto_gameboy);
 	free(config);
 }
 
