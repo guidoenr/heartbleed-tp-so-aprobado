@@ -11,29 +11,25 @@
 //
 
 int main(void) {
+
 	config_gc = leer_config();
 	iniciar_logger("gameCard.log","gamercard");
-	iniciar_servidor("127.0.0.3", "5663");
 	punto_montaje = config_gc->punto_montaje_tallgrass;
 
 	int socket_br;
-	//conectarse_a_br(socket_br);
+
 	iniciar_tall_grass();
 
-	//iniciar_conexion_game_boy();
+	conectarse_a_br(socket_br);
 
-/*
-	pruebas_new_pokemon(socket_br);
-	pruebas_catch_pokemon(socket_br);
-	pruebas_get_pokemon(socket_br);
-	sem_init(&mx_bitmap,0,1);
-	pruebas_get_pokemon(socket_br);
-*/
+	iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
+
 
 
 	terminar_programa(socket_br, config_gc);
 
 }
+
 
 void pruebas_new_pokemon(int socket){
 
@@ -109,6 +105,11 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 	}
 }
 
+void iniciar_servidor_gamecard(char* ip, char* puerto){
+
+	log_info(logger,"Iniciando servidor game_card");
+	iniciar_servidor(ip, puerto);
+}
 
 void informar_al_broker(uint32_t id_mensaje, op_code codigo){
 
@@ -138,7 +139,9 @@ void conexion_inicial_broker() {
 }
 
 void* conexion_con_game_boy() {
+	log_info(logger,"Iniciando conexion con gameboy");
 	iniciar_servidor("127.0.0.2", "5662");
+	log_info(logger,"Conexion con gameboy establecida exitosamente");
 	return NULL;
 }
 
@@ -161,20 +164,9 @@ void conectarse_a_br(int socket){
 		conectarse_a_br(socket); //terrible negrada, pero anda o no nada?
 	} else {
 		log_info(logger,"conexion exitosa con broker ");
+		suscribirme_a_colas();
 	}
-}
 
-void conectarse_a_gb(int socket){
-	socket = crear_conexion(config_gc->ip_gameBoy, config_gc->puerto_gameBoy);
-	int time = config_gc->tiempo_reintento_conexion;
-	if (socket == -1 ){
-		log_info(logger,"imposible conectar con gameboy, reintento en: %d",time);
-		sleep(time);
-		socket=0;
-		conectarse_a_gb(socket); //terrible negrada, pero anda o no nada?
-	} else {
-		log_info(logger,"conexion exitosa con gameboy ");
-	}
 }
 
 void suscribirme_a_colas() {
@@ -184,21 +176,20 @@ void suscribirme_a_colas() {
 }
 
 void suscribirse_a(op_code cola) {
+
 	uint32_t socket 			      = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
 	t_suscripcion* suscripcion 		  = malloc(sizeof(t_suscripcion));
-	suscripcion -> id_proceso 		  = malloc(sizeof(char*));
-	uint32_t tamanio_suscripcion	  = sizeof(t_suscripcion);
+	uint32_t tamanio_suscripcion	  = sizeof(uint32_t) * 4;
 
 	suscripcion -> cola_a_suscribir   = cola;
-	suscripcion -> id_proceso		  = "1"; //ESTE VALOR SE SACA DE CONFIG
+	suscripcion -> id_proceso         = 1; //ESTE VALOR SE SACA DE CONFIG
 	suscripcion -> socket 		      = socket;
 	suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
-
-	enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
-
-	free(suscripcion -> id_proceso);
-	free(suscripcion);
-
+/*TODO
+	enviar_mensaje(SUBSCRIPTION, suscripcion_new, socket, tamanio_suscripcion);
+	enviar_mensaje(SUBSCRIPTION, suscripcion_get, socket, tamanio_suscripcion);
+	enviar_mensaje(SUBSCRIPTION, suscripcion_localized, socket, tamanio_suscripcion);
+*/
 }
 
 t_config_game_card* leer_config() {
@@ -214,7 +205,7 @@ t_config_game_card* leer_config() {
 	config_game_card -> puerto_broker = strdup(config_get_string_value(config, "PUERTO_BROKER"));
 	config_game_card -> ip_gameBoy= strdup(config_get_string_value(config, "IP_GAMEBOY"));
 	config_game_card -> puerto_gameBoy= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
-	config_game_card -> ip_gameCard= strdup(config_get_string_value(config, "IP_GAMEBOY"));
+	config_game_card -> ip_gameCard= strdup(config_get_string_value(config, "IP_GAMECARD"));
 	config_game_card -> puerto_gameCard= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
 	config_game_card -> tiempo_retardo_operacion = config_get_int_value(config,"TIEMPO_RETARDO_OPERACION");
 	config_game_card -> id_proceso = config_get_int_value(config,"ID_PROCESO");
@@ -254,7 +245,7 @@ void iniciar_tall_grass(){
 		crear_bitmap(punto_montaje);
 		crear_blocks(punto_montaje);
 
-		log_info(logger,"TALL_GRASS levantado exitosamente");
+		log_info(logger,"Filesystem TALLGRASS iniciado correctamente, actualmente vacio");
 
 	} else {
 		log_info(logger, "Tallgrass ya existente en %s",punto_montaje);
@@ -276,6 +267,8 @@ void crear_directorios(char* path){
 	free(blocks);
 	free(metadata);
 	free(files);
+
+	log_info(logger,"Se crearon los directorios: Blocks, Metadata, Files");
 }
 
 void crear_blocks(char* path){
@@ -320,13 +313,12 @@ void crear_metadata_fs(char* path){
 
 	config_set_value(metadata_config,"MAGIC_NUMBER","TALL_GRASS");
 	config_set_value(metadata_config,"BLOCKS_SIZE","64");
-	config_set_value(metadata_config,"BLOCKS","5192");
+	config_set_value(metadata_config,"BLOCKS","1024");
 
 	int result = config_save(metadata_config);
 
 	if (result != 1){
-		log_info(logger,"Ojo capo, algo hiciste mal y EFICIENTE SEGURO QUE NO ES....");
-		log_info(logger,"NA posta, hay algo mal en el config_create");
+		log_error(logger,"El resultado al usar config_save genero un -1");
 	}
 
 	config_destroy(metadata_config);
@@ -357,8 +349,7 @@ void crear_bitmap(char* path){
 
 	sem_init(&mx_bitmap,0,1);
 
-	log_info(logger,"Inicializo el semaforo para el bitarray");
-
+	log_info(logger,"sem_mx para usar el bitmap iniciado");
 
 }
 
@@ -437,7 +428,7 @@ char* buscar_block_libre(){
 			break;
 
 		} else {
-				log_info(logger,"El block %d esta ocupado kpo, sigo buscando",i);
+				log_info(logger,"El block %d esta ocupado, sigo buscando",i);
 		}
 	}
 
@@ -628,7 +619,7 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 		free(value);
 		free(temporary_file);
 
-		}else{ // NO EXISTIA EL POKEMON
+		}else{
 
 		log_info(logger,"No existia el pokemon %s",new_pokemon->pokemon);
 
@@ -925,12 +916,10 @@ void actualizar_pokemon(char* temporary_path,char* path_metafile,char* key,char*
 	int length_nuevo = strlen(string_itoa(cantidad_nueva));
 
 	if (length_nuevo > length_viejo){
-		nuevo_size = length_nuevo;
-	}else {
-		nuevo_size = 0;
+		nuevo_size = length_nuevo - length_viejo;
+		actualizar_size_new_pokemon(path_metafile,nuevo_size);
 	}
 
-	actualizar_size_new_pokemon(path_metafile,nuevo_size);
 
 }
 
@@ -1034,7 +1023,7 @@ int calcular_size_inicial(t_new_pokemon* newPoke){
 	char* value = get_value_from_cantidad(newPoke->cantidad);
 
 
-	size = strlen(key) + strlen(value) + 1;
+	size = strlen(key) + strlen(value) + 2;
 
 	free(key);
 	free(value);
@@ -1119,7 +1108,7 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,int socket_br){
 
 		if (existe_la_posicion(key, temporaryfile)){
 
-			remover_posicion(temporaryfile,key);
+			remover_posicion(temporaryfile,key,meta_path);
 			re_grabar_temporary_en_blocks(temporaryfile,meta_path);
 			log_info(logger,"Se retiro una cantidad en la posicion %s",key);
 
@@ -1152,19 +1141,37 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,int socket_br){
 
 }
 
-void remover_posicion(char* temporarypath,char* key){
-	int cantidad;
-	int nueva_cantidad;
+void remover_posicion(char* temporarypath,char* key,char* metapath){
+
+	int cantidad_vieja;
+	int cantidad_nueva;
+	int nuevo_len;
+	int length_cantidad_nueva;
+	int length_cantidad_vieja;
+
 	t_config* temporaryconfig = config_create(temporarypath);
 
-	cantidad = config_get_int_value(temporaryconfig,key);
+	cantidad_vieja = config_get_int_value(temporaryconfig,key);
 
-	if (cantidad == 1){
+	if (cantidad_vieja == 1){
 
 		config_remove_key(temporaryconfig,key);
+		nuevo_len = strlen(posicion_into_string(key, string_itoa(cantidad_vieja)))+1;
+		actualizar_size_new_pokemon(metapath,(-nuevo_len));
+
 	}else {
-		nueva_cantidad = cantidad - 1;
-		config_set_value(temporaryconfig,key,string_itoa(nueva_cantidad));
+
+		cantidad_nueva = cantidad_vieja - 1;
+		config_set_value(temporaryconfig,key,string_itoa(cantidad_nueva));
+		length_cantidad_nueva = strlen(string_itoa(cantidad_nueva));
+	}
+
+
+	length_cantidad_vieja = strlen(string_itoa(cantidad_vieja));
+
+	if (length_cantidad_nueva < length_cantidad_vieja){
+		nuevo_len = 1;
+		actualizar_size_new_pokemon(metapath,(-nuevo_len));
 	}
 
 	config_save(temporaryconfig);

@@ -826,10 +826,10 @@ t_ack* deserealizar_ack(void* stream, uint32_t size_mensaje){
 }
 
 void* serializar_suscripcion(void* mensaje_suscripcion, uint32_t size_mensaje, uint32_t* size_serializado){
-    t_suscripcion* mensaje_a_enviar = malloc(size_mensaje);
+    t_suscripcion* mensaje_a_enviar = malloc(sizeof(t_suscripcion));
     mensaje_a_enviar                = mensaje_suscripcion;
 
-    uint32_t malloc_size = (*size_serializado);
+    uint32_t malloc_size = (*size_serializado) + sizeof(uint32_t)*2;
 
     void* stream = malloc(malloc_size);
 	uint32_t offset = 0;

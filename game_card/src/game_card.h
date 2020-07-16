@@ -84,8 +84,7 @@ bool es_directorio(char* path);
 int size_char_doble(char** array);
 int la_posicion_ya_existe(t_new_pokemon* newpoke,char* meta_path, char* key_posicion);
 t_list* chardoble_to_tlist(char** chardoble);
-
-
+void remover_posicion(char* a,char* key,char* meta_path);
 /* CATCH POKEMON */
 t_caught_pokemon* armar_caught_pokemon(t_catch_pokemon* catch_pokemon,uint32_t resultado);
 /* FS */

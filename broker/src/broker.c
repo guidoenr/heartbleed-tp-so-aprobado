@@ -4,11 +4,17 @@ int main(void) {
 	iniciar_programa();
 
 
+//
+//	t_get_pokemon* guido = malloc(sizeof(t_get_pokemon));
+//	guido->id_mensaje = 2;
+//	guido->pokemon= "Guido";
+//
+//	list_add(cola_get,guido);
 
-	//Plantear un semaforo?
-	if(!list_is_empty(cola_get)){
-		enviar_mensajes(cola_get, lista_suscriptores_get);
-	}
+//	if(!list_is_empty(cola_get)){
+//		enviar_mensajes(cola_get, lista_suscriptores_get);
+//	}
+
 	/*enviar_mensajes(cola_catch, lista_suscriptores_catch);
 	enviar_mensajes(cola_localized, lista_suscriptores_localized);
 	enviar_mensajes(cola_caught, lista_suscriptores_caught);
@@ -51,7 +57,7 @@ void iniciar_programa(){
 
 }
 
-void* main_hilo_signal(){
+void* main_hilo_signal(void* variable){
 
 	signal(SIGUSR1, sig_handler);
 
@@ -366,6 +372,8 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				sem_wait(&mx_cola_get);
 				list_add(cola_get, mensaje);
 				sem_post(&mx_cola_get);
+				sleep(3);
+				enviar_mensajes(cola_get, lista_suscriptores_get);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes get.");
 				break;
 			case CATCH_POKEMON:
@@ -373,6 +381,8 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				sem_wait(&mx_cola_catch);
 				list_add(cola_catch, mensaje);
 				sem_post(&mx_cola_catch);
+				sleep(3);
+				enviar_mensajes(cola_catch, lista_suscriptores_catch);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes catch.");
 				break;
 			case LOCALIZED_POKEMON:
@@ -380,6 +390,8 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				sem_wait(&mx_cola_localized);
 				list_add(cola_localized, mensaje);
 				sem_post(&mx_cola_localized);
+				sleep(3);
+				enviar_mensajes(cola_localized, lista_suscriptores_localized);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes localized.");
 				break;
 			case CAUGHT_POKEMON:
@@ -387,6 +399,7 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				sem_wait(&mx_cola_caught);
 				list_add(cola_caught, mensaje);
 				sem_post(&mx_cola_caught);
+				enviar_mensajes(cola_caught, lista_suscriptores_caught);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes caught.");
 				break;
 			case APPEARED_POKEMON:
@@ -394,6 +407,7 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				sem_wait(&mx_cola_appeared);
 				list_add(cola_appeared, mensaje);
 				sem_post(&mx_cola_appeared);
+				enviar_mensajes(cola_appeared, lista_suscriptores_appeared);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes appeared.");
 				break;
 			case NEW_POKEMON:
@@ -401,6 +415,7 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				sem_wait(&mx_cola_new);
 				list_add(cola_new, mensaje);
 				sem_post(&mx_cola_new);
+				enviar_mensajes(cola_new, lista_suscriptores_new);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes new.");
 				break;
 			default:
@@ -488,11 +503,9 @@ void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion, op
 
 }
 
-//REVISAR FUERTE
 void destruir_suscripcion(void* suscripcion) {
 	free(suscripcion);
 }
-
 
 //REVISAR EL PARAMETRO QUE RECIBE
 void informar_mensajes_previos(t_suscripcion* una_suscripcion, op_code cola_a_suscribir){
@@ -794,14 +807,6 @@ void establecer_tiempo_de_carga(t_mensaje* un_mensaje){
 
 //---------------------------MENSAJES---------------------------//
 
-/*typedef struct {
-  uint32_t id_mensaje;
-  op_code  tipo_mensaje;
-  uint32_t    id_proceso;
-} t_ack;
-*/
-
-//REVISAR
 void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 
 	void actualizar_suscripto(void* mensaje){
@@ -988,8 +993,6 @@ void* main_hilo_mensaje(void* unos_datos_de_mensaje) {
 		log_error(logger, "...No se reconoce el algoritmo de memoria. ");
 	}
 
-
-	free(mensaje_a_enviar);
 
 	return NULL;
 }
@@ -1293,15 +1296,14 @@ void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje
 
     t_memoria_dinamica* particion_vacia = armar_particion(particion_a_reemplazar -> tamanio, particion_a_reemplazar -> base, NULL, 0, contenido_mensaje);
 
-
     uint32_t indice = encontrar_indice(particion_a_reemplazar);
     t_mensaje* mensaje_a_eliminar = encontrar_mensaje(particion_a_reemplazar -> base, particion_a_reemplazar -> codigo_operacion);
     particion_a_reemplazar = list_replace(memoria_con_particiones, indice, particion_vacia);
 
     eliminar_mensaje(mensaje_a_eliminar);
-
     //free(particion_a_reemplazar);
     log_info(logger, "... Se libera una partición y se intenta ubicar nuevamente el mensaje.");
+
 
     guardar_particion(mensaje, contenido_mensaje);
 }
@@ -1500,8 +1502,6 @@ t_mensaje* encontrar_mensaje_buddy(uint32_t base_del_buddy_del_mensaje, op_code 
 
 
 void iniciar_memoria_particiones(t_list* memoria_de_particiones){
-    /*tamanio_mensaje+payload+base+ocupado+base*/
-    //Es la particion inicial, es decir, la memoria entera vacía.
 
     t_memoria_dinamica* particion_de_memoria = armar_particion((config_broker->size_memoria), 0, NULL, 0, NULL);
     list_add(memoria_de_particiones, particion_de_memoria);
@@ -1567,39 +1567,12 @@ void guardar_contenido_de_mensaje(uint32_t offset, void* contenido, uint32_t tam
 	} else {
 		log_info(logger, "Se libera una partición de tamaño %d que comienza en la posicion %d.", tamanio, offset);
 	}
-	//free(contenido);
+
 }
 
 void liberar_particion_dinamica(t_memoria_dinamica* particion_vacia){
     free(particion_vacia);
 }
-
-/*uint32_t chequear_espacio_memoria_particiones(uint32_t tamanio_mensaje){
-	uint32_t tamanio_ocupado = -1;
-	t_list* lista_duplicada = list_create();
-
-	bool particion_ocupada(void* particion){
-	   t_memoria_dinamica* una_particion = particion;
-	   return (una_particion -> ocupado) != 0;
-	}
-
-	lista_duplicada = list_filter(memoria_con_particiones, particion_ocupada);
-
-	void sumar(void* particion){
-		tamanio_ocupado+=1;
-		t_memoria_dinamica* una_particion = particion;
-		tamanio_ocupado += una_particion -> tamanio_part;
-	}
-
-	list_iterate(lista_duplicada, sumar);
-	if(tamanio_ocupado == config_broker -> size_memoria || tamanio_ocupado + tamanio_mensaje > config_broker -> size_memoria){
-		return 0;
-	}
-
-	list_destroy(lista_duplicada);
-	return tamanio_ocupado;
-
-}*/
 
 void ubicar_particion(uint32_t posicion_a_ubicar, t_memoria_dinamica* particion){
 
@@ -1649,10 +1622,10 @@ t_memoria_dinamica* armar_particion(uint32_t tamanio, uint32_t base, t_mensaje* 
 }
 t_memoria_buddy* armar_buddy(uint32_t tamanio, uint32_t base, t_mensaje* mensaje, uint32_t ocupacion, void* contenido){
 
-	t_memoria_buddy* nuevo_buddy = malloc(sizeof(t_memoria_dinamica));
+	t_memoria_buddy* nuevo_buddy = malloc(sizeof(t_memoria_buddy));
 
 	if(mensaje != NULL){
-		nuevo_buddy = (t_memoria_dinamica*) mensaje->payload;
+		nuevo_buddy = (t_memoria_buddy*) mensaje->payload;
 		nuevo_buddy-> tamanio_exponente = tamanio;
 		nuevo_buddy -> tamanio_mensaje = mensaje -> tamanio_mensaje;
 		nuevo_buddy-> base = base;
@@ -1720,6 +1693,7 @@ uint32_t encontrar_mejor_ajuste(uint32_t tamanio){
     	indice_seleccionado = -1;
     }
 
+    list_destroy(particiones_en_orden_creciente);
     return indice_seleccionado;
 }
 
@@ -1728,53 +1702,64 @@ void destruir_particion(void* una_particion){
    free(particion);
 }
 
-uint32_t encontrar_indice(t_memoria_dinamica* posible_particion){
-    uint32_t indice_disponible = 0;
-    uint32_t indice_buscador = 0;
-    t_list* indices = list_create();
-    t_list* memoria_duplicada = list_create();
-	memoria_duplicada = list_duplicate(memoria_con_particiones);
+uint32_t encontrar_indice(void* memory){
+	uint32_t indice_disponible = 0;
+	uint32_t indice_buscador = 0;
+	t_list* indices = list_create();
+	t_list* memoria_duplicada = list_duplicate(memoria_con_particiones);
 
-    void obtener_indices(void* particion){
-    	t_memoria_dinamica* particion_a_transformar = particion;
-        t_indice* un_indice = malloc(sizeof(t_indice));
-        un_indice -> indice = indice_buscador;
-        un_indice -> base = particion_a_transformar -> base;
-        list_add(indices, un_indice);
-        indice_buscador++;
-    }
 
-    bool es_la_particion(void* indice){
-        t_indice* otro_indice = indice;
-        return (otro_indice -> base) == (posible_particion -> base);
-    }
+	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
+		t_memoria_dinamica* posible_particion = memory;
 
-    list_iterate(memoria_duplicada, obtener_indices);
-    t_indice* indice_elegido = list_find(indices, es_la_particion);
+		void obtener_indices(void* particion){
+			t_memoria_dinamica* particion_a_transformar = particion;
+			t_indice* un_indice = malloc(sizeof(t_indice));
+			un_indice -> indice = indice_buscador;
+			un_indice -> base = particion_a_transformar -> base;
+			list_add(indices, un_indice);
+			indice_buscador++;
+		}
 
-    if(indice_elegido!=NULL){
-    	indice_disponible = indice_elegido -> indice;
-    } else {
-    	indice_disponible = 0;
-    	log_error(logger, "El indice no pudo obtenerse correctamente.");
-    }
+		bool es_la_particion(void* indice){
+			t_indice* otro_indice = indice;
+			return (otro_indice -> base) == (posible_particion -> base);
+		}
 
-    return indice_disponible;
+		list_iterate(memoria_duplicada, obtener_indices);
+		t_indice* indice_elegido = list_find(indices, es_la_particion);
+
+		if(indice_elegido!=NULL){
+			indice_disponible = indice_elegido -> indice;
+		} else {
+			indice_disponible = 0;
+			log_error(logger, "El indice no pudo obtenerse correctamente.");
+		}
+
+	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
+		t_memoria_buddy* buddy = memory;
+	} else {
+		log_error(logger, "No se reconoce el algoritmo de memoria (?");
+	}
+
+	list_destroy(indices);
+	list_destroy(memoria_duplicada);
+
+	return indice_disponible;
+
 }
 
 //--------------------------------CONSOLIDACION_P--------------------------------//
-//ESTO SIRVE PARA LA LISTA QUE SIMULA LA MEMORIA, PERO FALTA ADAPTARLO PARA QUE HAGA LO MISMO EN EL MALLOC
-//ENORME.
+
 
 void consolidar_particiones_dinamicas(t_list* memoria){
 	t_list* memoria_duplicada = list_create();
 	memoria_duplicada = list_duplicate(memoria);
 	uint32_t contador = 0;
     void consolidar_particiones_contiguas(void* particion){
-        t_memoria_dinamica* una_particion = particion;
+
         if(tiene_siguiente(contador)){
         	if(ambas_estan_vacias(contador, contador + 1)){
-        		//Siempre asumo que es consolidable porque tiene un valor a la derecha que también es vacío.
         		consolidar_particiones(contador, contador + 1);
         	}
         }
@@ -1783,10 +1768,6 @@ void consolidar_particiones_dinamicas(t_list* memoria){
 
     list_iterate(memoria_duplicada, consolidar_particiones_contiguas);
 
-    /*if(existen_particiones_contiguas_vacias(memoria_con_particiones)){
-            consolidar_particiones_dinamicas();
-    }*/
-    //Tendría que llamar recursivamente? --> revisar
 }
 
 bool tiene_siguiente(uint32_t posicion){
@@ -1823,111 +1804,62 @@ void consolidar_particiones(uint32_t primer_elemento, uint32_t elemento_siguient
     log_info(logger, "... Se consolidan las particiones de base %d y base %d en una particion de tamanio %d", una_particion -> base, particion_siguiente -> base, tamanio_particion_consolidada);
 }
 
-bool existen_particiones_contiguas_vacias(t_list* memoria_cache){
-    //Si el primer elemento de cada lista está vacío, hay una partición a consolidar.
-    t_list* memoria_duplicada = list_duplicate(memoria_cache);
-
-    bool la_posicion_siguiente_tambien_esta_vacia(void* una_particion){
-        t_memoria_dinamica* particion = una_particion;
-
-        uint32_t indice = encontrar_indice(particion);
-        t_memoria_dinamica* sig_particion = list_get(memoria_duplicada, indice+1);;
-        uint32_t sig_ocupado;
-
-        if(sig_particion != NULL){
-            sig_ocupado =  sig_particion -> ocupado;
-        } else {
-            sig_ocupado = 1;
-        }
-
-        return !((particion -> ocupado) && sig_ocupado);
-    }
-
-    return list_any_satisfy(memoria_duplicada, la_posicion_siguiente_tambien_esta_vacia);
-}
-
 void compactar_particiones_dinamicas(t_list* memoria){
     t_list* particiones_vacias = list_create();
     t_list* particiones_ocupadas = list_create();
-    t_list* memoria_duplicada = list_create();
+
     uint32_t posicion_lista = 0;
 
 
-	if(particiones_liberadas == config_broker -> frecuencia_compactacion){
-		bool es_particion_vacia(void* particion){
-			t_memoria_dinamica* una_particion = particion;
-			return !(una_particion -> ocupado);
-		}
-
-		bool es_particion_ocupada(void* particion){
-			t_memoria_dinamica* una_particion = particion;
-			return (una_particion -> ocupado);
-		}
-
-		particiones_vacias = list_filter(memoria, es_particion_vacia);
-		particiones_ocupadas = list_filter(memoria, es_particion_ocupada);
-
-
-		list_add_all(memoria_duplicada, particiones_ocupadas);
-		list_add_all(memoria_duplicada, particiones_vacias);
-
-		void actualizar_base(void* particion){
-			t_memoria_dinamica* una_particion = particion;
-			if(posicion_lista){
-				una_particion -> base = obtener_nueva_base(una_particion);
-			} else {
-				una_particion -> base = 0;
-			}
-			posicion_lista++;
-		}
-
-		list_iterate(memoria_duplicada, actualizar_base);
-		list_clean(memoria);
-		list_add_all(memoria, memoria_duplicada);
-
-		compactar_memoria_cache(memoria);
-		consolidar_particiones_dinamicas(memoria);
-		/*list_destroy(particiones_vacias);
-		list_destroy(particiones_ocupadas);*/
-
-		particiones_liberadas = 0;
-
-	} else if (particiones_liberadas > config_broker -> frecuencia_compactacion) {
-		log_error(logger, "...Debería haberse compactado la memoria :$.");
-		exit(-90);
+	bool es_particion_vacia(void* particion){
+		t_memoria_dinamica* una_particion = particion;
+		return !(una_particion -> ocupado);
 	}
 
+	bool es_particion_ocupada(void* particion){
+		t_memoria_dinamica* una_particion = particion;
+		return (una_particion -> ocupado);
+	}
+
+	particiones_vacias = list_filter(memoria, es_particion_vacia);
+	particiones_ocupadas = list_filter(memoria, es_particion_ocupada);
+
+	list_clean(memoria);
+	list_add_all(memoria, particiones_ocupadas);
+	list_add_all(memoria, particiones_vacias);
+
+	void actualizar_base(void* particion){
+		t_memoria_dinamica* una_particion = particion;
+		una_particion -> base = obtener_nueva_base(una_particion, posicion_lista);
+		posicion_lista++;
+	}
+
+	list_iterate(memoria, actualizar_base);
+
+	compactar_memoria_cache(memoria);
+	consolidar_particiones_dinamicas(memoria_con_particiones);
+	list_destroy(particiones_vacias);
+	list_destroy(particiones_ocupadas);
+
+	particiones_liberadas = 0;
+
 }
 
-bool es_el_primer_elemento(t_memoria_dinamica* una_particion){
-	return (una_particion -> base == 0);
-}
-
-uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion){
+uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion, uint32_t indice_tope){
 	uint32_t nueva_base = 0;
 	t_list* memoria_duplicada = list_create();
-	t_list* particiones_anteriores = list_create();
 	memoria_duplicada = list_duplicate(memoria_con_particiones);
 	t_memoria_dinamica* particion_buscada;
 
-	void* obtener_tamanio(void* alguna_particion){
-		t_memoria_dinamica* part = alguna_particion;
-		uint32_t* tamanio = malloc(sizeof(uint32_t));
-		(*tamanio) = part -> tamanio_part;
-		return tamanio;
-	}
-
-	uint32_t indice_tope = encontrar_indice(una_particion) - 1;
-	if(indice_tope >= 0){
-		particion_buscada = list_get(memoria_duplicada, indice_tope);
+	if(indice_tope > 0){
+		particion_buscada = list_get(memoria_duplicada, (indice_tope-1));
+		if(particion_buscada!=NULL){
+			nueva_base = (particion_buscada -> base) + (particion_buscada -> tamanio);
+		} else {
+			log_error(logger, "No se puede actualizar la base para compactar :/");
+		}
 	} else {
 		nueva_base = 0;
-	}
-
-	if(particion_buscada!=NULL){
-		nueva_base = (particion_buscada -> base) + (particion_buscada -> tamanio);
-	} else {
-		log_error(logger, "No se puede actualizar la base para compactar :/");
 	}
 
 	//nueva_base ++;
@@ -1973,9 +1905,14 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 		eliminar_de_message_queue(mensaje, mensaje -> codigo_operacion);
 		log_info(logger, "El mensaje fue eliminado correctamente.");
 
-		compactar_particiones_dinamicas(memoria_con_particiones);
+
+		if(config_broker -> frecuencia_compactacion == 0 || (particiones_liberadas == (config_broker -> frecuencia_compactacion))){
+			compactar_particiones_dinamicas(memoria_con_particiones);
+		}
+
 		consolidar_particiones_dinamicas(memoria_con_particiones);
-		//liberar_particion_dinamica(particion_a_liberar);
+
+
 		sem_wait(&sem_particion_liberada);
 		particiones_liberadas++;
 		sem_post(&sem_particion_liberada);
@@ -1989,7 +1926,7 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 	  }
 		t_memoria_buddy* buddy_a_liberar = list_find(memoria_con_particiones, es_el_buddy);
 
-				uint32_t indice = encontrar_indice( buddy_a_liberar );
+				uint32_t indice = encontrar_indice(buddy_a_liberar);
 
 				t_memoria_buddy* buddy_vacio = armar_buddy(buddy_a_liberar -> tamanio_exponente, buddy_a_liberar -> base, NULL, 0, NULL);
 
@@ -2360,6 +2297,7 @@ void iniciar_semaforos_broker() {
 
 void terminar_hilos_broker(){
 	pthread_detach(hilo_envio_mensajes);
+	pthread_detach(hilo_signal);
     //pthread_detach(hilo_mensaje);
 }
 
