@@ -4,11 +4,17 @@ int main(void) {
 	iniciar_programa();
 
 
+//
+//	t_get_pokemon* guido = malloc(sizeof(t_get_pokemon));
+//	guido->id_mensaje = 2;
+//	guido->pokemon= "Guido";
+//
+//	list_add(cola_get,guido);
 
-	//Plantear un semaforo?
-	if(!list_is_empty(cola_get)){
-		enviar_mensajes(cola_get, lista_suscriptores_get);
-	}
+//	if(!list_is_empty(cola_get)){
+//		enviar_mensajes(cola_get, lista_suscriptores_get);
+//	}
+
 	/*enviar_mensajes(cola_catch, lista_suscriptores_catch);
 	enviar_mensajes(cola_localized, lista_suscriptores_localized);
 	enviar_mensajes(cola_caught, lista_suscriptores_caught);
@@ -366,6 +372,8 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				sem_wait(&mx_cola_get);
 				list_add(cola_get, mensaje);
 				sem_post(&mx_cola_get);
+				sleep(3);
+				enviar_mensajes(cola_get, lista_suscriptores_get);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes get.");
 				break;
 			case CATCH_POKEMON:
@@ -373,6 +381,8 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				sem_wait(&mx_cola_catch);
 				list_add(cola_catch, mensaje);
 				sem_post(&mx_cola_catch);
+				sleep(3);
+				enviar_mensajes(cola_catch, lista_suscriptores_catch);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes catch.");
 				break;
 			case LOCALIZED_POKEMON:
@@ -380,6 +390,8 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				sem_wait(&mx_cola_localized);
 				list_add(cola_localized, mensaje);
 				sem_post(&mx_cola_localized);
+				sleep(3);
+				enviar_mensajes(cola_localized, lista_suscriptores_localized);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes localized.");
 				break;
 			case CAUGHT_POKEMON:
@@ -387,6 +399,7 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				sem_wait(&mx_cola_caught);
 				list_add(cola_caught, mensaje);
 				sem_post(&mx_cola_caught);
+				enviar_mensajes(cola_caught, lista_suscriptores_caught);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes caught.");
 				break;
 			case APPEARED_POKEMON:
@@ -394,6 +407,7 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				sem_wait(&mx_cola_appeared);
 				list_add(cola_appeared, mensaje);
 				sem_post(&mx_cola_appeared);
+				enviar_mensajes(cola_appeared, lista_suscriptores_appeared);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes appeared.");
 				break;
 			case NEW_POKEMON:
@@ -401,6 +415,7 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				sem_wait(&mx_cola_new);
 				list_add(cola_new, mensaje);
 				sem_post(&mx_cola_new);
+				enviar_mensajes(cola_new, lista_suscriptores_new);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes new.");
 				break;
 			default:
@@ -978,8 +993,6 @@ void* main_hilo_mensaje(void* unos_datos_de_mensaje) {
 		log_error(logger, "...No se reconoce el algoritmo de memoria. ");
 	}
 
-
-	free(mensaje_a_enviar);
 
 	return NULL;
 }

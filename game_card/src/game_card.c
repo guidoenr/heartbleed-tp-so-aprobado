@@ -19,24 +19,12 @@ int main(void) {
 	int socket_br;
 
 	iniciar_tall_grass();
-/*
-	int socket_br;
+
 	conectarse_a_br(socket_br);
-	iniciar_conexion_game_boy();
 
-	iniciar_conexion_game_boy();
-*/
-	//iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
+	iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
 
 
-	t_catch_pokemon* charmander = malloc(sizeof(t_catch_pokemon));
-	charmander->id_mensaje = 2;
-	charmander->pokemon = "Charmander";
-	charmander->posicion[0]=413;
-	charmander->posicion[1]=17;
-
-	unlock_file(obtener_path_metafile("Charmander"));
-	funcion_hilo_catch_pokemon(charmander, socket_br);
 
 	terminar_programa(socket_br, config_gc);
 
@@ -176,20 +164,9 @@ void conectarse_a_br(int socket){
 		conectarse_a_br(socket); //terrible negrada, pero anda o no nada?
 	} else {
 		log_info(logger,"conexion exitosa con broker ");
+		suscribirme_a_colas();
 	}
-}
 
-void conectarse_a_gb(int socket){
-	socket = crear_conexion(config_gc->ip_gameBoy, config_gc->puerto_gameBoy);
-	int time = config_gc->tiempo_reintento_conexion;
-	if (socket == -1 ){
-		log_info(logger,"imposible conectar con gameboy, reintento en: %d",time);
-		sleep(time);
-		socket=0;
-		conectarse_a_gb(socket); //terrible negrada, pero anda o no nada?
-	} else {
-		log_info(logger,"conexion exitosa con gameboy ");
-	}
 }
 
 void suscribirme_a_colas() {
@@ -199,21 +176,20 @@ void suscribirme_a_colas() {
 }
 
 void suscribirse_a(op_code cola) {
+
 	uint32_t socket 			      = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
 	t_suscripcion* suscripcion 		  = malloc(sizeof(t_suscripcion));
-	suscripcion -> id_proceso 		  = malloc(sizeof(char*));
-	uint32_t tamanio_suscripcion	  = sizeof(t_suscripcion);
+	uint32_t tamanio_suscripcion	  = sizeof(uint32_t) * 4;
 
 	suscripcion -> cola_a_suscribir   = cola;
-	suscripcion -> id_proceso		  = "1"; //ESTE VALOR SE SACA DE CONFIG
+	suscripcion -> id_proceso         = 1; //ESTE VALOR SE SACA DE CONFIG
 	suscripcion -> socket 		      = socket;
 	suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
-
-	enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
-
-	free(suscripcion -> id_proceso);
-	free(suscripcion);
-
+/*TODO
+	enviar_mensaje(SUBSCRIPTION, suscripcion_new, socket, tamanio_suscripcion);
+	enviar_mensaje(SUBSCRIPTION, suscripcion_get, socket, tamanio_suscripcion);
+	enviar_mensaje(SUBSCRIPTION, suscripcion_localized, socket, tamanio_suscripcion);
+*/
 }
 
 t_config_game_card* leer_config() {
@@ -452,7 +428,7 @@ char* buscar_block_libre(){
 			break;
 
 		} else {
-				log_info(logger,"El block %d esta ocupado kpo, sigo buscando",i);
+				log_info(logger,"El block %d esta ocupado, sigo buscando",i);
 		}
 	}
 
