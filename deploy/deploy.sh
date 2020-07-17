@@ -7,7 +7,7 @@ chown -R utnso:utnso tp-2020-1c-heartbleed/
 echo -e "Clonando las commons \e[35m"
 git clone "https://github.com/sisoputnfrba/so-commons-library"
 
-chown -R utnso:utnso sisoputnfrba/so-commons-library/
+chown -R utnso:utnso so-commons-library/
 
 cd sisoptunfrba/so-commons-library
 make all
