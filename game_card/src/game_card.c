@@ -23,10 +23,10 @@ int main(void) {
 	//conectarse_a_br(socket_br);
 
 	sem_init(&mx_bitmap,0,1);
-	//iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
 
-	//pruebas_new_pokemon(socket_br);
-	pruebas_catch_pokemon(socket_br);
+	iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
+
+
 	terminar_programa(socket_br, config_gc);
 
 }
