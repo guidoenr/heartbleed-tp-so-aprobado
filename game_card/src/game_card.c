@@ -20,12 +20,13 @@ int main(void) {
 
 	iniciar_tall_grass();
 
-	conectarse_a_br(socket_br);
+	//conectarse_a_br(socket_br);
 
-	iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
+	sem_init(&mx_bitmap,0,1);
+	//iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
 
-
-
+	//pruebas_new_pokemon(socket_br);
+	pruebas_catch_pokemon(socket_br);
 	terminar_programa(socket_br, config_gc);
 
 }
@@ -34,12 +35,12 @@ int main(void) {
 void pruebas_new_pokemon(int socket){
 
 	t_new_pokemon* luca = malloc(sizeof(t_new_pokemon));
-	luca->posicion[0]=16;
-	luca->posicion[1] = 12;
-	luca->cantidad=44;
+	luca->posicion[0]=129;
+	luca->posicion[1] = 547;
+	luca->cantidad=11;
 	luca->id_mensaje = 124;
-	luca->pokemon= "GD3";
-
+	luca->pokemon= "Charmander";
+	unlock_file(obtener_path_metafile("Charmander"));
 	funcion_hilo_new_pokemon(luca, socket);
 
 
@@ -47,15 +48,14 @@ void pruebas_new_pokemon(int socket){
 void pruebas_catch_pokemon(int socket){
 
 	t_catch_pokemon* kenny = malloc(sizeof(t_catch_pokemon));
-	kenny->pokemon="kennyS";
-	kenny->posicion[0] = 16;
-	kenny->posicion[1] = 2;
+	kenny->pokemon="Charmander";
+	kenny->posicion[0] = 413;
+	kenny->posicion[1] = 17;
 	kenny->id_mensaje = 123;
 
 
 	unlock_file(obtener_path_metafile(kenny->pokemon));
 	funcion_hilo_catch_pokemon(kenny, socket);
-
 
 
 }
@@ -349,7 +349,7 @@ void crear_bitmap(char* path){
 
 	sem_init(&mx_bitmap,0,1);
 
-	log_info(logger,"sem_mx para usar el bitmap iniciado");
+	log_warning(logger,"Mutex para usar el bitmap iniciado");
 
 }
 
@@ -360,14 +360,13 @@ void crear_bitmap(char* path){
 
 t_bitarray* obtener_bitmap(){
 
-	log_info(logger,"Espero que el semaforo pase a 1");
+	log_error(logger,"Eperando el uso del mutex_bitmap");
 	sem_wait(&mx_bitmap);
-	log_info(logger,"Semaforo listo");
+	log_warning(logger,"mutex_bitmap listo");
 
 	char* bitmapPath = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
 	int size_in_bytes = bitarray_default_size_in_bytes();
 	char* data = malloc(size_in_bytes);
-
 
 	FILE* bitmap = fopen(bitmapPath,"rb");
 
@@ -530,7 +529,7 @@ void grabar_metadata_file(t_file_metadata metadata,char* path){
 
 	config_save(meta_file_pokemon);
 
-	log_info(logger,"Se creo el Metadata.bin con valores OPEN= %s, DIRECTORY=%s, SIZE=%s, BLOCKS=%s",metadata.open,metadata.directory,metadata.size,blocks_array);
+	log_warning(logger,"Se creo el Metadata.bin con valores OPEN= %s, DIRECTORY=%s, SIZE=%s, BLOCKS=%s",metadata.open,metadata.directory,metadata.size,blocks_array);
 	config_destroy(meta_file_pokemon);
 	free(blocks_array);
 
@@ -723,7 +722,8 @@ char* generar_archivo_temporal(char* metapath_file,char* nombre_pokemon){
 
 	char* blockpath;
 	int cantidad_blocks = size_char_doble(blocks);
-	char* a = malloc(1);
+	char a = malloc(sizeof(char));
+	char fin = '\n';
 	char* random_path = rand_string(nombre_pokemon);
 	FILE* temporary = fopen(random_path,"wb");
 
@@ -735,8 +735,14 @@ char* generar_archivo_temporal(char* metapath_file,char* nombre_pokemon){
 		int filesize = file_size(blockpath);
 
 		while (n < filesize){
-			fread(a,1,1,block);
-			fwrite(a,1,1,temporary);
+			fread(&a,1,1,block);
+
+			if (a== '\0'){
+				fwrite(&fin,1,1,temporary);
+			}else {
+				fwrite(&a,1,1,temporary);
+			}
+
 			n++;
 		}
 		n=0;
@@ -880,7 +886,7 @@ void verificar_apertura_pokemon(char* path_metafile,char* nombre_pokemon){
 
 	while (esta_en_uso){
 		int secs = config_gc->tiempo_retardo_operacion;
-		log_info(logger,"No se puede leer ni escribir este pokemon porque esta en uso OPEN=Y, reintentando en: %d",secs);
+		log_warning(logger,"No se puede leer ni escribir este pokemon porque esta en uso OPEN=Y, reintentando en: %d",secs);
 		sleep(secs);
 		esta_en_uso = esta_lockeado(path_metafile);
 	}
@@ -962,6 +968,7 @@ void agregar_nueva_posicion(t_new_pokemon* newpoke,char* pathmeta_poke,char* key
 			escribir_data_sin_fragmentacion_interna(nuevo_block_path,path_last_block,key,value);
 
 			free(nuevo_block_path);
+			free(nuevo_cluster);
 		}
 
 
@@ -969,11 +976,11 @@ void agregar_nueva_posicion(t_new_pokemon* newpoke,char* pathmeta_poke,char* key
 		actualizar_size_new_pokemon(pathmeta_poke,longitud);
 
 		free(path_last_block);
+		free(ultimo_block);			//TODO CAMBIE ACA ALGO
 }
 
 
 void escribir_data_sin_fragmentacion_interna(char* block_nuevo,char* block_viejo, char*key, char*value){
-
 
 	char* a_escribir = posicion_into_string(key, value);
 	int leng =strlen(a_escribir)+1;
@@ -1017,13 +1024,13 @@ void escribir_data_en_block(char* blockpath,char* key,char* value){
 	free(a_escribir);
 }
 int calcular_size_inicial(t_new_pokemon* newPoke){
+
 	int size;
 
 	char* key = get_key_from_position(newPoke->posicion);
 	char* value = get_value_from_cantidad(newPoke->cantidad);
 
-
-	size = strlen(key) + strlen(value) + 2;
+	size = strlen(posicion_into_string(key, value)) + 1 ;
 
 	free(key);
 	free(value);
@@ -1102,7 +1109,7 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,int socket_br){
 	if (el_pokemon_esta_creado(dir_path)){
 
 		verificar_apertura_pokemon(meta_path, catch_pokemon->pokemon);
-		log_info(logger,"Existia el pokemon, se va a actualizar su cantidad en el mapa");
+		log_info(logger,"Existe el pokemon en el filesystem");
 
 		char* temporaryfile = generar_archivo_temporal(meta_path,catch_pokemon->pokemon);
 
@@ -1140,6 +1147,8 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,int socket_br){
 
 
 }
+
+
 
 void remover_posicion(char* temporarypath,char* key,char* metapath){
 
@@ -1247,6 +1256,7 @@ void liberar_block_de_la_indextable(char* metapath,char* block_vacio,t_config* m
 
 	config_set_value(metaconfig,"BLOCKS",nueva_tabla_indices);
 
+	log_info(logger,"Se retiro el block de la indextable del pokemon");
 	free(blocks);
 	list_destroy(list_blocks);
 
@@ -1318,6 +1328,9 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,int socket_br){
 		 t_list* posiciones = obtener_posiciones_y_cantidades(meta_path,temporary_file);
 		 localized_pokemon->posiciones = posiciones;
 		 localized_pokemon->tamanio_lista = posiciones->elements_count * 4 ;
+		 char* lista_a_mandar = list_to_string_array(posiciones);
+		 log_warning(logger,"Localized de %s : %s",get_pokemon->pokemon,lista_a_mandar);
+		 free(lista_a_mandar);
 		 remove(temporary_file);
 
 	 }else{
@@ -1378,9 +1391,9 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 char* leer_linea(FILE* archivo){
 
 	int i = 0;
-	char* a = malloc(sizeof(char));
-	char* linea = string_new();
 
+	char* linea = string_new();
+	char* a = malloc(sizeof(char));
 	a=string_new();
 
 	fread(a,1,1,archivo);
@@ -1428,7 +1441,7 @@ int block_default_size(){
 
 	t_config* configmeta = config_create(path);
 
-	int blocks = config_get_int_value(configmeta,"BLOCKS");
+	int blocks = config_get_int_value(configmeta,"BLOCKS_SIZE");
 
 	config_destroy(configmeta);
 
@@ -1464,27 +1477,27 @@ bool isDir(const char* name){
     }
 }
 
-char* list_to_string_array(t_list* blocks){
+char* list_to_string_array(t_list* lista){
 
 	char* format = "[";
 
-	if (blocks->elements_count == 1){
+	if (lista->elements_count == 1){
 
-		format = concatenar(format,string_itoa(blocks->head->data));
+		format = concatenar(format,string_itoa(lista->head->data));
 
-	} else if (blocks->elements_count == 0){
+	} else if (lista->elements_count == 0){
 
 		log_info(logger,"La tabla de indices del pokemon solamente tenia un cluster, ahora queda vacia");
 
 	} else {
 
-			while (blocks->head->next != NULL){
-				format = concatenar(format,string_itoa(blocks->head->data));
+			while (lista->head->next != NULL){
+				format = concatenar(format,string_itoa(lista->head->data));
 				format = concatenar(format,",");
-				blocks->head = blocks->head->next;
+				lista->head = lista->head->next;
 
-					if (blocks->head->next == NULL){
-						format=concatenar(format,string_itoa(blocks->head->data));
+					if (lista->head->next == NULL){
+						format=concatenar(format,string_itoa(lista->head->data));
 						}
 				}
 	}
