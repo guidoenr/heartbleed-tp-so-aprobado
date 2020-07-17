@@ -1,6 +1,9 @@
 #!/bin/sh
 
 cd /home/utnso/workspace/
+
+chown -R utnso:utnso tp-2020-1c-heartbleed/
+
 echo -e "Clonando las commons \e[35m"
 git clone "https://github.com/sisoputnfrba/so-commons-library"
 
