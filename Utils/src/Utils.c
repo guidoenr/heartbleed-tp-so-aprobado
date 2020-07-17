@@ -890,12 +890,12 @@ void liberar_mensaje_catch(t_catch_pokemon* mensaje_catch){
 }
 
 void liberar_mensaje_appeared(t_appeared_pokemon* mensaje_appeared){
-    free(mensaje_appeared -> pokemon);
+    //free(mensaje_appeared -> pokemon);
     free(mensaje_appeared);
 }
 
 void liberar_mensaje_new(t_new_pokemon* mensaje_new){
-    free(mensaje_new -> pokemon);
+    //free(mensaje_new -> pokemon);
     free(mensaje_new);
 }
 
@@ -912,7 +912,7 @@ void liberar_suscripcion(t_suscripcion* mensaje_suscripcion){
 }
 
 void liberar_mensaje_localized(t_localized_pokemon* mensaje_localized){
-    free(mensaje_localized -> pokemon);
-    list_destroy(mensaje_localized -> posiciones);
+    //free(mensaje_localized -> pokemon);
+    //list_destroy(mensaje_localized -> posiciones);
     free(mensaje_localized);
 }
