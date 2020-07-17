@@ -20,7 +20,7 @@ int main(void) {
 
 	iniciar_tall_grass();
 
-	//conectarse_a_br(socket_br);
+	conectarse_a_br(socket_br);
 
 	sem_init(&mx_bitmap,0,1);
 
@@ -119,7 +119,7 @@ void informar_al_broker(uint32_t id_mensaje, op_code codigo){
 	ack -> tipo_mensaje = codigo;
 	ack -> id_proceso = config_gc -> id_proceso;
 
-	uint32_t size_mensaje = size_ack(ack);
+	uint32_t size_mensaje = size_ack(ack) + sizeof(uint32_t) * 2;
 
 	uint32_t socket = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
 
@@ -130,13 +130,13 @@ void informar_al_broker(uint32_t id_mensaje, op_code codigo){
 	free(ack);
 }
 
-void conexion_inicial_broker() {
-
-	uint32_t err = pthread_create(&hilo_game_boy, NULL, suscribirme_a_colas, NULL);
-		if(err != 0) {
-			log_error(logger, "El hilo no pudo ser creado!!");
-		}
-}
+//void conexion_inicial_broker() {
+//
+//	uint32_t err = pthread_create(&hilo_game_boy, NULL, suscribirme_a_colas, NULL);
+//		if(err != 0) {
+//			log_error(logger, "El hilo no pudo ser creado!!");
+//		}
+//}
 
 void* conexion_con_game_boy() {
 	log_info(logger,"Iniciando conexion con gameboy");
@@ -164,29 +164,32 @@ void conectarse_a_br(int socket){
 		conectarse_a_br(socket); //terrible negrada, pero anda o no nada?
 	} else {
 		log_info(logger,"conexion exitosa con broker ");
-		suscribirme_a_colas();
+		suscribirse_a(NEW_POKEMON);
+		suscribirse_a(CATCH_POKEMON);
+		suscribirse_a(GET_POKEMON);
 	}
+//
+//	suscribirse_a(NEW_POKEMON);
+//	suscribirse_a(CATCH_POKEMON);
+//	suscribirse_a(GET_POKEMON);
 
 }
 
-void suscribirme_a_colas() {
-	suscribirse_a(NEW_POKEMON);
-	suscribirse_a(CATCH_POKEMON);
-	suscribirse_a(GET_POKEMON);
-}
 
 void suscribirse_a(op_code cola) {
 
 	uint32_t socket 			      = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
-	t_suscripcion* suscripcion 		  = malloc(sizeof(t_suscripcion));
-	uint32_t tamanio_suscripcion	  = sizeof(uint32_t) * 4;
+	t_suscripcion* suscripcion	 = malloc(sizeof(t_suscripcion));
+	uint32_t tamanio_suscripcion	  = sizeof(uint32_t) * 6;
 
 	suscripcion -> cola_a_suscribir   = cola;
 	suscripcion -> id_proceso         = 1; //ESTE VALOR SE SACA DE CONFIG
 	suscripcion -> socket 		      = socket;
 	suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
+
+	enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
 /*TODO
-	enviar_mensaje(SUBSCRIPTION, suscripcion_new, socket, tamanio_suscripcion);
+
 	enviar_mensaje(SUBSCRIPTION, suscripcion_get, socket, tamanio_suscripcion);
 	enviar_mensaje(SUBSCRIPTION, suscripcion_localized, socket, tamanio_suscripcion);
 */

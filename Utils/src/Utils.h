@@ -12,8 +12,9 @@
 #include<commons/collections/list.h>
 #include<string.h>
 #include<pthread.h>
+#include<semaphore.h>
 
-
+sem_t semaforo;
 typedef enum {
 	GET_POKEMON = 1,
 	CATCH_POKEMON= 2,

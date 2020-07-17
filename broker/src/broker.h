@@ -91,7 +91,7 @@ t_list* lista_suscriptores_appeared;
 
 t_list* memoria_cache;
 t_list* memoria_con_particiones;
-
+sem_t muteadito;
 t_config* config;
 t_config_broker* config_broker;
 t_log* logger;
@@ -222,7 +222,7 @@ char* obtener_cola_del_mensaje(t_memoria_dinamica*);
 char* obtener_cola_del_mensaje_buddy(t_memoria_buddy*);
 t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(void);
 bool tiene_siguiente(uint32_t);
-uint32_t timestamp(void);
+uint64_t timestamp(void);
 void sig_handler(void*);
 bool mensaje_recibido_por_todos(void*, t_list*);
 void establecer_tiempo_de_carga(t_mensaje*);

@@ -181,7 +181,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	log_info(logger,"Codigo de operacion %d", cod_op);
 	void* mensaje_e_agregar = deserealizar_paquete(stream, *codigo_op, size);
 
-	switch (cod_op) {
+	switch (*codigo_op) {
 		case GET_POKEMON:
 			agregar_mensaje(GET_POKEMON, size, mensaje_e_agregar, cliente_fd);
 			break;
@@ -201,7 +201,9 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			agregar_mensaje(NEW_POKEMON, size, mensaje_e_agregar, cliente_fd);
 			break;
 		case SUBSCRIPTION:
+			sem_wait(&muteadito);
 			recibir_suscripcion(mensaje_e_agregar);
+			sem_post(&muteadito);
 			break;
 		case ACK:
 			actualizar_mensajes_confirmados(mensaje_e_agregar);
@@ -442,7 +444,7 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 //-----------------------SUSCRIPCIONES------------------------//
 void recibir_suscripcion(t_suscripcion* mensaje_suscripcion){
 
-	op_code cola_a_suscribir		   = mensaje_suscripcion -> cola_a_suscribir;
+	op_code cola_a_suscribir = mensaje_suscripcion -> cola_a_suscribir;
 
 	log_info(logger, "...Se recibe una suscripción.");
 
@@ -644,7 +646,7 @@ void* preparar_mensaje(t_mensaje* un_mensaje){
 		mensaje_armado = preparar_mensaje_catch(un_mensaje);
 		break;
 		default:
-		log_error(logger, "... El broker no puede preparar el mensaje para enviarlo a otro modulo.")
+		log_error(logger, "... El broker no puede preparar el mensaje para enviarlo a otro modulo.");
 		break;
 	}
 
@@ -652,6 +654,7 @@ void* preparar_mensaje(t_mensaje* un_mensaje){
 }
 
 t_get_pokemon* preparar_mensaje_get(t_mensaje* mensaje){
+		uint32_t tamanio;
 		t_get_pokemon* mensaje_get = malloc(sizeof(t_get_pokemon));
 		if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 			t_memoria_dinamica* particion_del_mensaje = mensaje -> payload;	
@@ -672,12 +675,13 @@ t_get_pokemon* preparar_mensaje_get(t_mensaje* mensaje){
 		return mensaje_get;
 }
 
-t_catch_pokemon* preparar_mensaje_catch(t_mensaje* mensaje){
+t_catch_pokemon* preparar_mensaje_catch(t_mensaje* un_mensaje){
+	uint32_t tamanio;
 	t_catch_pokemon* mensaje_catch = malloc(sizeof(t_catch_pokemon));
 	void* contenido_a_enviar;
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-		t_memoria_dinamica* particion_del_mensaje = mensaje -> payload;	
+		t_memoria_dinamica* particion_del_mensaje = un_mensaje -> payload;	
 		mensaje_catch -> id_mensaje = un_mensaje -> id_mensaje;
 		tamanio =  particion_del_mensaje -> tamanio - sizeof(uint32_t) * 2;
 		contenido_a_enviar = particion_del_mensaje -> contenido;
@@ -687,7 +691,7 @@ t_catch_pokemon* preparar_mensaje_catch(t_mensaje* mensaje){
 		memcpy(&(mensaje_catch -> posicion[1]), contenido_a_enviar + tamanio + sizeof(uint32_t), sizeof(uint32_t));
 		
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-		t_memoria_buddy* buddy_del_mensaje = mensaje -> payload;
+		t_memoria_buddy* buddy_del_mensaje = un_mensaje -> payload;
 		mensaje_catch -> id_mensaje = un_mensaje -> id_mensaje;
 		tamanio =  buddy_del_mensaje -> tamanio_mensaje - sizeof(uint32_t) * 2;
 		contenido_a_enviar = buddy_del_mensaje -> contenido;
@@ -702,12 +706,14 @@ t_catch_pokemon* preparar_mensaje_catch(t_mensaje* mensaje){
 	return mensaje_catch;
 }
 
-t_localized_pokemon* preparar_mensaje_localized(t_mensaje* mensaje){
+t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje){
+	uint32_t tamanio;
 	t_localized_pokemon* mensaje_localized = malloc(sizeof(t_localized_pokemon));
 	uint32_t offset = 0;
 	void* contenido_a_enviar;
+	uint32_t posicion[un_mensaje->tamanio_lista_localized];
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-		t_memoria_dinamica* particion_del_mensaje = mensaje -> payload;	
+		t_memoria_dinamica* particion_del_mensaje = un_mensaje -> payload;	
 		mensaje_localized -> id_mensaje = un_mensaje -> id_mensaje;
 		mensaje_localized -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
 		tamanio = (particion_del_mensaje -> tamanio) - ((un_mensaje -> tamanio_lista_localized)*sizeof(uint32_t));
@@ -723,7 +729,7 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* mensaje){
 			list_add(mensaje_localized -> posiciones, &posicion[i]);
 		}
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-		t_memoria_buddy* buddy_del_mensaje = mensaje -> payload;
+		t_memoria_buddy* buddy_del_mensaje = un_mensaje -> payload;
 		mensaje_localized -> id_mensaje = un_mensaje -> id_mensaje;
 		mensaje_localized -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
 		tamanio = (buddy_del_mensaje -> tamanio_mensaje) - ((un_mensaje -> tamanio_lista_localized)*sizeof(uint32_t));
@@ -744,15 +750,16 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* mensaje){
 	return mensaje_localized;
 }
 
-t_caught_pokemon* preparar_mensaje_caught(t_mensaje* mensaje){
+t_caught_pokemon* preparar_mensaje_caught(t_mensaje* un_mensaje){
+	uint32_t tamanio;
 	t_caught_pokemon* mensaje_caught = malloc(sizeof(t_caught_pokemon));
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-		t_memoria_dinamica* particion_del_mensaje = mensaje -> payload;	
+		t_memoria_dinamica* particion_del_mensaje = un_mensaje -> payload;	
 		mensaje_caught -> id_mensaje = un_mensaje -> id_mensaje;
 		mensaje_caught -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
 		memcpy(&(mensaje_caught -> resultado), particion_del_mensaje -> contenido, sizeof(uint32_t));
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-		t_memoria_buddy* buddy_del_mensaje = mensaje -> payload;
+		t_memoria_buddy* buddy_del_mensaje = un_mensaje -> payload;
 		mensaje_caught -> id_mensaje = un_mensaje -> id_mensaje;
 		mensaje_caught -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
 		memcpy(&(mensaje_caught -> resultado), buddy_del_mensaje -> contenido, sizeof(uint32_t));
@@ -762,10 +769,11 @@ t_caught_pokemon* preparar_mensaje_caught(t_mensaje* mensaje){
 	return mensaje_caught;
 }
 
-t_new_pokemon* preparar_mensaje_new(t_mensaje* mensaje){
+t_new_pokemon* preparar_mensaje_new(t_mensaje* un_mensaje){
+	uint32_t tamanio;
 	t_new_pokemon* mensaje_new = malloc(sizeof(t_new_pokemon));
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-		t_memoria_dinamica* particion_del_mensaje = mensaje -> payload;	
+		t_memoria_dinamica* particion_del_mensaje = un_mensaje -> payload;	
 		mensaje_new -> id_mensaje = un_mensaje -> id_mensaje;
 		tamanio =  particion_del_mensaje -> tamanio - sizeof(uint32_t) * 3;
 		mensaje_new -> pokemon = malloc(tamanio);
@@ -774,9 +782,9 @@ t_new_pokemon* preparar_mensaje_new(t_mensaje* mensaje){
 		memcpy(&(mensaje_new -> posicion[1]), (particion_del_mensaje -> contenido) + tamanio + sizeof(uint32_t), sizeof(uint32_t));
 		memcpy(&(mensaje_new -> cantidad), ((particion_del_mensaje -> contenido) + tamanio + sizeof(uint32_t)*2), sizeof(uint32_t));
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-		t_memoria_buddy* buddy_del_mensaje = mensaje -> payload;
+		t_memoria_buddy* buddy_del_mensaje = un_mensaje -> payload;
 		mensaje_new -> id_mensaje = un_mensaje -> id_mensaje;
-		tamanio =  buddy_del_mensaje -> tamanio - sizeof(uint32_t) * 3;
+		tamanio =  buddy_del_mensaje -> tamanio_mensaje - sizeof(uint32_t) * 3;
 		mensaje_new -> pokemon = malloc(tamanio);
 		memcpy(mensaje_new -> pokemon, buddy_del_mensaje -> contenido, tamanio);
 		memcpy(&(mensaje_new -> posicion[0]), (buddy_del_mensaje -> contenido) + tamanio, sizeof(uint32_t));
@@ -788,10 +796,11 @@ t_new_pokemon* preparar_mensaje_new(t_mensaje* mensaje){
 	return mensaje_new;
 }
 
-t_appeared_pokemon* preparar_mensaje_appeared(t_mensaje* mensaje){
+t_appeared_pokemon* preparar_mensaje_appeared(t_mensaje* un_mensaje){
+	uint32_t tamanio;
 	t_appeared_pokemon* mensaje_appeared = malloc(sizeof(t_appeared_pokemon));
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-		t_memoria_dinamica* particion_del_mensaje = mensaje -> payload;	
+		t_memoria_dinamica* particion_del_mensaje = un_mensaje -> payload;	
 		mensaje_appeared -> id_mensaje = un_mensaje -> id_mensaje;
 		mensaje_appeared -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
 		tamanio =  particion_del_mensaje -> tamanio - sizeof(uint32_t) * 2;
@@ -800,10 +809,10 @@ t_appeared_pokemon* preparar_mensaje_appeared(t_mensaje* mensaje){
 		memcpy(&(mensaje_appeared -> posicion[0]), (particion_del_mensaje -> contenido) + tamanio, sizeof(uint32_t));
 		memcpy(&(mensaje_appeared -> posicion[1]), ((particion_del_mensaje -> contenido) + tamanio + sizeof(uint32_t)), sizeof(uint32_t));
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-		t_memoria_buddy* buddy_del_mensaje = mensaje -> payload;
+		t_memoria_buddy* buddy_del_mensaje = un_mensaje -> payload;
 		mensaje_appeared -> id_mensaje = un_mensaje -> id_mensaje;
 		mensaje_appeared -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
-		tamanio =  buddy_del_mensaje -> tamanio - sizeof(uint32_t) * 2;
+		tamanio =  buddy_del_mensaje -> tamanio_mensaje - sizeof(uint32_t) * 2;
 		mensaje_appeared -> pokemon = malloc(tamanio);
 		memcpy(mensaje_appeared -> pokemon, buddy_del_mensaje -> contenido, tamanio);
 		memcpy(&(mensaje_appeared -> posicion[0]), (buddy_del_mensaje -> contenido) + tamanio, sizeof(uint32_t));
@@ -2398,6 +2407,7 @@ void iniciar_semaforos_broker() {
     sem_init(&mx_suscrip_new, 0, 1);
     sem_init(&mx_memoria_cache, 0, 1);
     sem_init(&mx_copia_memoria, 0, 1);
+    sem_init(&muteadito,0,1);
 
 
 }
