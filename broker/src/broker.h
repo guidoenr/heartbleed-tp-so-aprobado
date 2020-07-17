@@ -44,8 +44,8 @@ typedef struct {
 	uint32_t tamanio_part;
 	uint32_t base;
 	uint32_t ocupado;
-	uint32_t ultima_referencia;
-	uint32_t tiempo_de_carga;
+	uint64_t ultima_referencia;
+	uint64_t tiempo_de_carga;
 	op_code codigo_operacion;
 	void* contenido;
 } t_memoria_dinamica;
@@ -55,8 +55,8 @@ typedef struct{
 	uint32_t tamanio_mensaje;
 	uint32_t base;
 	uint32_t ocupado;
-	uint32_t ultima_referencia;
-	uint32_t tiempo_de_carga;
+	uint64_t ultima_referencia;
+	uint64_t tiempo_de_carga;
 	op_code codigo_operacion;
 	void* contenido;
 } t_memoria_buddy;
@@ -171,6 +171,12 @@ t_mensaje* encontrar_mensaje(uint32_t, op_code);
 bool puede_guardarse_mensaje(t_mensaje*);
 void eliminar_de_message_queue(t_mensaje*, op_code);
 uint32_t obtener_tamanio_contenido_mensaje(void*, uint32_t);
+t_get_pokemon* preparar_mensaje_get(t_mensaje*);
+t_catch_pokemon* preparar_mensaje_catch(t_mensaje*);
+t_localized_pokemon* preparar_mensaje_localized(t_mensaje*);
+t_caught_pokemon* preparar_mensaje_caught(t_mensaje*);
+t_new_pokemon* preparar_mensaje_new(t_mensaje*);
+t_appeared_pokemon* preparar_mensaje_appeared(t_mensaje*);
 
 //--suscripciones--//
 void recibir_suscripcion(t_suscripcion*);
@@ -218,7 +224,6 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(void);
 bool tiene_siguiente(uint32_t);
 uint32_t timestamp(void);
 void sig_handler(void*);
-void* preparar_mensaje_desde_particion(t_mensaje*);
 bool mensaje_recibido_por_todos(void*, t_list*);
 void establecer_tiempo_de_carga(t_mensaje*);
 void actualizar_ultima_referencia(t_mensaje*);
