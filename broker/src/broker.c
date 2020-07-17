@@ -2378,11 +2378,6 @@ void consolidacion_buddy_systeam(t_node*  nodo)
       }
 }
 
-
-void gestionar_mensaje(){
-    //ACA HAY QUE METER EL PROCESS REQUEST Y DEMÁS
-}
-
 void iniciar_semaforos_broker() {
 	//REVISAR INICIALIZCIONES
 	sem_init(&mx_memoria_particiones, 0, 1);
@@ -2429,6 +2424,7 @@ void liberar_semaforos_broker(){
     sem_destroy(&mx_suscrip_new);
     sem_destroy(&mx_memoria_cache);
     sem_destroy(&mx_copia_memoria);
+	sem_destroy(&mx_memoria_particiones);
     sem_destroy(&semaforo);
     sem_destroy(&mutex_id);
 }
