@@ -128,7 +128,7 @@ sem_t mx_suscrip_new;
 sem_t mx_memoria_cache;
 sem_t mx_copia_memoria;
 sem_t sem_particion_liberada;
-
+sem_t mx_memoria_particiones;
 
 //Funciones generales
 void iniciar_programa			 (void);
