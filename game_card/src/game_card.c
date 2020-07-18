@@ -1318,7 +1318,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,int socket_br){
 
 	 char* dir_path = obtener_path_dir_pokemon(get_pokemon->pokemon);
 	 char* meta_path = obtener_path_metafile(get_pokemon->pokemon);
-
+	 bool estaba = 0;
 	 t_localized_pokemon* localized_pokemon = malloc(sizeof(t_localized_pokemon));
 
 	 if (el_pokemon_esta_creado(dir_path)){
@@ -1334,19 +1334,32 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,int socket_br){
 		 log_warning(logger,"Localized de %s : %s",get_pokemon->pokemon,lista_a_mandar);
 		 free(lista_a_mandar);
 		 remove(temporary_file);
+		 estaba=1;
 
 	 }else{
 
 		 log_info(logger,"El pokemon %s no existe en el filesystem, te mando la lista vacia",get_pokemon->pokemon);
 		 localized_pokemon->tamanio_lista = 0;
 		 localized_pokemon->posiciones = list_create();
+		 list_add(localized_pokemon->posiciones,0);
+		 log_warning(logger,"Localized de %s : [0]",get_pokemon->pokemon);
 
 	 }
 
 	 localized_pokemon->id_mensaje = get_pokemon->id_mensaje;
 	 localized_pokemon->pokemon = get_pokemon->pokemon;
 
-	 unlock_file(meta_path);
+	 log_info(logger,"Esperando el tiempo de reintento de operacion");
+	 sleep(config_gc->tiempo_reintento_operacion);
+
+	 if (estaba==1){
+		 unlock_file(meta_path);
+		 log_info("THREAD finished, unlockeo el pokemon %s",localized_pokemon->pokemon);
+	 } else {
+		 log_info(logger,"THREAD finished, el pokemon no existia en el filesystem");
+	 }
+
+
 	 free(dir_path);
 	 free(meta_path);
 }
