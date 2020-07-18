@@ -20,7 +20,7 @@ int main(void) {
 
 	iniciar_tall_grass();
 
-	conectarse_a_br(socket_br);
+	//conectarse_a_br(socket_br);
 
 	sem_init(&mx_bitmap,0,1);
 
