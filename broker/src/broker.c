@@ -322,7 +322,7 @@ uint32_t obtener_tamanio_contenido_mensaje(void* mensaje, uint32_t codigo){
 		tamanio = strlen(localized -> pokemon) + (list_size(localized -> posiciones) * sizeof(uint32_t))+ sizeof(uint32_t);
 		break;
 	case CAUGHT_POKEMON:
-		tamanio = sizeof(uint32_t)*2;
+		tamanio = sizeof(uint32_t);
 		break;
 	case APPEARED_POKEMON:
 		appeared = mensaje;
@@ -2263,14 +2263,11 @@ t_node* crear_nodo(uint32_t tamanio)
   node -> bloque->contenido ="";
   node-> bloque->tiempo_de_carga = 0;
   node->bloque -> ultima_referencia = 0;
-  node -> bloque -> id = crear_id_nodo();
   // Initialize left and right children as NULL
   node -> izquierda = malloc(sizeof(t_node));
   node -> izquierda -> bloque = malloc(sizeof(t_memoria_buddy));
-  node -> izquierda->bloque->padre = node->bloque ->id ;
   node -> derecha = malloc(sizeof(t_node));
   node -> derecha->bloque = malloc(sizeof(t_memoria_buddy));
-  node -> derecha -> bloque -> padre = node-> bloque -> id;
   return(node);
 }
 
@@ -2289,6 +2286,10 @@ void asignar_nodo(t_node* node,void* contenido, t_mensaje* mensaje, uint32_t exp
     node -> bloque -> codigo_operacion = mensaje -> codigo_operacion;
     node -> bloque -> contenido = contenido;
     mensaje -> payload = node;
+    node -> bloque  -> id  = crear_id_nodo();
+    node -> izquierda -> bloque  -> padre = node -> bloque -> id;
+    node -> derecha   -> bloque  -> padre = node -> bloque -> id;
+
     if(list_size(memoria_cache) > 1){
       	t_node* ultimo_buddy= list_get( memoria_cache, list_size(memoria_cache)-1);
       	node->bloque->base =  ultimo_buddy -> bloque ->base +  ultimo_buddy -> bloque->tamanio_exponente + 1;
@@ -2363,7 +2364,6 @@ uint32_t encontrar_hermano(t_node* buddy){
 		indice_disponible = indice_elegido -> indice;
 	} else {
 		indice_disponible = 0;
-		log_error(logger, "El indice no pudo obtenerse correctamente.");
 	}
 
 	list_destroy(indices);
