@@ -184,12 +184,16 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			agregar_mensaje(NEW_POKEMON, size, mensaje_e_agregar, cliente_fd);
 			break;
 		case SUBSCRIPTION:
-			////sem_wait(&muteadito);
+			////sem_wait(&sem_suscrip);
 			recibir_suscripcion(mensaje_e_agregar);
-			//sem_post(&muteadito);
+			sem_post(&sem_suscrip);
 			break;
 		case ACK:
+			//sem_wait(&sem_cola);
+			//sem_wait(&sem_suscrip);
 			actualizar_mensajes_confirmados(mensaje_e_agregar);
+			sem_post(&sem_suscrip);
+			sem_post(&sem_cola);
 			break;
 		case 0:
 			log_error(logger,"...No se encontro el tipo de mensaje");
@@ -197,9 +201,9 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 		case -1:
 			pthread_exit(NULL);
 	}
+
 	free(codigo_op);
 	free(stream);
-
 }
 
 void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t socket_cliente){
@@ -256,20 +260,17 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
     	mensaje_a_agregar -> tamanio_lista_localized = localized -> tamanio_lista;
     }
 
-
-	////sem_wait(&mutex_id);
-	//sleep(2);
 	send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
-	//sem_post(&mutex_id);
-	//sleep(2);
 
 	if(puede_guardarse_mensaje(mensaje_a_agregar)){
 		guardar_en_memoria(mensaje_a_agregar, mensaje);
 	}
 
-	////sem_wait(&semaforo);
+	////sem_wait(&sem_cola);
+	////sem_wait(&sem_suscrip);
 	encolar_mensaje(mensaje_a_agregar, cod_op);
-	//sem_post(&semaforo); 31
+	//sem_post(&sem_suscrip);
+	//sem_post(&sem_cola);
 }
 
 bool puede_guardarse_mensaje(t_mensaje* un_mensaje){
@@ -364,72 +365,37 @@ uint32_t generar_id_univoco(){
 
 void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 
+	establecer_tiempo_de_carga(mensaje);
+
 	switch (codigo_operacion) {
 			case GET_POKEMON:
-				establecer_tiempo_de_carga(mensaje);
-				////sem_wait(&mx_cola_get);
 				list_add(cola_get, mensaje);
-				//sleep(3);
-				////sem_wait(&mx_suscrip_get);
 				enviar_mensajes(cola_get, lista_suscriptores_get);
-				sem_post(&mx_suscrip_get);
-				sem_post(&mx_cola_get);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes get.");
 				break;
 			case CATCH_POKEMON:
-				establecer_tiempo_de_carga(mensaje);
-				//sem_wait(&mx_cola_catch);
 				list_add(cola_catch, mensaje);
-
-				//sleep(3);
-				//sem_wait(&mx_suscrip_catch);
 				enviar_mensajes(cola_catch, lista_suscriptores_catch);
-				sem_post(&mx_suscrip_catch);
-				sem_post(&mx_cola_catch);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes catch.");
 				break;
 			case LOCALIZED_POKEMON:
-				establecer_tiempo_de_carga(mensaje);
-				//sem_wait(&mx_cola_localized);
 				list_add(cola_localized, mensaje);
-				//sleep(3);
-				//sem_wait(&mx_suscrip_localized);
 				enviar_mensajes(cola_localized, lista_suscriptores_localized);
-				sem_post(&mx_suscrip_localized);
-				sem_post(&mx_cola_localized);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes localized.");
 				break;
 			case CAUGHT_POKEMON:
-				establecer_tiempo_de_carga(mensaje);
-				//sem_wait(&mx_cola_caught);
 				list_add(cola_caught, mensaje);
-				//sleep(3);
-				//sem_wait(&mx_suscrip_caught);
 				enviar_mensajes(cola_caught, lista_suscriptores_caught);
-				sem_post(&mx_suscrip_caught);
-				sem_post(&mx_cola_caught);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes caught.");
 				break;
 			case APPEARED_POKEMON:
-				establecer_tiempo_de_carga(mensaje);
-				//sem_wait(&mx_cola_appeared);
 				list_add(cola_appeared, mensaje);
-				//sleep(3);
-				//sem_wait(&mx_suscrip_appeared);
 				enviar_mensajes(cola_appeared, lista_suscriptores_appeared);
-				sem_post(&mx_suscrip_appeared);
-				sem_post(&mx_cola_appeared);			
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes appeared.");
 				break;
 			case NEW_POKEMON:
-				establecer_tiempo_de_carga(mensaje);
-				//sem_wait(&mx_cola_new);
 				list_add(cola_new, mensaje);
-				//sleep(3);
-				//sem_wait(&mx_suscrip_new);
 				enviar_mensajes(cola_new, lista_suscriptores_new);
-				sem_post(&mx_suscrip_new);
-				sem_post(&mx_cola_new);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes new.");
 				break;
 			default:
@@ -447,40 +413,27 @@ void recibir_suscripcion(t_suscripcion* mensaje_suscripcion){
 
 		switch (cola_a_suscribir) {
 			 case GET_POKEMON:
-			 	//sem_wait(&mx_suscrip_get);
 				suscribir_a_cola(lista_suscriptores_get, mensaje_suscripcion, cola_a_suscribir);
-				//sem_post(&mx_suscrip_get);
 				break;
 			 case CATCH_POKEMON:
-				//sem_wait(&mx_suscrip_catch);
 				suscribir_a_cola(lista_suscriptores_catch, mensaje_suscripcion, cola_a_suscribir);
-				//sem_post(&mx_suscrip_catch);
 				break;
 			 case LOCALIZED_POKEMON:
-			 	//sem_wait(&mx_suscrip_localized);
 				suscribir_a_cola(lista_suscriptores_localized, mensaje_suscripcion, cola_a_suscribir);
-				//sem_post(&mx_suscrip_localized);
 				break;
 			 case CAUGHT_POKEMON:
-			 	//sem_wait(&mx_suscrip_caught);
 				suscribir_a_cola(lista_suscriptores_caught, mensaje_suscripcion, cola_a_suscribir);
-				//sem_post(&mx_suscrip_catch);
 				break;
 			 case APPEARED_POKEMON:
-			 	//sem_wait(&mx_suscrip_appeared);
 				suscribir_a_cola(lista_suscriptores_appeared, mensaje_suscripcion, cola_a_suscribir);
-				//sem_post(&mx_suscrip_appeared);
 				break;
 			 case NEW_POKEMON:
-			 	//sem_wait(&mx_suscrip_new);
 				suscribir_a_cola(lista_suscriptores_new, mensaje_suscripcion, cola_a_suscribir);
-				//sem_post(&mx_suscrip_new);
 				break;
 			 default:
 				log_info(logger, "...La suscripcion no se puede realizar.");
 				break;
 		}
-
 }
 
 void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion, op_code cola_a_suscribir){
@@ -514,7 +467,9 @@ void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion, op
 	list_add(lista_suscriptores, suscripcion);
 
 	if(suscripcion->socket < 10000){
-	informar_mensajes_previos(suscripcion, cola_a_suscribir);
+		//sem_wait(&sem_cola);
+		informar_mensajes_previos(suscripcion, cola_a_suscribir);
+		sem_post(&sem_cola);
 	}
 	bool es_la_misma_suscripcion(void* una_suscripcion){
 		t_suscripcion* otra_suscripcion = una_suscripcion;
@@ -582,34 +537,22 @@ void descargar_historial_mensajes(op_code tipo_mensaje, uint32_t socket_cliente)
 
     switch(tipo_mensaje){
 		case GET_POKEMON:
-			//sem_wait(&mx_cola_get);
 			list_iterate(cola_get, mandar_mensajes_viejos);
-			sem_post(&mx_cola_get);
 			break;
 		case CATCH_POKEMON:
-			//sem_wait(&mx_cola_catch);
 			list_iterate(cola_catch, mandar_mensajes_viejos);
-			sem_post(&mx_cola_catch);
 			break;
 		case LOCALIZED_POKEMON:
-			//sem_wait(&mx_cola_localized);
 			list_iterate(cola_localized, mandar_mensajes_viejos);
-			sem_post(&mx_cola_localized);
 			break;
 		case CAUGHT_POKEMON:
-			//sem_wait(&mx_cola_caught);
 			list_iterate(cola_caught, mandar_mensajes_viejos);
-			sem_post(&mx_cola_caught);
 			break;
 		case APPEARED_POKEMON:
-			//sem_wait(&mx_cola_appeared);
 			list_iterate(cola_appeared, mandar_mensajes_viejos);
-			sem_post(&mx_cola_appeared);
 			break;
 		case NEW_POKEMON:
-			//sem_wait(&mx_cola_new);
 			list_iterate(cola_new, mandar_mensajes_viejos);
-			sem_post(&mx_cola_new);
 			break;
 		default:
 			log_info(logger, "...No se puede enviar el mensaje pedido.");
@@ -871,12 +814,8 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 			if(!list_any_satisfy(lista_suscriptores_get, es_la_misma_suscripcion)){
 				log_info(logger, "Me llego un ACK de un mensaje que no esta :(");
 			} else {
-				//sem_wait(&mx_cola_get);
 				list_iterate(cola_get, actualizar_suscripto);
-				//sem_wait(&mx_suscrip_get);
 				borrar_mensajes_confirmados(GET_POKEMON, cola_get, lista_suscriptores_get);
-				sem_post(&mx_suscrip_get);
-				sem_post(&mx_cola_get);
 			}
 			break;
 
@@ -885,12 +824,8 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 			if(!list_any_satisfy(lista_suscriptores_catch, es_la_misma_suscripcion)){
 				log_info(logger, "Me llego un ACK de un mensaje que no esta :(");
 			} else {
-				//sem_wait(&mx_cola_catch);
 				list_iterate(cola_catch, actualizar_suscripto);
-				//sem_wait(&mx_suscrip_catch);
 				borrar_mensajes_confirmados(CATCH_POKEMON, cola_catch, lista_suscriptores_catch);
-				sem_post(&mx_suscrip_catch);
-				sem_post(&mx_cola_catch);
 			}			
 			break;
 
@@ -898,12 +833,8 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 			if(!list_any_satisfy(lista_suscriptores_localized, es_la_misma_suscripcion)){
 				log_info(logger, "Me llego un ACK de un mensaje que no esta :(");
 			} else {
-				//sem_wait(&mx_cola_localized);
 				list_iterate(cola_localized, actualizar_suscripto);
-				//sem_wait(&mx_suscrip_localized);
-				borrar_mensajes_confirmados(LOCALIZED_POKEMON, cola_localized, lista_suscriptores_localized);
-				sem_post(&mx_suscrip_localized);
-				sem_post(&mx_cola_localized);
+				borrar_mensajes_confirmados(LOCALIZED_POKEMON, cola_localized, lista_suscriptores_localized);;
 			}			
 			break;
 
@@ -911,12 +842,8 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 			if(!list_any_satisfy(lista_suscriptores_caught, es_la_misma_suscripcion)){
 					log_info(logger, "Me llego un ACK de un mensaje que no esta :(");
 			} else {
-				//sem_wait(&mx_cola_caught);
 				list_iterate(cola_caught, actualizar_suscripto);
-				//sem_wait(&mx_suscrip_caught);
 				borrar_mensajes_confirmados(CAUGHT_POKEMON, cola_caught, lista_suscriptores_caught);
-				sem_post(&mx_suscrip_caught);
-				sem_post(&mx_cola_caught);
 			}
 			break;
 
@@ -924,12 +851,8 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 			if(!list_any_satisfy(lista_suscriptores_appeared, es_la_misma_suscripcion)){
 					log_info(logger, "Me llego un ACK de un mensaje que no esta :(");
 			} else {
-				//sem_wait(&mx_cola_appeared);
 				list_iterate(cola_appeared, actualizar_suscripto);
-				//sem_wait(&mx_suscrip_appeared);
 				borrar_mensajes_confirmados(APPEARED_POKEMON, cola_appeared, lista_suscriptores_appeared);
-				sem_post(&mx_suscrip_appeared);
-				sem_post(&mx_cola_appeared);
 			}			
 			break;
 
@@ -937,12 +860,8 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 			if(!list_any_satisfy(lista_suscriptores_appeared, es_la_misma_suscripcion)){
 					log_info(logger, "Me llego un ACK de un mensaje que no esta :(");
 			} else {
-				//sem_wait(&mx_cola_new);
 				list_iterate(cola_new, actualizar_suscripto);
-				//sem_wait(&mx_suscrip_new);
 				borrar_mensajes_confirmados(NEW_POKEMON, cola_new, lista_suscriptores_new);
-				sem_post(&mx_suscrip_new);
-				sem_post(&mx_cola_new);
 			}
 			break;
 
@@ -1038,7 +957,6 @@ void agregar_suscriptor_a_enviados_confirmados(t_mensaje* mensaje, uint32_t conf
 }
 
 void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){ // hilo
-	// //sem_wait(&mensajes_a_enviar); --> le das post cada vez q un mensaje es agregado a memoria
 
 	void mensajear_suscriptores(void* mensaje){
 			t_mensaje* un_mensaje = mensaje;
@@ -1121,13 +1039,16 @@ void dump_de_memoria(){
     log_info(logger_memoria, "Dump: %s", fechayhora);
 
     if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-    //Se empieza a loguear partición por partición --> considero la lista de particiones en memoria ("memoria auxiliar").
-	//sem_wait(&mx_memoria_particiones);
-	list_iterate(memoria_con_particiones, dump_info_particion);
-	sem_post(&mx_memoria_particiones);
+    	//Se empieza a loguear partición por partición --> considero la lista de particiones en memoria ("memoria auxiliar").
+		//sem_wait(&mx_memoria_particiones);
+		list_iterate(memoria_con_particiones, dump_info_particion);
+		sem_post(&mx_memoria_particiones);
+
     } else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-    //Ver que se necesita hacer para el BS
-    list_iterate(memoria_cache, dump_info_buddy);
+		//Ver que se necesita hacer para el BS
+    	//sem_wait(&mx_memoria_cache);
+		list_iterate(memoria_cache, dump_info_buddy);
+		sem_post(&mx_memoria_cache);
 
     } else {
         log_error(logger_memoria, "(? No se reconoce el algoritmo de memoria a implementar.");
@@ -1379,11 +1300,15 @@ void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje
     t_memoria_dinamica* particion_vacia = armar_particion(particion_a_reemplazar -> tamanio, particion_a_reemplazar -> base, NULL, 0, contenido_mensaje);
 
     uint32_t indice = encontrar_indice(particion_a_reemplazar);
+    //sem_wait(&sem_cola);
     t_mensaje* mensaje_a_eliminar = encontrar_mensaje(particion_a_reemplazar -> base, particion_a_reemplazar -> codigo_operacion);
+    sem_post(&sem_cola);
+
    	//sem_wait(&mx_memoria_particiones);
     particion_a_reemplazar = list_replace(memoria_con_particiones, indice, particion_vacia);
 	sem_post(&mx_memoria_particiones);
     eliminar_mensaje(mensaje_a_eliminar);
+
     //free(particion_a_reemplazar);
     log_info(logger, "Se libera una partición y se intenta ubicar nuevamente el mensaje.");
 
@@ -1482,8 +1407,12 @@ uint32_t obtener_id(t_memoria_dinamica* particion){
 
 uint32_t obtener_id_buddy(t_node* buddy){
     uint32_t id = 0;
+
+    //sem_wait(&sem_cola);
     t_mensaje* mensaje = encontrar_mensaje_buddy(buddy -> bloque -> base, buddy -> bloque -> codigo_operacion);
+    sem_post(&sem_cola);
     id = mensaje -> id_mensaje;
+
     return id;
 }
 
@@ -1499,34 +1428,22 @@ t_mensaje* encontrar_mensaje(uint32_t base_de_la_particion_del_mensaje, op_code 
 
     switch(codigo){
         case GET_POKEMON:
-        	//sem_wait(&mx_cola_get);
 			un_mensaje = (t_mensaje*) list_find(cola_get, tiene_la_misma_base);
-			sem_post(&mx_cola_get);
 			break;
 		case CATCH_POKEMON:
-			//sem_wait(&mx_cola_catch);
 			un_mensaje = (t_mensaje*) list_find(cola_catch, tiene_la_misma_base);
-			sem_post(&mx_cola_catch);
 			break;
 		case LOCALIZED_POKEMON:
-			//sem_wait(&mx_cola_localized);
 			un_mensaje = (t_mensaje*) list_find(cola_localized, tiene_la_misma_base);
-			sem_post(&mx_cola_localized);
 			break;
 		case CAUGHT_POKEMON:
-			//sem_wait(&mx_cola_caught);
 			un_mensaje = (t_mensaje*) list_find(cola_caught, tiene_la_misma_base);
-			sem_post(&mx_cola_caught);
 			break;
 		case APPEARED_POKEMON:
-			//sem_wait(&mx_cola_appeared);
 			un_mensaje = (t_mensaje*) list_find(cola_appeared, tiene_la_misma_base);
-			//sem_wait(&mx_cola_appeared);
 			break;
 		case NEW_POKEMON:
-			//sem_wait(&mx_cola_new);
 			un_mensaje = (t_mensaje*) list_find(cola_new, tiene_la_misma_base);
-			sem_post(&mx_cola_new);
 		    break;
 		default:
             log_error(logger, "...No se puede reconocer el mensaje de esta partición.");
@@ -1547,34 +1464,22 @@ t_mensaje* encontrar_mensaje_buddy(uint32_t base_del_buddy_del_mensaje, op_code 
 
     switch(codigo){
         case GET_POKEMON:
-        	//sem_wait(&mx_cola_get);
 			un_mensaje = list_find(cola_get, tiene_la_misma_base);
-			sem_post(&mx_cola_get);
 			break;
 		case CATCH_POKEMON:
-			//sem_wait(&mx_cola_catch);
 			un_mensaje = list_find(cola_catch, tiene_la_misma_base);
-			sem_post(&mx_cola_catch);
 			break;
 		case LOCALIZED_POKEMON:
-			//sem_wait(&mx_cola_localized);
 			un_mensaje = list_find(cola_localized, tiene_la_misma_base);
-			sem_post(&mx_cola_localized);
 			break;
 		case CAUGHT_POKEMON:
-			//sem_wait(&mx_cola_caught);
 			un_mensaje = list_find(cola_caught, tiene_la_misma_base);
-			sem_post(&mx_cola_caught);
 			break;
 		case APPEARED_POKEMON:
-			//sem_wait(&mx_cola_appeared);
 			un_mensaje = list_find(cola_appeared, tiene_la_misma_base);
-			sem_post(&mx_cola_appeared);
 			break;
 		case NEW_POKEMON:
-			//////sem_wait(&mx_cola_new);
 			un_mensaje = list_find(cola_new, tiene_la_misma_base);
-			sem_post(&mx_cola_new);
 		    break;
 		default:
             log_error(logger, "...No se puede reconocer el mensaje de esta partición.");
@@ -1610,7 +1515,7 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
             log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
             reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
         } else {
-			////sem_wait(&mx_memoria_particiones);
+			//sem_wait(&mx_memoria_particiones);
         	particion_a_ubicar = list_get(memoria_con_particiones, posicion_a_ubicar);
 			nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1, contenido_mensaje);
 			ubicar_particion(posicion_a_ubicar, nueva_particion);
@@ -1628,7 +1533,7 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
             log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
             reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
         } else {
-			////sem_wait(&mx_memoria_particiones);
+			//sem_wait(&mx_memoria_particiones);
         	particion_a_ubicar = list_get(memoria_con_particiones, posicion_a_ubicar);
 			nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1, contenido_mensaje);
 			ubicar_particion(posicion_a_ubicar, nueva_particion);
@@ -1644,9 +1549,10 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
 void guardar_contenido_de_mensaje(uint32_t offset, void* contenido, uint32_t tamanio){
 
 	if(contenido != NULL){
-		////sem_wait(&mx_memoria_cache);
+		//sem_wait(&mx_memoria_cache);
 		memcpy(memoria + offset, contenido, tamanio);
 		sem_post(&mx_memoria_cache);
+
 		log_info(logger, "Se guardó un mensaje en la particion de tamaño %d que comienza en la posicion %d.", tamanio, offset);
 	} else {
 		log_info(logger, "Se libera una partición de tamaño %d que comienza en la posicion %d.", tamanio, offset);
@@ -1728,7 +1634,7 @@ uint32_t encontrar_primer_ajuste(uint32_t tamanio){
             t_memoria_dinamica* una_particion = particion;
             return !(una_particion -> ocupado);
     }
-	////sem_wait(&mx_memoria_particiones);
+	//sem_wait(&mx_memoria_particiones);
     t_list* lista_duplicada = list_filter(memoria_con_particiones, es_particion_vacia);
 	sem_post(&mx_memoria_particiones);
     bool tiene_tamanio_suficiente(void* particion){
@@ -1763,6 +1669,7 @@ uint32_t encontrar_mejor_ajuste(uint32_t tamanio){
 	//sem_wait(&mx_memoria_particiones);
     t_list* particiones_en_orden_creciente = list_sorted(memoria_con_particiones, es_de_menor_tamanio);
 	sem_post(&mx_memoria_particiones);
+
     bool es_particion_vacia(void* part){
     	t_memoria_dinamica* part2 = part;
     	return !(part2 -> ocupado);
@@ -1797,8 +1704,9 @@ uint32_t encontrar_indice(void* memory){
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 		t_memoria_dinamica* posible_particion = memory;
         //sem_wait(&mx_memoria_particiones);
-	       memoria_duplicada = list_duplicate(memoria_con_particiones);
+	    memoria_duplicada = list_duplicate(memoria_con_particiones);
 	    sem_post(&mx_memoria_particiones);
+
 		void obtener_indices(void* particion){
 			t_memoria_dinamica* particion_a_transformar = particion;
 			t_indice* un_indice = malloc(sizeof(t_indice));
@@ -1825,8 +1733,9 @@ uint32_t encontrar_indice(void* memory){
 
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
 		//sem_wait(&mx_memoria_cache);
-			memoria_duplicada = list_duplicate(memoria_cache);
+		memoria_duplicada = list_duplicate(memoria_cache);
 		sem_post(&mx_memoria_cache);
+
 	    buddy = memory;
 
 		void obtener_indices_buddy(void* un_buddy){
@@ -1944,7 +1853,6 @@ void compactar_particiones_dinamicas(t_list* memoria){
 	list_clean(memoria);
 	list_add_all(memoria, particiones_ocupadas);
 	list_add_all(memoria, particiones_vacias);
-	sem_post(&mx_memoria_particiones);
 
 	void actualizar_base(void* particion){
 		t_memoria_dinamica* una_particion = particion;
@@ -1952,7 +1860,6 @@ void compactar_particiones_dinamicas(t_list* memoria){
 		posicion_lista++;
 	}
 
-	//sem_wait(&mx_memoria_particiones);
 	list_iterate(memoria, actualizar_base);
 	sem_post(&mx_memoria_particiones);
 
@@ -1970,6 +1877,7 @@ uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion, uint32_t indice_t
 	//sem_wait(&mx_memoria_particiones);
 	t_list* memoria_duplicada = list_duplicate(memoria_con_particiones);
 	sem_post(&mx_memoria_particiones);
+
 	t_memoria_dinamica* particion_buscada;
 
 	if(indice_tope > 0){
@@ -1982,6 +1890,7 @@ uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion, uint32_t indice_t
 	} else {
 		nueva_base = 0;
 	}
+
 	//nueva_base ++;
 	return nueva_base;
 }
@@ -1995,6 +1904,7 @@ void compactar_memoria_cache(t_list* lista_particiones){
         }
     }
 	//sem_wait(&mx_memoria_particiones);
+
 	list_iterate(lista_particiones, reescribir_memoria);
 	sem_post(&mx_memoria_particiones);
 }
@@ -2029,9 +1939,9 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 			}
 			return -1;
 		}
-//		//sem_wait(&mx_memoria_particiones);
+		//sem_wait(&mx_memoria_particiones);
 		t_memoria_dinamica* particion_a_liberar = list_find(memoria_duplicada, es_la_particion);
-//		sem_post(&mx_memoria_particiones);
+		sem_post(&mx_memoria_particiones);
 		uint32_t indice = encontrar_indice(particion_a_liberar);
 
 		t_memoria_dinamica* particion_vacia = armar_particion(particion_a_liberar -> tamanio, particion_a_liberar -> base, NULL, 0, NULL);
@@ -2039,7 +1949,10 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 		particion_a_liberar = list_replace(memoria_con_particiones, indice, particion_vacia);
 		sem_post(&mx_memoria_particiones);
 
+		//sem_wait(&sem_cola);
 		eliminar_de_message_queue(mensaje, mensaje -> codigo_operacion);
+		sem_post(&sem_cola);
+
 		log_info(logger, "El mensaje fue eliminado correctamente.");
 
 		if(config_broker -> frecuencia_compactacion == 0 || (particiones_liberadas == (config_broker -> frecuencia_compactacion))){
@@ -2048,12 +1961,9 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 
 		consolidar_particiones_dinamicas(memoria_con_particiones);
 
-
-
 		//sem_wait(&sem_particion_liberada);
 		particiones_liberadas++;
 		sem_post(&sem_particion_liberada);
-		
 
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
 		t_node* buddy_buscado = mensaje ->payload;
@@ -2068,10 +1978,12 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 				t_node* buddy_vacio = armar_buddy(buddy_a_liberar -> bloque -> tamanio_exponente, buddy_a_liberar -> bloque -> base, NULL, 0, NULL);
 
 				buddy_a_liberar = list_replace(memoria_cache, indice, buddy_vacio);
+
+				//sem_wait(&sem_cola);
 				eliminar_de_message_queue(mensaje, mensaje -> codigo_operacion);
+				sem_post(&sem_cola);
+
 				log_info(logger, "El mensaje fue eliminado correctamente.");
-
-
 	} else {
 		log_error(logger, "...No se reconoce el algoritmo de memoria.");
 	}
@@ -2087,34 +1999,22 @@ void eliminar_de_message_queue(t_mensaje* mensaje, op_code codigo){
 
 	switch(codigo){
 	case GET_POKEMON:
-		//sem_wait(&mx_cola_get);
 		list_remove_by_condition(cola_get, es_el_mismo_mensaje);
-		sem_post(&mx_cola_get);
 		break;
 	case CATCH_POKEMON:
-		//sem_wait(&mx_cola_catch);
 		list_remove_by_condition(cola_catch, es_el_mismo_mensaje);
-		sem_post(&mx_cola_catch);
 		break;
 	case APPEARED_POKEMON:
-		//sem_wait(&mx_cola_appeared);
 		list_remove_by_condition(cola_appeared, es_el_mismo_mensaje);
-		sem_post(&mx_cola_appeared);
 		break;
 	case LOCALIZED_POKEMON:
-		//sem_wait(&mx_cola_localized);
 		list_remove_by_condition(cola_localized, es_el_mismo_mensaje);
-		sem_post(&mx_cola_localized);
 		break;
 	case CAUGHT_POKEMON:
-		//sem_wait(&mx_cola_caught);
 		list_remove_by_condition(cola_caught, es_el_mismo_mensaje);
-		sem_post(&mx_cola_caught);
 		break;
 	case NEW_POKEMON:
-		//sem_wait(&mx_cola_new);
 		list_remove_by_condition(cola_new, es_el_mismo_mensaje);
-		sem_post(&mx_cola_new);
 		break;
 	default:
 		log_error(logger, "...No se pudo eliminar el mensaje de la message queue.");
@@ -2347,7 +2247,7 @@ uint32_t encontrar_hermano(t_node* buddy){
 	t_list* indices = list_create();
 
 	//sem_wait(&mx_memoria_cache);
-		t_list* memoria_duplicada = list_duplicate(memoria_cache);
+	t_list* memoria_duplicada = list_duplicate(memoria_cache);
 	sem_post(&mx_memoria_cache);
 
 	bool encontrar_al_companero(void* buddy1){
@@ -2495,7 +2395,7 @@ void consolidar_buddy(t_list* memoria){
 
         if(tiene_siguiente_buddy(contador)){
         	if(ambas_estan_vacias_buddy(contador, contador + 1)){
-        		consolidar_buddies(contador, contador + 1)();
+        		consolidar_buddies(contador, contador + 1);
         	}
         }
         contador++;
@@ -2544,26 +2444,13 @@ void consolidar_buddies(uint32_t primer_elemento, uint32_t elemento_siguiente){
 void iniciar_semaforos_broker() {
 	//REVISAR INICIALIZCIONES
 	sem_init(&mx_memoria_particiones, 0, 1);
-	sem_init(&semaforo, 0, 1);
 	sem_init(&sem_particion_liberada, 0,1);
 	sem_init(&mutex_id, 0, 1);
-    sem_init(&mx_cola_get, 0, 1);
-	sem_init(&mx_cola_catch, 0, 1);
-	sem_init(&mx_cola_localized, 0, 1);
-	sem_init(&mx_cola_caught, 0, 1);
-    sem_init(&mx_cola_appeared, 0, 1);
-    sem_init(&mx_cola_new, 0, 1);
-    sem_init(&mx_suscrip_get, 0, 1);
-	sem_init(&mx_suscrip_catch, 0, 1);
-	sem_init(&mx_suscrip_localized, 0, 1);
-	sem_init(&mx_suscrip_caught, 0, 1);
-    sem_init(&mx_suscrip_appeared, 0, 1);
-    sem_init(&mx_suscrip_new, 0, 1);
+    sem_init(&sem_cola, 0, 1);
+    sem_init(&sem_suscrip, 0, 1);
     sem_init(&mx_memoria_cache, 0, 1);
     sem_init(&mx_copia_memoria, 0, 1);
-    sem_init(&muteadito,0,1);
-
-
+    sem_init(&semaforo, 0, 1);
 }
 
 void terminar_hilos_broker(){
@@ -2574,21 +2461,11 @@ void terminar_hilos_broker(){
 
 void liberar_semaforos_broker(){
 	sem_destroy(&sem_particion_liberada);
-	sem_destroy(&mx_cola_get);
-    sem_destroy(&mx_cola_catch);
-    sem_destroy(&mx_cola_localized);
-    sem_destroy(&mx_cola_caught);
-    sem_destroy(&mx_cola_appeared);
-    sem_destroy(&mx_cola_new);
-    sem_destroy(&mx_suscrip_get);
-    sem_destroy(&mx_suscrip_catch);
-    sem_destroy(&mx_suscrip_localized);
-    sem_destroy(&mx_suscrip_caught);
-    sem_destroy(&mx_suscrip_appeared);
-    sem_destroy(&mx_suscrip_new);
+	sem_destroy(&sem_cola);
+    sem_destroy(&sem_suscrip);
     sem_destroy(&mx_memoria_cache);
     sem_destroy(&mx_copia_memoria);
 	sem_destroy(&mx_memoria_particiones);
-    sem_destroy(&semaforo);
     sem_destroy(&mutex_id);
+    sem_destroy(&semaforo);
 }

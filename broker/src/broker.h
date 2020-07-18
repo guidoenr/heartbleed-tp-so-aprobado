@@ -114,20 +114,9 @@ pthread_t hilo_envio_mensajes;
 pthread_t hilo_signal;
 
 //--semaforos--//
-sem_t semaforo;
 sem_t mutex_id;
-sem_t mx_cola_get;
-sem_t mx_cola_catch;
-sem_t mx_cola_localized;
-sem_t mx_cola_caught;
-sem_t mx_cola_appeared;
-sem_t mx_cola_new;
-sem_t mx_suscrip_get;
-sem_t mx_suscrip_catch;
-sem_t mx_suscrip_localized;
-sem_t mx_suscrip_caught;
-sem_t mx_suscrip_appeared;
-sem_t mx_suscrip_new;
+sem_t sem_cola;
+sem_t sem_suscrip;
 sem_t mx_memoria_cache;
 sem_t mx_copia_memoria;
 sem_t sem_particion_liberada;
