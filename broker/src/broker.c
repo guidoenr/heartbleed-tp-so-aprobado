@@ -156,7 +156,7 @@ void liberar_listas(){
 
 /*EL SERVICE DEL BROKER*/
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {
-	sem_wait(&muteadito);
+
 	uint32_t size;
 	op_code* codigo_op = malloc(sizeof(op_code));
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
@@ -164,7 +164,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	log_info(logger,"Codigo de operacion %d", cod_op);
 	void* mensaje_e_agregar = deserealizar_paquete(stream, *codigo_op, size);
 
-	switch (*codigo_op) {
+	switch (cod_op) {
 		case GET_POKEMON:
 			agregar_mensaje(GET_POKEMON, size, mensaje_e_agregar, cliente_fd);
 			break;
@@ -184,7 +184,9 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			agregar_mensaje(NEW_POKEMON, size, mensaje_e_agregar, cliente_fd);
 			break;
 		case SUBSCRIPTION:
+			//sem_wait(&muteadito);
 			recibir_suscripcion(mensaje_e_agregar);
+			//sem_post(&muteadito);
 			break;
 		case ACK:
 			actualizar_mensajes_confirmados(mensaje_e_agregar);
@@ -197,7 +199,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	}
 	free(codigo_op);
 	free(stream);
-	sem_post(&muteadito);
+
 }
 
 void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t socket_cliente){
@@ -245,17 +247,17 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
     }
 
 
-	sem_wait(&mutex_id);
+	//sem_wait(&mutex_id);
 	//sleep(2);
 	send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
-	sem_post(&mutex_id);
+	//sem_post(&mutex_id);
 	//sleep(2);
 
 	if(puede_guardarse_mensaje(mensaje_a_agregar)){
 		guardar_en_memoria(mensaje_a_agregar, mensaje);
 	}
 
-	sem_wait(&semaforo);
+	//sem_wait(&semaforo);
 	encolar_mensaje(mensaje_a_agregar, cod_op);
 	sem_post(&semaforo);
 }

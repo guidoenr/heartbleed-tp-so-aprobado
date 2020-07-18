@@ -5,13 +5,13 @@ int main(int argc, char * argv[]) {
   uint32_t id_mensaje = 0;
   iniciar_programa(argc);
   uint32_t socket = seleccionar_proceso(argv);
-  recibir_id_de_mensaje_enviado(socket, id_mensaje);
+  //recibir_id_de_mensaje_enviado(socket, id_mensaje);
+
   terminar_programa(socket, logger, config_game_boy);
 
 }
 
 void iniciar_programa(uint32_t argc) {
-
 
   leer_config();
   iniciar_logger(config_game_boy -> log_file, "gameboy");
