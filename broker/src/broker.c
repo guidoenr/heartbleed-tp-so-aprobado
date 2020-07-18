@@ -2325,17 +2325,28 @@ uint32_t encontrar_hermano(t_node* buddy){
 	sem_post(&mx_memoria_cache);
 
 	bool encontrar_al_companero(void* buddy1){
-        t_node* un_buddy= buddy1;
-        return un_buddy -> bloque ->padre == buddy -> bloque->padre &&  buddy -> bloque->id != un_buddy -> bloque->id;
+        t_indice* un_buddy= buddy1;
+        if(un_buddy != NULL){
+			if(un_buddy ->padre_id == buddy-> bloque ->padre && un_buddy-> base != buddy-> bloque->base){
+				return true;
+			} else{
+				return false;
+			}
+        }else{
+        	log_warning(logger,"no tiene hermano");
+        }
     }
+
 	void obtener_indices(void* buddy){
 				t_node* particion_a_transformar = buddy;
 				t_indice* un_indice = malloc(sizeof(t_indice));
 				un_indice -> indice = indice_buscador;
 				un_indice -> base = particion_a_transformar -> bloque -> base;
+				un_indice -> padre_id =  particion_a_transformar -> bloque -> padre;
 				list_add(indices, un_indice);
 				indice_buscador++;
 	}
+
 	list_iterate(memoria_duplicada, obtener_indices);
 	t_indice* indice_elegido = list_find(indices, encontrar_al_companero);
 

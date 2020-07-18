@@ -13,6 +13,7 @@
 typedef struct {
     uint32_t indice;
     uint32_t base;
+    uint32_t padre_id;
 } t_indice;
 
 typedef struct {
