@@ -320,7 +320,7 @@ uint32_t obtener_tamanio_contenido_mensaje(void* mensaje, uint32_t codigo){
 		tamanio = strlen(localized -> pokemon) + (list_size(localized -> posiciones) * sizeof(uint32_t))+ sizeof(uint32_t);
 		break;
 	case CAUGHT_POKEMON:
-		tamanio = sizeof(uint32_t)*2;
+		tamanio = sizeof(uint32_t);
 		break;
 	case APPEARED_POKEMON:
 		appeared = mensaje;
