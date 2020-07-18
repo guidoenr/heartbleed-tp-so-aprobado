@@ -10,7 +10,7 @@ git clone "https://github.com/sisoputnfrba/so-commons-library"
 chown -R utnso:utnso so-commons-library/
 
 cd so-commons-library
-make all
+sudo make install
 
 echo -e "Compilando broker \e[35m"
 cd /home/utnso/workspace/tp-2020-1c-heartbleed/broker/Debug
