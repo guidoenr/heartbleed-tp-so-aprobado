@@ -332,7 +332,7 @@ void* serializar_get_pokemon(void* mensaje_get, uint32_t size_mensaje, uint32_t*
 
 	log_info(logger, "...Codigo de operacion a enviar: %d", GET_POKEMON);
 	log_info(logger, "...Tamaño a enviar: %d", malloc_size);
-    liberar_mensaje_get(mensaje_a_enviar);
+    //liberar_mensaje_get(mensaje_a_enviar);
 	return stream;
 }
 
@@ -400,7 +400,7 @@ void* serializar_catch_pokemon(void* mensaje_catch, uint32_t size_mensaje, uint3
 	log_info(logger, "...Codigo de operacion a enviar: %d", CATCH_POKEMON);
 	log_info(logger, "...Tamaño a enviar: %d", malloc_size);
 
-    liberar_mensaje_catch(mensaje_a_enviar);
+    //liberar_mensaje_catch(mensaje_a_enviar);
 	return stream;
 
 }
@@ -481,7 +481,7 @@ void* serializar_appeared_pokemon(void* mensaje_appeared, uint32_t size_mensaje,
 	log_info(logger, "...Codigo de operacion a enviar: %d", APPEARED_POKEMON);
 	log_info(logger, "...Tamaño a enviar: %d", malloc_size);
 
-    liberar_mensaje_appeared(mensaje_a_enviar);
+    //liberar_mensaje_appeared(mensaje_a_enviar);
 	return stream;
 
 }
@@ -568,7 +568,7 @@ void* serializar_new_pokemon(void* mensaje_new, uint32_t size_mensaje, uint32_t*
 	log_info(logger, "...Codigo de operacion a enviar: %d", NEW_POKEMON);
 	log_info(logger, "...Tamaño a enviar: %d", malloc_size);
 
-    liberar_mensaje_new(mensaje_a_enviar);
+    //liberar_mensaje_new(mensaje_a_enviar);
 	return stream;
 
 }
@@ -641,7 +641,7 @@ void* serializar_caught_pokemon(void* mensaje_caught, uint32_t size_mensaje, uin
 	log_info(logger, "...Codigo de operacion a enviar: %d", GET_POKEMON);
 	log_info(logger, "...Tamaño a enviar: %d", malloc_size);
 
-    liberar_mensaje_caught(mensaje_a_enviar);
+    //liberar_mensaje_caught(mensaje_a_enviar);
 	return stream;
 }
 
@@ -711,7 +711,7 @@ void* serializar_localized_pokemon(void* mensaje_localized, uint32_t size_mensaj
 
     log_info(logger, "...Codigo de operacion a enviar: %d", LOCALIZED_POKEMON);
 	log_info(logger, "...Tamaño a enviar: %d", malloc_size);
-    liberar_mensaje_localized(mensaje_a_enviar);
+    //liberar_mensaje_localized(mensaje_a_enviar);
 	return stream;
 }
 
@@ -880,22 +880,22 @@ t_suscripcion* deserealizar_suscripcion(void* stream, uint32_t size_mensaje){
 }
 
 void liberar_mensaje_get(t_get_pokemon* mensaje_get){
-    free(mensaje_get -> pokemon);
+    //free(mensaje_get -> pokemon);
     free(mensaje_get);
 }
 
 void liberar_mensaje_catch(t_catch_pokemon* mensaje_catch){
-    free(mensaje_catch -> pokemon);
+    //free(mensaje_catch -> pokemon);
     free(mensaje_catch);
 }
 
 void liberar_mensaje_appeared(t_appeared_pokemon* mensaje_appeared){
-    free(mensaje_appeared -> pokemon);
+    //free(mensaje_appeared -> pokemon);
     free(mensaje_appeared);
 }
 
 void liberar_mensaje_new(t_new_pokemon* mensaje_new){
-    free(mensaje_new -> pokemon);
+    //free(mensaje_new -> pokemon);
     free(mensaje_new);
 }
 
@@ -912,7 +912,7 @@ void liberar_suscripcion(t_suscripcion* mensaje_suscripcion){
 }
 
 void liberar_mensaje_localized(t_localized_pokemon* mensaje_localized){
-    free(mensaje_localized -> pokemon);
-    list_destroy(mensaje_localized -> posiciones);
+    //free(mensaje_localized -> pokemon);
+    //list_destroy(mensaje_localized -> posiciones);
     free(mensaje_localized);
 }

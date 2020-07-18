@@ -73,6 +73,7 @@ void inicializar_semaforos() {
 	sem_init(&mx_contexto, 0, 1);
 	sem_init(&mx_paquete, 0, 1);
 	sem_init(&fin_programa, 0, 0);
+	sem_init(&semaforo, 0, 1);
 }
 
 void leer_config(void) {
@@ -1671,6 +1672,7 @@ void liberar_semaforos() {
 	sem_destroy(&mx_contexto);
 	sem_destroy(&mx_paquete);
 	sem_destroy(&fin_programa);
+	sem_destroy(&semaforo);
 }
 
 void liberar_listas() {

@@ -1,6 +1,7 @@
 #!/bin/sh
-./game_boy TEAM APPEARED_POKEMON Pikachu 9 9
-./game_boy TEAM APPEARED_POKEMON Squirtle 6 7
-./game_boy TEAM APPEARED_POKEMON Onix 2 8
-./game_boy TEAM APPEARED_POKEMON Gengar 6 6
-./game_boy TEAM APPEARED_POKEMON Squirtle 5 5
+cd /home/utnso/workspace/tp-2020-1c-heartbleed/game_boy/Debug/
+./gameboy TEAM APPEARED_POKEMON Pikachu 9 9
+./gameboy TEAM APPEARED_POKEMON Squirtle 6 7
+./gameboy TEAM APPEARED_POKEMON Onix 2 8
+./gameboy TEAM APPEARED_POKEMON Gengar 6 6
+./gameboy TEAM APPEARED_POKEMON Squirtle 5 5
