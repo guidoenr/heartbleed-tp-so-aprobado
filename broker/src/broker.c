@@ -156,6 +156,7 @@ void liberar_listas(){
 
 /*EL SERVICE DEL BROKER*/
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {
+	sem_wait(&muteadito);
 	uint32_t size;
 	op_code* codigo_op = malloc(sizeof(op_code));
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
@@ -183,9 +184,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			agregar_mensaje(NEW_POKEMON, size, mensaje_e_agregar, cliente_fd);
 			break;
 		case SUBSCRIPTION:
-			sem_wait(&muteadito);
 			recibir_suscripcion(mensaje_e_agregar);
-			sem_post(&muteadito);
 			break;
 		case ACK:
 			actualizar_mensajes_confirmados(mensaje_e_agregar);
@@ -198,6 +197,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	}
 	free(codigo_op);
 	free(stream);
+	sem_post(&muteadito);
 }
 
 void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t socket_cliente){
