@@ -23,7 +23,7 @@ int main(void) {
 	//conectarse_a_br(socket_br);
 
 	sem_init(&mx_bitmap,0,1);
-
+	sem_init(&semaforo,0,1);
 	iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
 
 
