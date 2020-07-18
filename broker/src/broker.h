@@ -105,7 +105,7 @@ uint32_t asignado = 0;
 uint32_t numero_particion = 0;
 uint32_t id_mensaje_univoco;
 void* memoria;
-uint32_t nodo_id = 0;
+uint32_t nodo_id;
 //--hilos--//
 
 pthread_t hilo_mensaje;

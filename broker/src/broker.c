@@ -37,6 +37,7 @@ void iniciar_programa(){
 	id_mensaje_univoco = 0;
 	particiones_liberadas = 0;
 	numero_particion = 1;
+	nodo_id = 0;
 
 	iniciar_semaforos_broker();
 
@@ -243,8 +244,8 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
     }
 
     if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-        t_node* buddy = malloc(sizeof(t_node));
-        mensaje_a_agregar -> payload = buddy;
+         mensaje_a_agregar -> payload =  malloc(sizeof(t_node));
+         ((t_node*)(mensaje_a_agregar->payload))->bloque = malloc(sizeof(t_memoria_buddy));
     } else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
         t_memoria_dinamica* particion = malloc(sizeof(t_memoria_dinamica));
 		mensaje_a_agregar -> payload = particion;
@@ -827,12 +828,10 @@ void actualizar_ultima_referencia(t_mensaje* un_mensaje){
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 		t_memoria_dinamica* particion = un_mensaje -> payload;
 		particion -> ultima_referencia = timestamp();
-		log_info(logger, "...Se actualizó la última referencia del mensaje con id: %d", un_mensaje -> id_mensaje);
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
 		t_node* buddy = un_mensaje -> payload;
 		buddy -> bloque -> ultima_referencia = timestamp();
-		log_info(logger, "...Se actualizó la última referencia del mensaje con id: %d", un_mensaje -> id_mensaje);
-	} else {
+	  } else {
 		log_error(logger, "...No se reconoce el algoritmo de memoria.");
 	}
 
@@ -843,11 +842,11 @@ void establecer_tiempo_de_carga(t_mensaje* un_mensaje){
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 		t_memoria_dinamica* una_particion = un_mensaje -> payload;
 		una_particion -> tiempo_de_carga = timestamp();
-		log_info(logger, "...Se estableció el tiempo de carga del mensaje con id: %d", un_mensaje -> id_mensaje);
-	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-		t_node* buddy = un_mensaje -> payload;
-		buddy  -> bloque -> tiempo_de_carga = timestamp();
-		log_info(logger, "...Se estableció el tiempo de carga del mensaje con id: %d", un_mensaje -> id_mensaje);
+		} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
+		log_warning(logger,"%d", timestamp());
+		uint64_t variable = timestamp();
+		log_warning(logger,"%d",variable);
+		((t_node*)(un_mensaje->payload))-> bloque -> tiempo_de_carga = variable;
 	} else {
 		log_error(logger, "...No se reconoce el algoritmo de memoria.");
 	}
@@ -1149,10 +1148,12 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 		uint32_t exponente = 0;
 		if(mensaje -> tamanio_mensaje > config_broker -> size_min_memoria){
 				exponente = obtenerPotenciaDe2(mensaje->tamanio_mensaje);
-		}else
+		}else{
 		  exponente = config_broker -> size_min_memoria;
+		}
+
 		  t_node* primer_nodo = malloc(sizeof(t_node));
-		  primer_nodo ->bloque = (t_node*)memoria_cache->head->data;
+		  primer_nodo = (t_node*)memoria_cache->head->data;
 		  uint32_t pudoGuardarlo =chequear_memoria();
 		  if(pudoGuardarlo){
 			 if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
@@ -2236,9 +2237,8 @@ char* obtener_cola_del_mensaje_buddy(t_node* un_buddy){
 uint64_t timestamp(void) {
 	struct timeval valor;
 	gettimeofday(&valor, NULL);
-	unsigned long long result = ((unsigned long long )valor.tv_sec) * 1000 + ((unsigned long) valor.tv_usec) / 1000;
-	uint32_t tiempo = result;
-	return tiempo;
+	uint64_t result = ((unsigned long long )valor.tv_sec) * 1000 + ((unsigned long) valor.tv_usec) / 1000;
+	return result;
 }
 
 //-------------BUDDY_SYSTEM-------------//
@@ -2279,9 +2279,14 @@ t_node* crear_nodo(uint32_t tamanio)
   node -> bloque->contenido ="";
   node-> bloque->tiempo_de_carga = 0;
   node->bloque -> ultima_referencia = 0;
+  node -> bloque -> id = crear_id_nodo();
   // Initialize left and right children as NULL
-  node -> izquierda = NULL;
-  node -> derecha = NULL;
+  node -> izquierda = malloc(sizeof(t_node));
+  node -> izquierda -> bloque = malloc(sizeof(t_memoria_buddy));
+  node -> izquierda->bloque->padre = node->bloque ->id ;
+  node -> derecha = malloc(sizeof(t_node));
+  node -> derecha->bloque = malloc(sizeof(t_memoria_buddy));
+  node -> derecha -> bloque -> padre = node-> bloque -> id;
   return(node);
 }
 
@@ -2299,7 +2304,7 @@ void asignar_nodo(t_node* node,void* contenido, t_mensaje* mensaje, uint32_t exp
     node -> bloque -> tamanio_mensaje = mensaje ->tamanio_mensaje;
     node -> bloque -> codigo_operacion = mensaje -> codigo_operacion;
     node -> bloque -> contenido = contenido;
-    //mensaje -> payload = node -> bloque;  RESOLVER MAS ADELANTE.
+    mensaje -> payload = node;
     if(list_size(memoria_cache) > 1){
       	t_node* ultimo_buddy= list_get( memoria_cache, list_size(memoria_cache)-1);
       	node->bloque->base =  ultimo_buddy -> bloque ->base +  ultimo_buddy -> bloque->tamanio_exponente + 1;
@@ -2309,7 +2314,7 @@ void asignar_nodo(t_node* node,void* contenido, t_mensaje* mensaje, uint32_t exp
     	guardar_contenido_de_mensaje(0, contenido, exponente);
     }
 
-    chequear_buddy(node);
+   chequear_buddy(node);
 }
 
 void chequear_buddy(t_node* node){
@@ -2379,7 +2384,7 @@ void crear_companieros(t_node* node){
 }
 
 uint32_t crear_id_nodo(){
-    nodo_id ++;
+   return nodo_id ++;
 }
 
 uint32_t recorrer_first_fit(t_node* nodo, uint32_t exponente, void* contenido, t_mensaje*  mensaje){
