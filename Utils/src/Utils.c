@@ -880,12 +880,12 @@ t_suscripcion* deserealizar_suscripcion(void* stream, uint32_t size_mensaje){
 }
 
 void liberar_mensaje_get(t_get_pokemon* mensaje_get){
-    free(mensaje_get -> pokemon);
+    //free(mensaje_get -> pokemon);
     free(mensaje_get);
 }
 
 void liberar_mensaje_catch(t_catch_pokemon* mensaje_catch){
-    free(mensaje_catch -> pokemon);
+    //free(mensaje_catch -> pokemon);
     free(mensaje_catch);
 }
 
