@@ -819,7 +819,7 @@ t_ack* deserealizar_ack(void* stream, uint32_t size_mensaje){
 void* serializar_suscripcion(void* mensaje_suscripcion, uint32_t size_mensaje, uint32_t* size_serializado){
     t_suscripcion* mensaje_a_enviar = mensaje_suscripcion;
 
-    uint32_t malloc_size = (*size_serializado) + sizeof(uint32_t)*2;
+    uint32_t malloc_size = (*size_serializado);
 
     void* stream = malloc(malloc_size);
 	uint32_t offset = 0;
@@ -841,7 +841,8 @@ void* serializar_suscripcion(void* mensaje_suscripcion, uint32_t size_mensaje, u
     log_info(logger,"Sereliazacion tiempo suscripcion: %d", *(int*) (stream+ offset));
 	offset += sizeof(uint32_t);
 
-    memcpy(stream + offset, &(mensaje_a_enviar -> cola_a_suscribir), sizeof(op_code));
+	op_code cola = mensaje_a_enviar-> cola_a_suscribir;
+    memcpy(stream + offset, &(cola), sizeof(op_code));
     log_info(logger,"Sereliazacion cola: %d", *(int*) (stream+ offset));
 	offset += sizeof(op_code);
 
