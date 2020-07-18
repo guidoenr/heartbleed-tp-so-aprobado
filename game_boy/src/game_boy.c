@@ -199,27 +199,27 @@ t_suscripcion* armar_mensaje_suscripcion(char * parametros[]) {
   char * cola_a_suscribir = parametros[2];
   a_enviar -> socket = 10000;
 
-  if (string_equals_ignore_case(cola_a_suscribir, "COLA_GET")) {
+  if (string_equals_ignore_case(cola_a_suscribir, "GET_POKEMON")) {
     a_enviar -> cola_a_suscribir = GET_POKEMON;
   }
 
-  if (string_equals_ignore_case(cola_a_suscribir, "COLA_CATCH")) {
+  if (string_equals_ignore_case(cola_a_suscribir, "CATCH_POKEMON")) {
     a_enviar -> cola_a_suscribir = CATCH_POKEMON;
   }
 
-  if (string_equals_ignore_case(cola_a_suscribir, "COLA_LOCALIZED")) {
+  if (string_equals_ignore_case(cola_a_suscribir, "LOCALIZED_POKEMON")) {
     a_enviar -> cola_a_suscribir = LOCALIZED_POKEMON;
   }
 
-  if (string_equals_ignore_case(cola_a_suscribir, "COLA_CAUGHT")) {
+  if (string_equals_ignore_case(cola_a_suscribir, "CAUGHT_POKEMON")) {
     a_enviar -> cola_a_suscribir = CAUGHT_POKEMON;
   }
 
-  if (string_equals_ignore_case(cola_a_suscribir, "COLA_APPEARED")) {
+  if (string_equals_ignore_case(cola_a_suscribir, "APPEARED_POKEMON")) {
     a_enviar -> cola_a_suscribir = APPEARED_POKEMON;
   }
 
-  if (string_equals_ignore_case(cola_a_suscribir, "COLA_NEW")) {
+  if (string_equals_ignore_case(cola_a_suscribir, "NEW_POKEMON")) {
     a_enviar -> cola_a_suscribir = NEW_POKEMON;
   }
 
@@ -269,12 +269,12 @@ t_caught_pokemon* armar_mensaje_caught_pokemon(char * parametros[]) {
 
   t_caught_pokemon* a_enviar = malloc(sizeof(t_caught_pokemon));
 
-  uint32_t result;
+  uint32_t result = 0;
 
   if(string_equals_ignore_case(parametros[4], "OK")) {
 
 	  result = 1;
-  } else {
+  } else if(string_equals_ignore_case(parametros[4], "FAIL")) {
 	  result = 0;
   }
 

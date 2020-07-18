@@ -246,8 +246,10 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 
 
 	sem_wait(&mutex_id);
+	//sleep(2);
 	send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
 	sem_post(&mutex_id);
+	//sleep(2);
 
 	if(puede_guardarse_mensaje(mensaje_a_agregar)){
 		guardar_en_memoria(mensaje_a_agregar, mensaje);
@@ -498,8 +500,9 @@ void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion, op
 	log_info(logger, "EL cliente fue suscripto a la cola de mensajes: %s.", cola);
 	list_add(lista_suscriptores, suscripcion);
 
+	if(suscripcion->socket < 10000){
 	informar_mensajes_previos(suscripcion, cola_a_suscribir);
-
+	}
 	bool es_la_misma_suscripcion(void* una_suscripcion){
 		t_suscripcion* otra_suscripcion = una_suscripcion;
 		return otra_suscripcion -> id_proceso == suscripcion -> id_proceso;
@@ -523,27 +526,27 @@ void informar_mensajes_previos(t_suscripcion* una_suscripcion, op_code cola_a_su
 	switch(cola_a_suscribir){
 		case GET_POKEMON: //GAME_CARD SUSCRIPTO
 			descargar_historial_mensajes(GET_POKEMON, una_suscripcion -> socket);
-			//log_info(logger, "...El proceso suscripto recibe los mensajes get del historial");
+			log_info(logger, "...El proceso suscripto recibe los mensajes get del historial");
 			break;
 		case CATCH_POKEMON: //GAME_CARD SUSCRIPTO
 			descargar_historial_mensajes(CATCH_POKEMON, una_suscripcion -> socket);
-			//log_info(logger, "...El proceso suscripto recibe los mensajes catch del historial");
+			log_info(logger, "...El proceso suscripto recibe los mensajes catch del historial");
 			break;
 		case LOCALIZED_POKEMON: //TEAM SUSCRIPTO
 			descargar_historial_mensajes(LOCALIZED_POKEMON, una_suscripcion -> socket);
-			//log_info(logger, "...El proceso suscripto recibe los mensajes localized del historial");
+			log_info(logger, "...El proceso suscripto recibe los mensajes localized del historial");
 			break;
 		case CAUGHT_POKEMON: //TEAM SUSCRIPTO
 			descargar_historial_mensajes(CAUGHT_POKEMON, una_suscripcion -> socket);
-			//log_info(logger, "...El proceso suscripto recibe los mensajes caught del historial");
+			log_info(logger, "...El proceso suscripto recibe los mensajes caught del historial");
 			break;
 		case NEW_POKEMON: //GAME_CARD SUSCRIPTO
 			descargar_historial_mensajes(NEW_POKEMON, una_suscripcion -> socket);
-			//log_info(logger, "...El proceso suscripto recibe los mensajes new del historial");
+			log_info(logger, "...El proceso suscripto recibe los mensajes new del historial");
 			break;
 		case APPEARED_POKEMON: //TEAM SUSCRIPTO
 			descargar_historial_mensajes(APPEARED_POKEMON, una_suscripcion -> socket);
-			//log_info(logger, "...El proceso suscripto recibe los mensajes appeared del historial");
+			log_info(logger, "...El proceso suscripto recibe los mensajes appeared del historial");
 			break;
 		default:
 			log_error(logger, "...No se pudo descargar el historial de mensajes satisfactoriamente.");
@@ -824,9 +827,7 @@ void establecer_tiempo_de_carga(t_mensaje* un_mensaje){
 		t_memoria_dinamica* una_particion = un_mensaje -> payload;
 		una_particion -> tiempo_de_carga = timestamp();
 		} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-		log_warning(logger,"%d", timestamp());
-		uint64_t variable = timestamp();
-		log_warning(logger,"%d",variable);
+	    uint64_t variable = timestamp();
 		((t_node*)(un_mensaje->payload))-> bloque -> tiempo_de_carga = variable;
 	} else {
 		log_error(logger, "...No se reconoce el algoritmo de memoria.");
