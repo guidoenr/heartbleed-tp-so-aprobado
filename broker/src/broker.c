@@ -2302,7 +2302,7 @@ void asignar_nodo(t_node* node,void* contenido, t_mensaje* mensaje, uint32_t exp
 void chequear_buddy(t_node* node){
 
    if(list_size(memoria_cache) > 1){
-        uint32_t posicion_a_ubicar = encontrar_hermano(node->bloque);
+        uint32_t posicion_a_ubicar = encontrar_hermano(node);
         if (posicion_a_ubicar){
         void* unused = list_replace(memoria_cache, posicion_a_ubicar, node->bloque);
         }
@@ -2327,12 +2327,13 @@ uint32_t encontrar_hermano(t_node* buddy){
 	bool encontrar_al_companero(void* buddy1){
         t_indice* un_buddy= buddy1;
         if(un_buddy != NULL){
-			if(un_buddy ->padre_id == buddy-> bloque ->padre && un_buddy-> base != buddy-> bloque->base){
+			if(un_buddy->padre_id !=0 && un_buddy ->padre_id == buddy-> bloque ->padre && un_buddy-> base != buddy-> bloque->base){
 				return true;
 			} else{
 				return false;
 			}
         }else{
+        	return false;
         	log_warning(logger,"no tiene hermano");
         }
     }
@@ -2342,7 +2343,13 @@ uint32_t encontrar_hermano(t_node* buddy){
 				t_indice* un_indice = malloc(sizeof(t_indice));
 				un_indice -> indice = indice_buscador;
 				un_indice -> base = particion_a_transformar -> bloque -> base;
-				un_indice -> padre_id =  particion_a_transformar -> bloque -> padre;
+				if(particion_a_transformar -> bloque-> padre){
+					un_indice -> padre_id =  particion_a_transformar -> bloque -> padre;
+				} else
+				{
+					un_indice-> padre_id = 0;
+				}
+
 				list_add(indices, un_indice);
 				indice_buscador++;
 	}
