@@ -116,12 +116,18 @@ uint32_t seleccionar_proceso(char * parametros[]) {
 
   if (string_equals_ignore_case(proceso, "TEAM")) {
     conexion = crear_conexion(config_game_boy -> ip_team, config_game_boy -> puerto_team);
+    tamanio_mensaje = size_mensaje(armar_mensaje_appeared_pokemon(parametros), APPEARED_POKEMON);
+    mensaje = armar_mensaje_appeared_pokemon(parametros);
+
     if(conexion != -1) {
     	log_info(logger, "Conexion creada con el proceso Team");
+    	enviar_mensaje(APPEARED_POKEMON, mensaje, conexion, tamanio_mensaje);
+    } else {
+    	log_info(logger, "Conexion fallida con Team, se envian los mensajes a Broker");
+    	conexion = crear_conexion(config_game_boy -> ip_broker, config_game_boy -> puerto_broker);
+    	enviar_mensaje(APPEARED_POKEMON, mensaje, conexion, tamanio_mensaje);
     }
-    tamanio_mensaje = size_mensaje(armar_mensaje_appeared_pokemon(parametros), APPEARED_POKEMON);
-	mensaje = armar_mensaje_appeared_pokemon(parametros);
-	enviar_mensaje(APPEARED_POKEMON, mensaje, conexion, tamanio_mensaje);
+
   }
 
   if (string_equals_ignore_case(proceso, "SUSCRIPTOR")) {
@@ -263,9 +269,18 @@ t_caught_pokemon* armar_mensaje_caught_pokemon(char * parametros[]) {
 
   t_caught_pokemon* a_enviar = malloc(sizeof(t_caught_pokemon));
 
+  uint32_t result;
+
+  if(string_equals_ignore_case(parametros[4], "OK")) {
+
+	  result = 1;
+  } else {
+	  result = 0;
+  }
+
   a_enviar -> id_mensaje = 0;
   a_enviar -> id_mensaje_correlativo = atof(parametros[3]);
-  a_enviar -> resultado = atof(parametros[4]);
+  a_enviar -> resultado = result;
 
   return a_enviar;
 }
