@@ -127,7 +127,7 @@ void informar_al_broker(uint32_t id_mensaje, op_code codigo){
 		enviar_mensaje(ACK, ack, socket, size_mensaje);
 		close(socket);
 	}
-	free(ack);
+
 }
 
 //void conexion_inicial_broker() {
@@ -755,7 +755,6 @@ char* generar_archivo_temporal(char* metapath_file,char* nombre_pokemon){
 	fclose(temporary);
 
 	free(blockpath);
-	free(a);
 
 	return random_path;
 }
@@ -1347,9 +1346,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,int socket_br){
 	 localized_pokemon->id_mensaje = get_pokemon->id_mensaje;
 	 localized_pokemon->pokemon = get_pokemon->pokemon;
 
-
-
-
+	 unlock_file(meta_path);
 	 free(dir_path);
 	 free(meta_path);
 }
