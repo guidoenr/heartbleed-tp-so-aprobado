@@ -9,7 +9,7 @@ git clone "https://github.com/sisoputnfrba/so-commons-library"
 
 chown -R utnso:utnso so-commons-library/
 
-cd sisoptunfrba/so-commons-library
+cd so-commons-library
 make all
 
 echo -e "Compilando broker \e[35m"
