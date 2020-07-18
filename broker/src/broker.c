@@ -4,24 +4,6 @@ int main(void) {
 	iniciar_programa();
 
 
-//
-//	t_get_pokemon* guido = malloc(sizeof(t_get_pokemon));
-//	guido->id_mensaje = 2;
-//	guido->pokemon= "Guido";
-//
-//	list_add(cola_get,guido);
-
-//	if(!list_is_empty(cola_get)){
-//		enviar_mensajes(cola_get, lista_suscriptores_get);
-//	}
-
-	/*enviar_mensajes(cola_catch, lista_suscriptores_catch);
-	enviar_mensajes(cola_localized, lista_suscriptores_localized);
-	enviar_mensajes(cola_caught, lista_suscriptores_caught);
-	enviar_mensajes(cola_appeared, lista_suscriptores_appeared);
-	enviar_mensajes(cola_new, lista_suscriptores_new);*/
-
-
 	terminar_programa(logger);
 	return 0;
 }
@@ -48,8 +30,7 @@ void iniciar_programa(){
 	crear_listas_de_suscriptores();
 	iniciar_servidor(config_broker -> ip_broker, config_broker -> puerto);
 	crear_hilo_signal();
-	log_info(logger, "...tam memoria: d%", config_broker->size_memoria);
-	log_info(logger,"... algoritmo: s%", config_broker -> algoritmo_memoria);
+	
 
     //crear_hilo_envio_mensajes(); --> tiene como main enviar_mensajes
     //crear_hilo_por_mensaje(); --> en el serve client
@@ -220,10 +201,10 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 }
 
 void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t socket_cliente){
-	log_info(logger, "...Agregando mensaje");
-	log_info(logger, "...Size: %d", size);
-	log_info(logger, "...Socket_cliente: %d", socket_cliente);
-	log_info(logger, "...Payload: %s", (char*) mensaje);
+	//log_info(logger, "...Agregando mensaje");
+	//log_info(logger, "...Size: %d", size);
+	//log_info(logger, "...Socket_cliente: %d", socket_cliente);
+	//log_info(logger, "...Payload: %s", (char*) mensaje);
 	t_mensaje* mensaje_a_agregar = malloc(sizeof(t_mensaje));
 	uint32_t nuevo_id     = generar_id_univoco();
 
@@ -447,7 +428,7 @@ void recibir_suscripcion(t_suscripcion* mensaje_suscripcion){
 
 	op_code cola_a_suscribir = mensaje_suscripcion -> cola_a_suscribir;
 
-	log_info(logger, "...Se recibe una suscripción.");
+	log_info(logger, "Se recibe una suscripción.");
 
 		switch (cola_a_suscribir) {
 			 case GET_POKEMON:
@@ -527,7 +508,7 @@ void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion, op
 	if(suscripcion -> tiempo_suscripcion != 0){
 		sleep(suscripcion -> tiempo_suscripcion);
 		list_remove_by_condition(lista_suscriptores, es_la_misma_suscripcion);
-		log_info(logger, "...La suscripcion fue anulada correctamente.");
+		log_info(logger, "La suscripcion temporal fue anulada correctamente.");
 	}
 
 }
@@ -542,27 +523,27 @@ void informar_mensajes_previos(t_suscripcion* una_suscripcion, op_code cola_a_su
 	switch(cola_a_suscribir){
 		case GET_POKEMON: //GAME_CARD SUSCRIPTO
 			descargar_historial_mensajes(GET_POKEMON, una_suscripcion -> socket);
-			log_info(logger, "...El proceso suscripto recibe los mensajes get del historial");
+			//log_info(logger, "...El proceso suscripto recibe los mensajes get del historial");
 			break;
 		case CATCH_POKEMON: //GAME_CARD SUSCRIPTO
 			descargar_historial_mensajes(CATCH_POKEMON, una_suscripcion -> socket);
-			log_info(logger, "...El proceso suscripto recibe los mensajes catch del historial");
+			//log_info(logger, "...El proceso suscripto recibe los mensajes catch del historial");
 			break;
 		case LOCALIZED_POKEMON: //TEAM SUSCRIPTO
 			descargar_historial_mensajes(LOCALIZED_POKEMON, una_suscripcion -> socket);
-			log_info(logger, "...El proceso suscripto recibe los mensajes localized del historial");
+			//log_info(logger, "...El proceso suscripto recibe los mensajes localized del historial");
 			break;
 		case CAUGHT_POKEMON: //TEAM SUSCRIPTO
 			descargar_historial_mensajes(CAUGHT_POKEMON, una_suscripcion -> socket);
-			log_info(logger, "...El proceso suscripto recibe los mensajes caught del historial");
+			//log_info(logger, "...El proceso suscripto recibe los mensajes caught del historial");
 			break;
 		case NEW_POKEMON: //GAME_CARD SUSCRIPTO
 			descargar_historial_mensajes(NEW_POKEMON, una_suscripcion -> socket);
-			log_info(logger, "...El proceso suscripto recibe los mensajes new del historial");
+			//log_info(logger, "...El proceso suscripto recibe los mensajes new del historial");
 			break;
 		case APPEARED_POKEMON: //TEAM SUSCRIPTO
 			descargar_historial_mensajes(APPEARED_POKEMON, una_suscripcion -> socket);
-			log_info(logger, "...El proceso suscripto recibe los mensajes appeared del historial");
+			//log_info(logger, "...El proceso suscripto recibe los mensajes appeared del historial");
 			break;
 		default:
 			log_error(logger, "...No se pudo descargar el historial de mensajes satisfactoriamente.");
@@ -619,7 +600,7 @@ void descargar_historial_mensajes(op_code tipo_mensaje, uint32_t socket_cliente)
 			break;
 	}
 
-    log_info(logger, "...Los mensajes previos a la suscripcion fueron informados al nuevo cliente suscripto.");
+//    log_info(logger, "...Los mensajes previos a la suscripcion fueron informados al nuevo cliente suscripto.");
 
 }
 
@@ -979,7 +960,7 @@ void borrar_mensajes_confirmados(op_code tipo_lista, t_list* cola_mensajes, t_li
 	}
 
 	list_iterate(cola_duplicada, borrar_mensaje_recibido_por_todos);
-	log_info(logger, "...Los mensajes confirmados por todos los suscriptores fueron eliminados.");
+	//log_info(logger, "...Los mensajes confirmados por todos los suscriptores fueron eliminados.");
 
 
 }
@@ -1020,9 +1001,9 @@ void eliminar_suscriptor_de_enviados_sin_confirmar(t_mensaje* mensaje, uint32_t 
 	list_remove_by_condition(mensaje -> suscriptor_enviado, es_el_mismo_suscriptor);
 
 	if(!list_any_satisfy(mensaje -> suscriptor_enviado, es_el_mismo_suscriptor)){
-		log_info(logger, "...Se eliminó al suscriptor de la lista de enviados sin confirmar.");
+		//log_info(logger, "...Se eliminó al suscriptor de la lista de enviados sin confirmar.");
 	} else {
-		log_error(logger, "...No se eliminó al suscriptor confirmado.");
+		//log_error(logger, "...No se eliminó al suscriptor confirmado.");
 	}
 
 }
@@ -1036,9 +1017,9 @@ void agregar_suscriptor_a_enviados_confirmados(t_mensaje* mensaje, uint32_t conf
 	}
 
 	if(list_any_satisfy(mensaje -> suscriptor_recibido, es_el_mismo_suscriptor)){
-		log_info(logger, "...Se agregó al suscriptor a la lista de enviados que recibieron el mensaje.");
+		//log_info(logger, "...Se agregó al suscriptor a la lista de enviados que recibieron el mensaje.");
 	} else {
-		log_error(logger, "...No se agregó al suscriptor confirmado.");
+		//log_error(logger, "...No se agregó al suscriptor confirmado.");
 	}
 }
 
@@ -1390,7 +1371,7 @@ void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje
 	sem_post(&mx_memoria_particiones);
     eliminar_mensaje(mensaje_a_eliminar);
     //free(particion_a_reemplazar);
-    log_info(logger, "... Se libera una partición y se intenta ubicar nuevamente el mensaje.");
+    log_info(logger, "Se libera una partición y se intenta ubicar nuevamente el mensaje.");
 
     guardar_particion(mensaje, contenido_mensaje);
 }
@@ -1924,7 +1905,7 @@ void consolidar_particiones(uint32_t primer_elemento, uint32_t elemento_siguient
 
     ubicar_particion(primer_elemento, particion_consolidada);
 	sem_post(&mx_memoria_particiones);
-    log_info(logger, "... Se consolidan las particiones de base %d y base %d en una particion de tamanio %d", una_particion -> base, particion_siguiente -> base, tamanio_particion_consolidada);
+    log_info(logger, "Se consolidan las particiones de base %d y base %d en una particion de tamanio %d", una_particion -> base, particion_siguiente -> base, tamanio_particion_consolidada);
 }
 
 void compactar_particiones_dinamicas(t_list* memoria){
