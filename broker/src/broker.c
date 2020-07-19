@@ -264,13 +264,14 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 
 	if(puede_guardarse_mensaje(mensaje_a_agregar)){
 		guardar_en_memoria(mensaje_a_agregar, mensaje);
-	}
+	
 
 	////sem_wait(&sem_cola);
 	////sem_wait(&sem_suscrip);
 	encolar_mensaje(mensaje_a_agregar, cod_op);
 	//sem_post(&sem_suscrip);
 	//sem_post(&sem_cola);
+	}
 }
 
 bool puede_guardarse_mensaje(t_mensaje* un_mensaje){
@@ -1919,15 +1920,24 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 
 		log_info(logger, "El mensaje fue eliminado correctamente.");
 
+		sem_wait(&sem_particion_liberada);
+		particiones_liberadas++;
+		sem_post(&sem_particion_liberada);	
+
+
 		consolidar_particiones_dinamicas(memoria_con_particiones);
+		/*sem_wait(&sem_particion_liberada);
+		particiones_liberadas++;
+		sem_post(&sem_particion_liberada);*/	
+		
 
 		if(config_broker -> frecuencia_compactacion == 0 || (particiones_liberadas == (config_broker -> frecuencia_compactacion))){
 				compactar_particiones_dinamicas(memoria_con_particiones);
 		}		
 
-		sem_wait(&sem_particion_liberada);
+		/*sem_wait(&sem_particion_liberada);
 		particiones_liberadas++;
-		sem_post(&sem_particion_liberada);
+		sem_post(&sem_particion_liberada);*/
 
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
 		t_node* buddy_buscado = mensaje ->payload;
