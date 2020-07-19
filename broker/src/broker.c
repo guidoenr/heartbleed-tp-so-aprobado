@@ -322,26 +322,26 @@ uint32_t obtener_tamanio_contenido_mensaje(void* mensaje, uint32_t codigo){
 	switch(codigo){
 	case GET_POKEMON:
 		get = mensaje;
-		tamanio = strlen(get -> pokemon) + sizeof(uint32_t);
+		tamanio = strlen(get -> pokemon);
 		break;
 	case CATCH_POKEMON:
 		catch = mensaje;
-		tamanio = strlen(catch -> pokemon) + (3*sizeof(uint32_t));
+		tamanio = strlen(catch -> pokemon) + (2*sizeof(uint32_t));
 		break;
 	case LOCALIZED_POKEMON:
 		localized = mensaje;
-		tamanio = strlen(localized -> pokemon) + (list_size(localized -> posiciones) * sizeof(uint32_t))+ sizeof(uint32_t);
+		tamanio = strlen(localized -> pokemon) + (list_size(localized -> posiciones) * sizeof(uint32_t));
 		break;
 	case CAUGHT_POKEMON:
-		tamanio = sizeof(uint32_t)*2;
+		tamanio = sizeof(uint32_t);
 		break;
 	case APPEARED_POKEMON:
 		appeared = mensaje;
-		tamanio = strlen(appeared -> pokemon) + (3*sizeof(uint32_t));
+		tamanio = strlen(appeared -> pokemon) + (2*sizeof(uint32_t));
 		break;
 	case NEW_POKEMON:
 		new = mensaje;
-		tamanio = strlen(new -> pokemon) + (4*sizeof(uint32_t));
+		tamanio = strlen(new -> pokemon) + (3*sizeof(uint32_t));
 		break;
 	default:
 		log_error(logger, "...No se puede obtener el tamaño del contenido del mensaje.");
@@ -1165,29 +1165,19 @@ void* armar_contenido_de_mensaje(void* mensaje, uint32_t codigo){
 
 void* armar_contenido_get(t_get_pokemon* mensaje){
     uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
-    uint32_t tamanio = tamanio_pokemon + sizeof(uint32_t);
-    void* contenido = malloc(tamanio);
-    uint32_t offset = 0;
-
-    op_code codigo = GET_POKEMON;
-    memcpy(contenido + offset, &codigo, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
-    memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
-    offset += tamanio_pokemon;
-
+    void* contenido = malloc(tamanio_pokemon);
+   
+    memcpy(contenido, (mensaje -> pokemon), tamanio_pokemon);
+   
     return contenido;
 }
 
 
 void* armar_contenido_catch(t_catch_pokemon* mensaje){
     uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
-    uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 2) + sizeof(uint32_t);
+    uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 2);
     void* contenido = malloc(tamanio);
     uint32_t offset = 0;
-
-    op_code codigo = CATCH_POKEMON;
-    memcpy(contenido + offset, &codigo, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
 
     memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
     offset += tamanio_pokemon;
@@ -1205,13 +1195,9 @@ void* armar_contenido_catch(t_catch_pokemon* mensaje){
 void* armar_contenido_localized(t_localized_pokemon* mensaje){
     uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
     uint32_t tamanio_lista = list_size(mensaje -> posiciones) * sizeof(uint32_t);
-    uint32_t tamanio = tamanio_pokemon + tamanio_lista + sizeof(uint32_t);
+    uint32_t tamanio = tamanio_pokemon + tamanio_lista;
 	void* contenido = malloc(tamanio);
 	uint32_t offset = 0;
-
-	op_code codigo = LOCALIZED_POKEMON;
-	memcpy(contenido + offset, &codigo, sizeof(uint32_t));
-	offset += sizeof(uint32_t);
 
 	memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
 	offset += tamanio_pokemon;
@@ -1229,25 +1215,18 @@ void* armar_contenido_localized(t_localized_pokemon* mensaje){
 
 
 void* armar_contenido_caught(t_caught_pokemon* mensaje){
-    void* contenido = malloc((sizeof(uint32_t)*2));
-    uint32_t offset = 0;
-    op_code codigo = CAUGHT_POKEMON;
-    memcpy(contenido + offset, &codigo, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
-    memcpy(contenido + offset, &(mensaje -> resultado), sizeof(uint32_t));
-    offset += sizeof(uint32_t);
+    void* contenido = malloc(sizeof(uint32_t));
+      
+    memcpy(contenido, &(mensaje -> resultado), sizeof(uint32_t));
+  
     return contenido;
 }
 
 void* armar_contenido_appeared(t_appeared_pokemon* mensaje){
     uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
-    uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 3);
+    uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 2);
     void* contenido = malloc(tamanio);
     uint32_t offset = 0;
-
-    op_code codigo = APPEARED_POKEMON;
-    memcpy(contenido + offset, &codigo, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
 
     memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
     offset += tamanio_pokemon;
@@ -1264,13 +1243,9 @@ void* armar_contenido_appeared(t_appeared_pokemon* mensaje){
 
 void* armar_contenido_new(t_new_pokemon* mensaje){
     uint32_t tamanio_pokemon = strlen(mensaje -> pokemon);
-    uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 4);
+    uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 3);
     void* contenido = malloc(tamanio);
     uint32_t offset = 0;
-
-    op_code codigo = NEW_POKEMON;
-    memcpy(contenido + offset, &codigo, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
 
     memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
     offset += tamanio_pokemon;

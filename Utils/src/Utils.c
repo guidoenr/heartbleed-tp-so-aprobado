@@ -74,8 +74,7 @@ void* recibir_paquete(uint32_t socket_cliente, uint32_t* size, op_code* codigo_o
 	void* stream = malloc(tamanio_mensaje);
 	(*size) = tamanio_mensaje;
     recv(socket_cliente, stream, tamanio_mensaje, MSG_WAITALL);
-    log_warning(logger, "recibir_paquete stream: %d", *(int*) (stream +4));
-
+    
     sem_post(&semaforo);
     log_warning(logger, "Mensaje recibido: %s", stream);
     return stream;
