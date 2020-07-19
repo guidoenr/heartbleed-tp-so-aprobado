@@ -466,11 +466,11 @@ void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion, op
 	log_info(logger, "EL cliente fue suscripto a la cola de mensajes: %s.", cola);
 	list_add(lista_suscriptores, suscripcion);
 
-	if(suscripcion->socket < 10000){
+	
 		//sem_wait(&sem_cola);
 		informar_mensajes_previos(suscripcion, cola_a_suscribir);
 		sem_post(&sem_cola);
-	}
+	
 	bool es_la_misma_suscripcion(void* una_suscripcion){
 		t_suscripcion* otra_suscripcion = una_suscripcion;
 		return otra_suscripcion -> id_proceso == suscripcion -> id_proceso;
@@ -531,7 +531,7 @@ void descargar_historial_mensajes(op_code tipo_mensaje, uint32_t socket_cliente)
         void* mensaje_a_enviar = preparar_mensaje(un_mensaje);
 		size = size_mensaje(mensaje_a_enviar, tipo_mensaje);
         enviar_mensaje(tipo_mensaje, mensaje_a_enviar, socket_cliente, size);
-		actualizar_ultima_referencia(un_mensaje);
+		actualizar_ultima_referencia(mensaje);
 		//free(mensaje_a_enviar);
     }
 
@@ -766,8 +766,8 @@ t_appeared_pokemon* preparar_mensaje_appeared(t_mensaje* un_mensaje){
 void actualizar_ultima_referencia(t_mensaje* un_mensaje){
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-		t_memoria_dinamica* particion = un_mensaje -> payload;
-		particion -> ultima_referencia = timestamp();
+		((t_memoria_dinamica*) un_mensaje -> payload)-> ultima_referencia = timestamp();
+		log_warning(logger, "Se actualiza el tiempo de referencia %d del mensaje con id %d", ((t_memoria_dinamica*) un_mensaje -> payload) -> ultima_referencia, un_mensaje -> id_mensaje);	
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
 		t_node* buddy = un_mensaje -> payload;
 		buddy -> bloque -> ultima_referencia = timestamp();
@@ -1317,7 +1317,7 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
     bool fue_referenciada_antes(void* particion1, void* particion2){
 		t_memoria_dinamica* una_particion = particion1;
 		t_memoria_dinamica* otra_particion = particion2;
-		return (una_particion -> tiempo_de_carga) < (otra_particion -> tiempo_de_carga) ;
+		return (una_particion -> ultima_referencia) < (otra_particion -> ultima_referencia) ;
     }
 
     if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "FIFO")){
