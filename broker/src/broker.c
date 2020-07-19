@@ -62,9 +62,9 @@ void reservar_memoria(){
 	}
 
     if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
-		memoria_con_particiones = list_create();
+	memoria_con_particiones = list_create();
         iniciar_memoria_particiones(memoria_con_particiones);
-	}
+    }
 
 }
 
@@ -1040,7 +1040,7 @@ void dump_de_memoria(){
 
     if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
     	//Se empieza a loguear partición por partición --> considero la lista de particiones en memoria ("memoria auxiliar").
-		//sem_wait(&mx_memoria_particiones);
+		sem_wait(&mx_memoria_particiones);
 		list_iterate(memoria_con_particiones, dump_info_particion);
 		sem_post(&mx_memoria_particiones);
 
@@ -1084,9 +1084,9 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 	     }
 	}
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-
+	sem_wait(&mx_memoria_particiones);
 	guardar_particion(mensaje, contenido);
-
+	sem_post(&mx_memoria_particiones);
     } 
 
 	//free(contenido);
@@ -1281,12 +1281,12 @@ void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje
 
    	//sem_wait(&mx_memoria_particiones);
     particion_a_reemplazar = list_replace(memoria_con_particiones, indice, particion_vacia);
-	sem_post(&mx_memoria_particiones);
+	//sem_post(&mx_memoria_particiones);
     eliminar_mensaje(mensaje_a_eliminar);
 
     //free(particion_a_reemplazar);
     log_info(logger, "Se libera una partición y se intenta ubicar nuevamente el mensaje.");
-
+	
     guardar_particion(mensaje, contenido_mensaje);
 }
 
@@ -1305,7 +1305,7 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
 	
 	//sem_wait(&mx_memoria_particiones);
     memoria_duplicada = list_filter(memoria_con_particiones, particion_ocupada);
-	sem_post(&mx_memoria_particiones);
+	//sem_post(&mx_memoria_particiones);
 
     bool fue_cargada_antes(void* particion1, void* particion2){
     	t_memoria_dinamica* una_particion = particion1;
@@ -1482,7 +1482,7 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
 	} else {
 		tamanio_a_buscar = un_mensaje -> tamanio_mensaje;
 	}
-
+	
     if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre, "FF")){
         posicion_a_ubicar = encontrar_primer_ajuste(tamanio_a_buscar);
 
@@ -1490,11 +1490,11 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
             log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
             reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
         } else {
-			//sem_wait(&mx_memoria_particiones);
+			
         	particion_a_ubicar = list_get(memoria_con_particiones, posicion_a_ubicar);
 			nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1, contenido_mensaje);
 			ubicar_particion(posicion_a_ubicar, nueva_particion);
-			sem_post(&mx_memoria_particiones);
+			
 			guardar_contenido_de_mensaje(nueva_particion -> base, contenido_mensaje, nueva_particion -> tamanio);
 
         }
@@ -1508,17 +1508,17 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
             log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
             reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
         } else {
-			//sem_wait(&mx_memoria_particiones);
+			
         	particion_a_ubicar = list_get(memoria_con_particiones, posicion_a_ubicar);
 			nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1, contenido_mensaje);
 			ubicar_particion(posicion_a_ubicar, nueva_particion);
-			sem_post(&mx_memoria_particiones);
+			
 			guardar_contenido_de_mensaje(nueva_particion -> base, contenido_mensaje, nueva_particion -> tamanio);
         }
 
 
     }
-
+	
 }
 
 void guardar_contenido_de_mensaje(uint32_t offset, void* contenido, uint32_t tamanio){
@@ -1541,15 +1541,16 @@ void liberar_particion_dinamica(t_memoria_dinamica* particion_vacia){
 
 void ubicar_particion(uint32_t posicion_a_ubicar, t_memoria_dinamica* particion){
 
-        t_memoria_dinamica* particion_reemplazada = list_replace(memoria_con_particiones, posicion_a_ubicar, particion);
-
+        //sem_wait(&mx_memoria_particiones);
+	t_memoria_dinamica* particion_reemplazada = list_replace(memoria_con_particiones, posicion_a_ubicar, particion);
+	
 
         uint32_t total = particion_reemplazada -> tamanio_part;
         if(particion -> tamanio_part < total) {
         uint32_t nueva_base = (particion_reemplazada -> base) + particion -> tamanio_part;
         t_memoria_dinamica* nueva_particion_vacia = armar_particion(total - particion ->tamanio_part, nueva_base, NULL, 0, NULL);
         list_add_in_index(memoria_con_particiones, posicion_a_ubicar + 1, nueva_particion_vacia);
-
+	//sem_post(&mx_memoria_particiones);
         }
 
         liberar_particion_dinamica(particion_reemplazada);
@@ -1611,7 +1612,7 @@ uint32_t encontrar_primer_ajuste(uint32_t tamanio){
     }
 	//sem_wait(&mx_memoria_particiones);
     t_list* lista_duplicada = list_filter(memoria_con_particiones, es_particion_vacia);
-	sem_post(&mx_memoria_particiones);
+	//sem_post(&mx_memoria_particiones);
     bool tiene_tamanio_suficiente(void* particion){
         t_memoria_dinamica* una_particion = particion;
         return tamanio <= (una_particion -> tamanio_part);
@@ -1643,7 +1644,7 @@ uint32_t encontrar_mejor_ajuste(uint32_t tamanio){
     }
 	//sem_wait(&mx_memoria_particiones);
     t_list* particiones_en_orden_creciente = list_sorted(memoria_con_particiones, es_de_menor_tamanio);
-	sem_post(&mx_memoria_particiones);
+	//sem_post(&mx_memoria_particiones);
 
     bool es_particion_vacia(void* part){
     	t_memoria_dinamica* part2 = part;
@@ -1678,9 +1679,9 @@ uint32_t encontrar_indice(void* memory){
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 		t_memoria_dinamica* posible_particion = memory;
-        //sem_wait(&mx_memoria_particiones);
+	    //sem_wait(&mx_memoria_particiones);
 	    memoria_duplicada = list_duplicate(memoria_con_particiones);
-	    sem_post(&mx_memoria_particiones);
+	    //sem_post(&mx_memoria_particiones);
 
 		void obtener_indices(void* particion){
 			t_memoria_dinamica* particion_a_transformar = particion;
@@ -1752,7 +1753,7 @@ void consolidar_particiones_dinamicas(t_list* memoria){
 	t_list* memoria_duplicada = list_create();
 	//sem_wait(&mx_memoria_particiones);
 	memoria_duplicada = list_duplicate(memoria);
-	sem_post(&mx_memoria_particiones);
+	
 
 	uint32_t contador = 0;
     void consolidar_particiones_contiguas(void* particion){
@@ -1766,7 +1767,7 @@ void consolidar_particiones_dinamicas(t_list* memoria){
     }
 
     list_iterate(memoria_duplicada, consolidar_particiones_contiguas);
-
+	//sem_post(&mx_memoria_particiones);
 }
 
 bool tiene_siguiente(uint32_t posicion){
@@ -1801,7 +1802,7 @@ void consolidar_particiones(uint32_t primer_elemento, uint32_t elemento_siguient
     t_memoria_dinamica* particion_consolidada = armar_particion(tamanio_particion_consolidada, (una_particion -> base), NULL, 0, NULL);
 
     ubicar_particion(primer_elemento, particion_consolidada);
-	sem_post(&mx_memoria_particiones);
+	//sem_post(&mx_memoria_particiones);
     log_info(logger, "Se consolidan las particiones de base %d y base %d en una particion de tamanio %d", una_particion -> base, particion_siguiente -> base, tamanio_particion_consolidada);
 }
 
@@ -1836,7 +1837,7 @@ void compactar_particiones_dinamicas(t_list* memoria){
 	}
 
 	list_iterate(memoria, actualizar_base);
-	sem_post(&mx_memoria_particiones);
+	//sem_post(&mx_memoria_particiones);
 
 	compactar_memoria_cache(memoria);
 	
@@ -1851,7 +1852,7 @@ uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion, uint32_t indice_t
 	uint32_t nueva_base = 0;
 	//sem_wait(&mx_memoria_particiones);
 	t_list* memoria_duplicada = list_duplicate(memoria_con_particiones);
-	sem_post(&mx_memoria_particiones);
+	//sem_post(&mx_memoria_particiones);
 
 	t_memoria_dinamica* particion_buscada;
 
@@ -1881,7 +1882,7 @@ void compactar_memoria_cache(t_list* lista_particiones){
 	//sem_wait(&mx_memoria_particiones);
 
 	list_iterate(lista_particiones, reescribir_memoria);
-	sem_post(&mx_memoria_particiones);
+	//sem_post(&mx_memoria_particiones);
 }
 
 void eliminar_mensaje(void* mensaje){
@@ -1902,15 +1903,15 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 			return (una_particion -> base) == ((t_memoria_dinamica*) (mensaje->payload))-> base;
 		}
 
-		sem_wait(&mx_memoria_particiones);
+		//sem_wait(&mx_memoria_particiones);
 		t_memoria_dinamica* particion_a_liberar = list_find(memoria_con_particiones, es_la_particion);
-		sem_post(&mx_memoria_particiones);
+		//sem_post(&mx_memoria_particiones);
 		uint32_t indice = encontrar_indice(particion_a_liberar);
 
 		t_memoria_dinamica* particion_vacia = armar_particion(particion_a_liberar -> tamanio, particion_a_liberar -> base, NULL, 0, NULL);
 		//sem_wait(&mx_memoria_particiones);
 		particion_a_liberar = list_replace(memoria_con_particiones, indice, particion_vacia);
-		sem_post(&mx_memoria_particiones);
+		//sem_post(&mx_memoria_particiones);
 
 		//sem_wait(&sem_cola);
 		eliminar_de_message_queue(mensaje, mensaje -> codigo_operacion);
@@ -2393,8 +2394,8 @@ bool ambas_estan_vacias_buddy(uint32_t una_posicion, uint32_t posicion_siguiente
 
 void consolidar_buddies(uint32_t primer_elemento, uint32_t elemento_siguiente){
 	//sem_wait(&mx_memoria_cache);
-    t_node* un_buddy = list_get(memoria_con_particiones, primer_elemento);
-    t_node* buddy_siguiente = list_remove(memoria_con_particiones, elemento_siguiente);
+    t_node* un_buddy = list_get(memoria_cache, primer_elemento);
+    t_node* buddy_siguiente = list_remove(memoria_cache, elemento_siguiente);
 
     uint32_t tamanio_buddy_consolidado= (un_buddy->bloque-> tamanio_exponente) + (buddy_siguiente ->bloque-> tamanio_exponente);
     t_node* buddy_consolidado =armar_buddy(tamanio_buddy_consolidado, (un_buddy->bloque -> base), NULL, 0, NULL);
