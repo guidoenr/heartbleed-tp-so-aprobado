@@ -1895,27 +1895,15 @@ void eliminar_mensaje(void* mensaje){
 
 void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 
-	t_list* memoria_duplicada = list_duplicate(memoria_con_particiones);
-
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 		//t_memoria_dinamica* particion_buscada = mensaje -> payload;
 		bool es_la_particion(void* particion){
 			t_memoria_dinamica* una_particion = particion;
-			if (una_particion != NULL){
-
-				if(mensaje->payload == NULL){
-					log_warning(logger,"FEDE SCAR PAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
-				} else {
-					return (una_particion -> base) == ((t_memoria_dinamica*) (mensaje->payload))-> base;
-				}
-
-			}else {
-				log_warning(logger,"ALGOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
-			}
-			return -1;
+			return (una_particion -> base) == ((t_memoria_dinamica*) (mensaje->payload))-> base;
 		}
-		//sem_wait(&mx_memoria_particiones);
-		t_memoria_dinamica* particion_a_liberar = list_find(memoria_duplicada, es_la_particion);
+
+		sem_wait(&mx_memoria_particiones);
+		t_memoria_dinamica* particion_a_liberar = list_find(memoria_con_particiones, es_la_particion);
 		sem_post(&mx_memoria_particiones);
 		uint32_t indice = encontrar_indice(particion_a_liberar);
 
@@ -1930,13 +1918,13 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 
 		log_info(logger, "El mensaje fue eliminado correctamente.");
 
-		if(config_broker -> frecuencia_compactacion == 0 || (particiones_liberadas == (config_broker -> frecuencia_compactacion))){
-				compactar_particiones_dinamicas(memoria_con_particiones);
-		}
-
 		consolidar_particiones_dinamicas(memoria_con_particiones);
 
-		//sem_wait(&sem_particion_liberada);
+		if(config_broker -> frecuencia_compactacion == 0 || (particiones_liberadas == (config_broker -> frecuencia_compactacion))){
+				compactar_particiones_dinamicas(memoria_con_particiones);
+		}		
+
+		sem_wait(&sem_particion_liberada);
 		particiones_liberadas++;
 		sem_post(&sem_particion_liberada);
 
