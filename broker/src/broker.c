@@ -1071,6 +1071,7 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 
 		  t_node* primer_nodo = malloc(sizeof(t_node));
 		  primer_nodo = (t_node*)memoria_cache->head->data;
+		  sem_wait(&mx_memoria_cache);
 		  uint32_t pudoGuardarlo =chequear_memoria();
 		  if(pudoGuardarlo){
 			 if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
@@ -1083,6 +1084,7 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 		 if(!pudoGuardarlo){
 		  reemplazo_buddy(exponente, contenido, mensaje);
 	     }
+		 sem_post(&mx_memoria_cache);
 	}
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 	sem_wait(&mx_memoria_particiones);
@@ -1123,6 +1125,7 @@ void reemplazo_buddy(uint32_t exponente, void* contenido, t_mensaje* mensaje){
 		t_node* buddy_nuevo = armar_buddy(exponente,buddy_victima->bloque->base,mensaje,buddy_victima->bloque->ocupado, contenido);
 		buddy_nuevo -> bloque->id = buddy_victima->bloque->id;
 		buddy_nuevo -> bloque->padre = buddy_victima->bloque->padre;
+		buddy_nuevo -> bloque -> ocupado = 0;
 		uint32_t pudoGuardarlo = 0;
 	    if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
 		   pudoGuardarlo = recorrer_first_fit(buddy_nuevo, exponente,  contenido, mensaje);
@@ -2161,14 +2164,12 @@ t_node* crear_nodo(uint32_t tamanio)
   node -> bloque->contenido ="";
   node-> bloque->tiempo_de_carga = 0;
   node->bloque -> ultima_referencia = 0;
-  node -> bloque -> id = crear_id_nodo();
+  node -> bloque -> id = -1;
   // Initialize left and right children as NULL
   node -> izquierda = malloc(sizeof(t_node));
-  node -> izquierda -> bloque = malloc(sizeof(t_memoria_buddy));
-  node -> izquierda->bloque->padre = node->bloque ->id ;
+  node -> izquierda -> bloque = NULL;
   node -> derecha = malloc(sizeof(t_node));
-  node -> derecha->bloque = malloc(sizeof(t_memoria_buddy));
-  node -> derecha -> bloque -> padre = node-> bloque -> id;
+  node -> derecha -> bloque  = NULL;
   return(node);
 }
 
@@ -2187,6 +2188,7 @@ void asignar_nodo(t_node* node,void* contenido, t_mensaje* mensaje, uint32_t exp
     node -> bloque -> codigo_operacion = mensaje -> codigo_operacion;
     node -> bloque -> contenido = contenido;
     mensaje -> payload = node;
+    node -> bloque -> id = crear_id_nodo();
     if(list_size(memoria_cache) > 1){
       	t_node* ultimo_buddy= list_get( memoria_cache, list_size(memoria_cache)-1);
       	node->bloque->base =  ultimo_buddy -> bloque ->base +  ultimo_buddy -> bloque->tamanio_exponente + 1;
@@ -2204,7 +2206,7 @@ void chequear_buddy(t_node* node){
    if(list_size(memoria_cache) > 1){
         uint32_t posicion_a_ubicar = encontrar_hermano(node);
         if (posicion_a_ubicar){
-        void* unused = list_replace(memoria_cache, posicion_a_ubicar, node->bloque);
+        void* unused = list_replace(memoria_cache, posicion_a_ubicar+1, node);
         }
         else{
           crear_companieros(node);
@@ -2227,7 +2229,7 @@ uint32_t encontrar_hermano(t_node* buddy){
 	bool encontrar_al_companero(void* buddy1){
         t_indice* un_buddy= buddy1;
         if(un_buddy != NULL){
-			if(un_buddy->padre_id !=0 && un_buddy ->padre_id == buddy-> bloque ->padre && un_buddy-> base != buddy-> bloque->base){
+			if(un_buddy ->padre_id == buddy-> bloque ->padre && un_buddy-> base != buddy-> bloque->base){
 				return true;
 			} else{
 				return false;
@@ -2293,12 +2295,35 @@ uint32_t recorrer_first_fit(t_node* nodo, uint32_t exponente, void* contenido, t
     }
     asignado  = 0;
     if (nodo->bloque->ocupado == 0) {
-    	if(nodo -> bloque -> tamanio_exponente == exponente){
-        asignar_nodo(nodo, contenido, mensaje, exponente);
-        asignado = 1;
-        return 1;
+    	if((nodo -> bloque -> tamanio_exponente / 2)  == exponente){
+			if(nodo -> bloque -> id == -1)
+				nodo -> bloque -> id = crear_id_nodo();
+			if(nodo-> derecha -> bloque == NULL){
+			    nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio_exponente /2);
+				nodo -> derecha -> bloque -> padre = nodo -> bloque -> id;
+			}
+			if(nodo -> izquierda -> bloque ==NULL){
+				nodo ->izquierda = crear_nodo(nodo->bloque->tamanio_exponente /2);
+				nodo -> izquierda -> bloque -> padre = nodo -> bloque -> id;
+			}
+			if(nodo -> izquierda -> bloque -> ocupado == 0)
+				asignar_nodo(nodo-> izquierda, contenido, mensaje, exponente);
+			else if(nodo -> derecha -> bloque -> ocupado == 0)
+				asignar_nodo(nodo -> derecha, contenido, mensaje, exponente);
+			else{
+				asignado = 0;
+				return  0;
+			}
+			asignado = 1;
+			return 1;
     	}
     	else {
+    		if(nodo-> bloque-> ocupado == 0 && nodo -> bloque-> tamanio_exponente == exponente){
+    			asignar_nodo(nodo,contenido,mensaje,exponente);
+    			asignado = 1;
+    			return 1;
+    		}
+
         	nodo -> izquierda = crear_nodo(nodo -> bloque -> tamanio_exponente / 2);
         	recorrer_first_fit(nodo -> izquierda, exponente, contenido, mensaje);
         }
@@ -2379,6 +2404,8 @@ void consolidar_buddy(t_list* memoria){
 
 }
 
+
+
 bool tiene_siguiente_buddy(uint32_t posicion){
     return (list_size(memoria_cache) - 1) > posicion;
 }
@@ -2406,14 +2433,38 @@ void consolidar_buddies(uint32_t primer_elemento, uint32_t elemento_siguiente){
 	//sem_wait(&mx_memoria_cache);
     t_node* un_buddy = list_get(memoria_cache, primer_elemento);
     t_node* buddy_siguiente = list_remove(memoria_cache, elemento_siguiente);
-
+    log_info(logger_memoria,"Se consolidan los buddies de base: %d y %d", un_buddy-> bloque->base, buddy_siguiente->bloque->base );
     uint32_t tamanio_buddy_consolidado= (un_buddy->bloque-> tamanio_exponente) + (buddy_siguiente ->bloque-> tamanio_exponente);
     t_node* buddy_consolidado =armar_buddy(tamanio_buddy_consolidado, (un_buddy->bloque -> base), NULL, 0, NULL);
 
-    //ubicar_particion(primer_elemento, buddy_consolidado);
+    ubicar_buddy(primer_elemento, buddy_consolidado);
 	sem_post(&mx_memoria_cache);
 }
 
+
+void ubicar_buddy(uint32_t posicion_a_ubicar, t_node* buddy){
+
+        //sem_wait(&mx_memoria_particiones);
+	     t_node* buudy_reemplazo = list_replace(memoria_cache, posicion_a_ubicar, buddy);
+
+
+        uint32_t total = buudy_reemplazo ->bloque ->tamanio_exponente;
+        if(buddy -> bloque -> tamanio_exponente < total) {
+        uint32_t nueva_base = (buudy_reemplazo -> bloque -> base) + buddy -> bloque ->tamanio_exponente;
+        t_node* nuevo_buddy_vacio = armar_buddy(total - buddy -> bloque -> tamanio_exponente, nueva_base, NULL, 0, NULL);
+        list_add_in_index(memoria_cache, posicion_a_ubicar + 1, nuevo_buddy_vacio);
+	//sem_post(&mx_memoria_particiones);
+        }
+
+        liberar_buddy(buudy_reemplazo);
+}
+
+void liberar_buddy(t_node* nodo){
+	free(nodo -> bloque);
+	free(nodo -> izquierda);
+	free(nodo -> derecha);
+	free(nodo);
+}
 
 void iniciar_semaforos_broker() {
 	//REVISAR INICIALIZCIONES
