@@ -237,7 +237,8 @@ void chequear_buddy(t_node*);
 void crear_companieros(t_node*);
 void consolidar_buddy(t_list*);
 uint32_t crear_id_nodo();
-void ubicar_buddy(uint32_t,t_node*);
 void liberar_buddy(t_node*);
+void ubicar_buddy(uint32_t, t_node*);
+
 
 

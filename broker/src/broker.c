@@ -56,7 +56,6 @@ void crear_hilo_signal(){
 void reservar_memoria(){
 
 	memoria = malloc(config_broker ->  size_memoria);
-	log_error(logger, "Base: %d", memoria);
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
 		arrancar_buddy();
 	}
@@ -1100,8 +1099,9 @@ uint32_t chequear_memoria(){
 	uint32_t size_memoria=0;
      void sumar_buddy(void* buddy){
     	 t_node* un_buddy = buddy;
-    	 if(un_buddy -> bloque->ocupado)
-    	 size_memoria = size_memoria + un_buddy -> bloque->tamanio_exponente;
+    	 if(un_buddy -> bloque -> ocupado) {
+    		 size_memoria = size_memoria + un_buddy -> bloque->tamanio_exponente;
+    	 }
      }
 
 	list_iterate(memoria_cache,sumar_buddy);
@@ -1122,11 +1122,12 @@ void reemplazo_buddy(uint32_t exponente, void* contenido, t_mensaje* mensaje){
 
 		uint32_t posicion = encontrar_indice(buddy_victima);
 	    list_remove(memoria_cache, posicion);
-		t_node* buddy_nuevo = armar_buddy(exponente,buddy_victima->bloque->base,mensaje,buddy_victima->bloque->ocupado, contenido);
+		t_node* buddy_nuevo = armar_buddy(exponente,buddy_victima -> bloque -> base, mensaje, buddy_victima -> bloque -> ocupado, contenido);
 		buddy_nuevo -> bloque->id = buddy_victima->bloque->id;
 		buddy_nuevo -> bloque->padre = buddy_victima->bloque->padre;
 		buddy_nuevo -> bloque -> ocupado = 0;
 		uint32_t pudoGuardarlo = 0;
+
 	    if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
 		   pudoGuardarlo = recorrer_first_fit(buddy_nuevo, exponente,  contenido, mensaje);
 	    }
@@ -1737,7 +1738,7 @@ uint32_t encontrar_indice(void* memory){
 					indice_disponible = indice_elegido -> indice;
 				} else {
 					indice_disponible = 0;
-					log_error(logger, "El indice no pudo obtenerse correctamente.");
+					log_error(logger, "El indice de buddy no pudo obtenerse correctamente.");
 				}
 	} else {
 		log_error(logger, "No se reconoce el algoritmo de memoria (?");
@@ -1931,7 +1932,7 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 		consolidar_particiones_dinamicas(memoria_con_particiones);
 		/*sem_wait(&sem_particion_liberada);
 		particiones_liberadas++;
-		sem_post(&sem_particion_liberada);*/	
+		sem_post(&sem_particion_liberada);*/
 		
 
 		if(config_broker -> frecuencia_compactacion == 0 || (particiones_liberadas == (config_broker -> frecuencia_compactacion))){
@@ -2149,8 +2150,7 @@ if( (n & (n - 1)) == 0){
 }
 
 
-t_node* crear_nodo(uint32_t tamanio)
-{
+t_node* crear_nodo(uint32_t tamanio) {
   // Allocate memory for new node
   t_node* node = (t_node*)malloc(sizeof(t_node));
 
@@ -2181,18 +2181,19 @@ void arrancar_buddy(){
 }
 
 void asignar_nodo(t_node* node,void* contenido, t_mensaje* mensaje, uint32_t exponente){
-    node ->  bloque -> ocupado =1;
+    node -> bloque -> ocupado =1;
     node -> bloque -> tiempo_de_carga =  timestamp();
-    node ->  bloque-> ultima_referencia =  timestamp();
+    node -> bloque -> ultima_referencia =  timestamp();
     node -> bloque -> tamanio_mensaje = mensaje ->tamanio_mensaje;
     node -> bloque -> codigo_operacion = mensaje -> codigo_operacion;
     node -> bloque -> contenido = contenido;
     mensaje -> payload = node;
     node -> bloque -> id = crear_id_nodo();
+
     if(list_size(memoria_cache) > 1){
-      	t_node* ultimo_buddy= list_get( memoria_cache, list_size(memoria_cache)-1);
-      	node->bloque->base =  ultimo_buddy -> bloque ->base +  ultimo_buddy -> bloque->tamanio_exponente + 1;
-      	guardar_contenido_de_mensaje(exponente, contenido, mensaje -> tamanio_mensaje);
+      	t_node* ultimo_buddy= list_get(memoria_cache, list_size(memoria_cache)-1);
+      	node -> bloque -> base =  ultimo_buddy -> bloque -> base +  ultimo_buddy -> bloque -> tamanio_exponente + 1;
+      	guardar_contenido_de_mensaje(exponente, contenido, ultimo_buddy -> bloque -> tamanio_exponente); //cambiado
     }else{
         node -> bloque-> base = 0;
     	guardar_contenido_de_mensaje(0, contenido, exponente);
@@ -2206,7 +2207,7 @@ void chequear_buddy(t_node* node){
    if(list_size(memoria_cache) > 1){
         uint32_t posicion_a_ubicar = encontrar_hermano(node);
         if (posicion_a_ubicar){
-        void* unused = list_replace(memoria_cache, posicion_a_ubicar+1, node);
+        void* unused = list_replace(memoria_cache, posicion_a_ubicar + 1, node);
         }
         else{
           crear_companieros(node);
@@ -2224,42 +2225,43 @@ uint32_t encontrar_hermano(t_node* buddy){
 
 	//sem_wait(&mx_memoria_cache);
 	t_list* memoria_duplicada = list_duplicate(memoria_cache);
-	sem_post(&mx_memoria_cache);
+	//sem_post(&mx_memoria_cache);
 
 	bool encontrar_al_companero(void* buddy1){
-        t_indice* un_buddy= buddy1;
+        t_indice* un_buddy = buddy1;
+
         if(un_buddy != NULL){
-			if(un_buddy ->padre_id == buddy-> bloque ->padre && un_buddy-> base != buddy-> bloque->base){
-				return true;
+			if(un_buddy -> padre_id == buddy -> bloque -> padre && un_buddy -> base != buddy -> bloque -> base){
+				return 1;
 			} else{
-				return false;
+				return 0;
 			}
         }else{
-        	return false;
+        	return 0;
         	log_warning(logger,"no tiene hermano");
         }
     }
 
 	void obtener_indices(void* buddy){
-				t_node* particion_a_transformar = buddy;
-				t_indice* un_indice = malloc(sizeof(t_indice));
-				un_indice -> indice = indice_buscador;
-				un_indice -> base = particion_a_transformar -> bloque -> base;
-				if(particion_a_transformar -> bloque-> padre){
-					un_indice -> padre_id =  particion_a_transformar -> bloque -> padre;
-				} else
-				{
-					un_indice-> padre_id = 0;
-				}
+		t_node* particion_a_transformar = buddy;
+		t_indice* un_indice = malloc(sizeof(t_indice));
+		un_indice -> indice = indice_buscador;
+		un_indice -> base = particion_a_transformar -> bloque -> base;
 
-				list_add(indices, un_indice);
-				indice_buscador++;
+		if(particion_a_transformar -> bloque-> padre){
+			un_indice -> padre_id =  particion_a_transformar -> bloque -> padre;
+		} else{
+			un_indice-> padre_id = 0;
+		}
+
+		list_add(indices, un_indice);
+		indice_buscador++;
 	}
 
 	list_iterate(memoria_duplicada, obtener_indices);
 	t_indice* indice_elegido = list_find(indices, encontrar_al_companero);
 
-	if(indice_elegido!=NULL){
+	if(indice_elegido != NULL){
 		indice_disponible = indice_elegido -> indice;
 	} else {
 		indice_disponible = 0;
@@ -2302,7 +2304,7 @@ uint32_t recorrer_first_fit(t_node* nodo, uint32_t exponente, void* contenido, t
 			    nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio_exponente /2);
 				nodo -> derecha -> bloque -> padre = nodo -> bloque -> id;
 			}
-			if(nodo -> izquierda -> bloque ==NULL){
+			if(nodo -> izquierda -> bloque == NULL){
 				nodo ->izquierda = crear_nodo(nodo->bloque->tamanio_exponente /2);
 				nodo -> izquierda -> bloque -> padre = nodo -> bloque -> id;
 			}
