@@ -2353,9 +2353,33 @@ uint32_t recorrer_best_fit(t_node* nodo, uint32_t exponente, void* contenido, t_
         return 0;
     }
     asignado  = 0;
-    if (nodo->bloque->tamanio_exponente == exponente && nodo->bloque->ocupado == 0) {
-        asignar_nodo(nodo, contenido, mensaje, exponente);
-        return 1;
+    if((nodo -> bloque -> tamanio_exponente / 2)  == exponente){
+    			if(nodo -> bloque -> id == -1)
+    				nodo -> bloque -> id = crear_id_nodo();
+    			if(nodo-> derecha -> bloque == NULL){
+    			    nodo -> derecha = crear_nodo(nodo -> bloque -> tamanio_exponente /2);
+    				nodo -> derecha -> bloque -> padre = nodo -> bloque -> id;
+    			}
+    			if(nodo -> izquierda -> bloque ==NULL){
+    				nodo ->izquierda = crear_nodo(nodo->bloque->tamanio_exponente /2);
+    				nodo -> izquierda -> bloque -> padre = nodo -> bloque -> id;
+    			}
+    			if(nodo -> izquierda -> bloque -> ocupado == 0)
+    				asignar_nodo(nodo-> izquierda, contenido, mensaje, exponente);
+    			else if(nodo -> derecha -> bloque -> ocupado == 0)
+    				asignar_nodo(nodo -> derecha, contenido, mensaje, exponente);
+    			else{
+    				asignado = 0;
+    				return  0;
+    			}
+    			asignado = 1;
+    			return 1;
+    }else {
+		if(nodo-> bloque-> ocupado == 0 && nodo -> bloque-> tamanio_exponente == exponente){
+			asignar_nodo(nodo,contenido,mensaje,exponente);
+			asignado = 1;
+			return 1;
+		}
     }
 
     if (exponente > config_broker-> size_min_memoria && nodo -> izquierda == NULL) {
