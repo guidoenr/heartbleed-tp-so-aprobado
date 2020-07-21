@@ -120,7 +120,7 @@ sem_t mx_copia_memoria;
 sem_t sem_particion_liberada;
 sem_t mx_memoria_particiones;
 sem_t mx_id_bloque;
-
+sem_t muteadito;
 
 // --------- funciones generales --------- //
 void iniciar_programa();
@@ -223,10 +223,10 @@ void crear_hilo_signal();
 // --------- buddy nuevo --------- //
 void arrancar_buddy();
 t_memoria_buddy* crear_raiz();
-void* recorrer_first_fit(uint32_t);
-void* recorrer_best_fit(uint32_t);
+t_memoria_buddy* recorrer_first_fit(uint32_t);
+t_memoria_buddy* recorrer_best_fit(uint32_t);
 void dividir_buddy(t_memoria_buddy*);
-void guardar_buddy(void*, t_mensaje*, void*);
+void guardar_buddy(t_memoria_buddy*, t_mensaje*, void*);
 uint32_t remover_buddy(t_memoria_buddy*);
 void reemplazar_buddy(t_mensaje*, void*);
 t_memoria_buddy* armar_buddy(uint32_t, uint32_t, t_mensaje*, uint32_t, void*, uint32_t, uint32_t);
@@ -238,7 +238,7 @@ void recorrer_segun_algoritmo(uint32_t, t_mensaje*, void*);
 t_memoria_buddy* seleccionar_victima_fifo();
 t_memoria_buddy* seleccionar_victima_lru();
 
-
+void consolidar_buddy(uint32_t, t_memoria_buddy*);
 
 
 

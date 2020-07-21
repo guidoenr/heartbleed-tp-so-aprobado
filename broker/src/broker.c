@@ -156,7 +156,7 @@ void liberar_listas(){
 
 /*EL SERVICE DEL BROKER*/
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {
-
+	sem_wait(&muteadito);
 	uint32_t size;
 	op_code* codigo_op = malloc(sizeof(op_code));
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
@@ -204,6 +204,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 
 	free(codigo_op);
 	free(stream);
+	sem_post(&muteadito);
 }
 
 void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t socket_cliente){
@@ -243,6 +244,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
     } else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 
 		mensaje_a_agregar -> payload = malloc(sizeof(t_memoria_dinamica));
+
 
     } else {
 
@@ -1080,17 +1082,17 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 }
 
 void recorrer_segun_algoritmo(uint32_t exponente, t_mensaje* mensaje, void* contenido) {
-
+	log_error(logger, "exponente: %d", exponente);
 	t_memoria_buddy* buddy_victima; // tanto vacia como reemplazable
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
-		 buddy_victima = recorrer_first_fit(exponente); // retorna NULL si se debe reemplazar (no hay buddy libre) o retorna el buddy q hay q llenar
-		 guardar_buddy(buddy_victima, mensaje, contenido);
+		buddy_victima = recorrer_first_fit(exponente); // retorna NULL si se debe reemplazar (no hay buddy libre) o retorna el buddy q hay q llenar
+		guardar_buddy(buddy_victima, mensaje, contenido);
 
-	 } else if(string_equals_ignore_case(config_broker ->algoritmo_particion_libre, "BF")){
-		 buddy_victima = recorrer_best_fit(exponente);
-		 guardar_buddy(buddy_victima, mensaje, contenido);
-	 }
+	} else if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre, "BF")){
+		buddy_victima = recorrer_best_fit(exponente);
+		guardar_buddy(buddy_victima, mensaje, contenido);
+	}
 }
 
 void* armar_contenido_de_mensaje(void* mensaje, uint32_t codigo){
@@ -1272,19 +1274,19 @@ uint32_t obtenerPotenciaDe2(uint32_t n) {
 	return (res*2);
 }
 
-void guardar_buddy(void* buddy, t_mensaje* mensaje, void* contenido) {
+void guardar_buddy(t_memoria_buddy* buddy, t_mensaje* mensaje, void* contenido) {
 
 	t_memoria_buddy* buddy_a_ubicar;
 
 	if(buddy != NULL) { // caso en q hay un buddy vacio en la lista
-		t_memoria_buddy* buddy_victima = (t_memoria_buddy*) buddy;
 
-		buddy_a_ubicar = armar_buddy(buddy_victima -> tamanio_exponente, buddy_victima -> base, mensaje, 1, contenido, buddy_victima -> id_padre, buddy_victima -> posicion);
-		uint32_t indice = remover_buddy(buddy_victima);
+		buddy_a_ubicar = armar_buddy(buddy -> tamanio_exponente, buddy -> base, mensaje, 1, contenido, buddy -> id_padre, buddy -> posicion);
+		uint32_t indice = remover_buddy(buddy);
 		list_add_in_index(memoria_cache, indice, buddy_a_ubicar);
 		guardar_contenido_de_mensaje(buddy_a_ubicar -> base, contenido, buddy_a_ubicar -> tamanio_exponente);
 
 	} else { // caso de reemplazo
+		log_error(logger, "SE REEMPLAZA");
 		reemplazar_buddy(mensaje, contenido);
 	}
 }
@@ -1359,19 +1361,50 @@ t_memoria_buddy* seleccionar_victima_lru() {
 	return buddy_victima;
 }
 
-void limpiar_buddy(t_memoria_buddy* buddy) {
+void limpiar_buddy(t_memoria_buddy* buddy) { // falta eliminar el mensaje de la MQ
 
-	t_memoria_buddy* buddy_vacio;
-	uint32_t indice = encontrar_indice(buddy);
+	t_memoria_buddy* buddy_vacio = armar_buddy(buddy -> tamanio_exponente, buddy -> base, NULL, 0, NULL, buddy -> id_padre, buddy -> posicion);
 
-	t_memoria_buddy* otro_buddy = list_get(memoria_cache, indice);
+	uint32_t indice = remover_buddy(buddy);
+	if(buddy_vacio -> tamanio_exponente >= config_broker -> size_memoria) {
+		log_info(logger, "llegamos a la raiz.");
+	} else {
+		consolidar_buddy(indice, buddy_vacio);
+	}
+}
 
-	buddy_vacio = armar_buddy(otro_buddy -> tamanio_exponente, otro_buddy -> base, NULL, 0, NULL, otro_buddy -> id_padre, otro_buddy -> posicion);
+void consolidar_buddy(uint32_t indice, t_memoria_buddy* buddy) {
 
-	uint32_t otro_indice = remover_buddy(otro_buddy);
+	bool es_el_hermano(void* otro_buddy) {
+		t_memoria_buddy* un_buddy = otro_buddy;
+		return buddy -> id_padre == un_buddy -> id_padre;
+	}
 
-	list_add_in_index(memoria_cache, otro_indice, buddy_vacio);
+	t_memoria_buddy* buddy_hermano = list_find(memoria_cache, es_el_hermano);
+	if(buddy_hermano == NULL) {
+		log_error(logger, "No tengo hermano."); //puede ser la raiz, validar q no entre en ese caso.
+	}
+	if(!buddy_hermano -> ocupado) {
+		indice = remover_buddy(buddy_hermano);
+		uint32_t base_padre;
+		if(buddy -> posicion) {
+			base_padre = buddy_hermano -> base;
+		} else {
+			base_padre = buddy -> base;
+		}
+		uint32_t posicion_padre;
+		if(base_padre % (buddy -> tamanio_exponente * 4)) {
+			posicion_padre = 1;
+		} else {
+			posicion_padre = 0;
+		}
+		t_memoria_buddy* buddy_padre = armar_buddy(buddy -> tamanio_exponente * 2, base_padre, NULL, 0, NULL, buddy -> id_padre / 2, posicion_padre);
 
+		list_add_in_index(memoria_cache, indice, buddy_padre);
+		limpiar_buddy(buddy_padre);
+	} else {
+		list_add_in_index(memoria_cache, indice, armar_buddy(buddy -> tamanio_exponente, buddy -> base, NULL, 0, NULL, buddy -> id_padre, buddy -> posicion));
+	}
 }
 
 t_memoria_buddy* armar_buddy(uint32_t exponente, uint32_t base, t_mensaje* mensaje, uint32_t ocupacion, void* contenido, uint32_t padre, uint32_t posicion){
@@ -1421,11 +1454,10 @@ uint32_t remover_buddy(t_memoria_buddy* buddy_a_remover) {
 
 		t_memoria_buddy* otro_buddy = un_buddy;
 
-		return (buddy_a_remover -> tamanio_exponente == otro_buddy -> tamanio_exponente) &&
-				(buddy_a_remover -> base == otro_buddy -> base);
+		return otro_buddy == buddy_a_remover;
 	}
 
-	t_memoria_buddy* eliminado = list_remove_by_condition(memoria_cache, es_el_buddy);
+	t_memoria_buddy* eliminado = list_remove_by_condition(memoria_cache, es_el_buddy); // ya tira free adentro.
 
 	log_info(logger, "Se removio el buddy con base %d", eliminado -> base);
 
@@ -1433,7 +1465,7 @@ uint32_t remover_buddy(t_memoria_buddy* buddy_a_remover) {
 }
 
 // TODO??
-void* recorrer_best_fit(uint32_t exponente) {
+t_memoria_buddy* recorrer_best_fit(uint32_t exponente) {
 
 	bool es_de_menor_tamanio(void* un_buddy, void* otro_buddy){
 		t_memoria_buddy* buddy1 = un_buddy;
@@ -1457,13 +1489,10 @@ void* recorrer_best_fit(uint32_t exponente) {
 
 	} else if(buddy -> tamanio_exponente > exponente) {
 		dividir_buddy(buddy);
-		recorrer_best_fit(exponente);
+		return recorrer_best_fit(exponente);
 
-	} else {
-		return NULL;
 	}
-
-	return 0;
+	return NULL;
 }
 
 void dividir_buddy(t_memoria_buddy* buddy_a_dividir) {
@@ -1471,7 +1500,7 @@ void dividir_buddy(t_memoria_buddy* buddy_a_dividir) {
 	if(buddy_a_dividir -> tamanio_exponente > 1) {
 		uint32_t indice_removido = remover_buddy(buddy_a_dividir);
 
-		uint32_t exponente_hijos = (buddy_a_dividir -> tamanio_exponente)/2;
+		uint32_t exponente_hijos = (buddy_a_dividir -> tamanio_exponente) / 2;
 		uint32_t base_izquierda = buddy_a_dividir -> base;
 		uint32_t base_derecha = base_izquierda + exponente_hijos;
 		uint32_t id_padre = buddy_a_dividir -> id_bloque * 2;
@@ -1483,7 +1512,7 @@ void dividir_buddy(t_memoria_buddy* buddy_a_dividir) {
 		list_add_in_index(memoria_cache, indice_removido + 1, buddy_derecho);
 
 		log_info(logger, "Se dividio el buddy %d, en dos con base %d y %d", buddy_a_dividir -> tamanio_exponente, buddy_izquierdo -> base, buddy_derecho -> base);
-
+		log_info(logger, "Me quedaron %d hojas", memoria_cache -> elements_count);
 	} else {
 
 		log_error(logger, "No puedo dividirme mas, mi tamanio es %d", buddy_a_dividir -> tamanio_exponente);
@@ -2341,7 +2370,7 @@ uint32_t crear_id_nodo() { //mutex?
    return nodo_id ++;
 }
 
-void* recorrer_first_fit(uint32_t exponente) {
+t_memoria_buddy* recorrer_first_fit(uint32_t exponente) {
 
     bool es_particion_apta(void* buddy1) {
     	t_memoria_buddy* un_buddy = buddy1;
@@ -2352,17 +2381,17 @@ void* recorrer_first_fit(uint32_t exponente) {
     t_memoria_buddy* buddy = list_find(memoria_cache, es_particion_apta);
 
     if(buddy -> tamanio_exponente == exponente) {
+    	log_info(logger, "ENTRE AL 1RO");
     	return buddy;
 
     } else if(buddy -> tamanio_exponente > exponente) {
+    	log_info(logger, "ENTRE AL 2DO");
     	dividir_buddy(buddy);
-    	recorrer_first_fit(exponente);
+    	return recorrer_first_fit(exponente);
 
-    } else {
-    	return NULL;
     }
-
-    return 0;
+	log_info(logger, "ENTRE AL 3RO");
+	return NULL;
 }
 
 
@@ -2379,6 +2408,7 @@ void iniciar_semaforos_broker() { //REVISAR INICIALIZCIONES
     sem_init(&mx_memoria_cache, 0, 1);
     sem_init(&mx_copia_memoria, 0, 1);
     sem_init(&semaforo, 0, 1);
+    sem_init(&muteadito, 0, 1);
     sem_init(&mx_id_bloque, 0, 1);
 }
 
@@ -2397,6 +2427,7 @@ void liberar_semaforos_broker(){
 	sem_destroy(&mx_memoria_particiones);
     sem_destroy(&mutex_id);
     sem_destroy(&semaforo);
+    sem_destroy(&muteadito);
     sem_destroy(&mx_id_bloque);
 }
 
