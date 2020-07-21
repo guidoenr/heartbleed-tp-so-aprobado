@@ -225,7 +225,7 @@ uint32_t obtener_id_buddy(t_node*);
 t_mensaje* encontrar_mensaje_buddy(uint32_t, op_code);
 t_node* seleccionar_particion_victima_de_reemplazo_buddy(void);
 t_node* armar_buddy(uint32_t, uint32_t, t_mensaje*, uint32_t, void*);
-uint32_t chequear_memoria();
+uint32_t chequear_memoria(uint32_t);
 void* main_hilo_mensaje(void*);
 void* main_hilo_signal(void*);
 void crear_hilo_signal(void);
@@ -233,12 +233,12 @@ uint32_t encontrar_hermano(t_node*);
 bool tiene_siguiente_buddy(uint32_t);
 bool ambas_estan_vacias_buddy(uint32_t, uint32_t );
 void consolidar_buddies(uint32_t, uint32_t);
-void chequear_buddy(t_node*);
+void chequear_buddy(t_node*, void*, uint32_t);
 void crear_companieros(t_node*);
 void consolidar_buddy(t_list*);
 uint32_t crear_id_nodo();
 void liberar_buddy(t_node*);
 void ubicar_buddy(uint32_t, t_node*);
-
+void eliminar_buddy(t_node*);
 
 
