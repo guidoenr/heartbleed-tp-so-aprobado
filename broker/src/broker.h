@@ -9,7 +9,7 @@
 #include <signal.h>
 #include <sys/time.h>
 
-//--estructuras--//
+//--------- estructuras ---------//
 typedef struct {
     uint32_t indice;
     uint32_t base;
@@ -60,24 +60,18 @@ typedef struct{
 	uint64_t tiempo_de_carga;
 	op_code codigo_operacion;
 	void* contenido;
-	uint32_t padre;
-	uint32_t id;
+	uint32_t id_padre;
+	uint32_t id_bloque;
+	uint32_t posicion; // 0 = izquierda y 1 = derecha
 } t_memoria_buddy;
-
-struct t_node{
-	t_memoria_buddy* bloque;
-	struct t_node *izquierda;
-	struct t_node *derecha;
-};
-struct t_node;
-typedef struct t_node t_node;
 
 typedef struct {
 	t_suscripcion* suscriptor;
 	t_mensaje* mensaje;
 } t_envio_mensaje;
 
-//--listas--//
+
+//--------- listas ---------//
 t_list* cola_catch;
 t_list* cola_caught;
 t_list* cola_get;
@@ -100,20 +94,24 @@ t_config_broker* config_broker;
 t_log* logger;
 t_log* logger_memoria;
 
-//--variables--//
+
+//--------- variables ---------//
 uint32_t particiones_liberadas;
 uint32_t asignado = 0;
 uint32_t numero_particion = 0;
 uint32_t id_mensaje_univoco;
 void* memoria;
 uint32_t nodo_id;
-//--hilos--//
+uint32_t id_bloque;
 
+
+//--------- hilos ---------//
 pthread_t hilo_mensaje;
 pthread_t hilo_envio_mensajes;
 pthread_t hilo_signal;
 
-//--semaforos--//
+
+//--------- semaforos --------- //
 sem_t mutex_id;
 sem_t sem_cola;
 sem_t sem_suscrip;
@@ -121,24 +119,26 @@ sem_t mx_memoria_cache;
 sem_t mx_copia_memoria;
 sem_t sem_particion_liberada;
 sem_t mx_memoria_particiones;
-
-//Funciones generales
-void iniciar_programa			 (void);
-void iniciar_semaforos_broker    (void);
-void reservar_memoria			 (void);
-void leer_config				 (void);
-void terminar_programa			 (t_log*);
-void liberar_config				 (t_config_broker*);
-void crear_colas_de_mensajes 	 (void);
-void crear_listas_de_suscriptores(void);
-void liberar_listas				 (void);
-void liberar_memoria_cache		 (void);
-void crear_hilo_por_mensaje		 (void);
-void terminar_hilos_broker		 (void);
-void liberar_semaforos_broker	 (void);
+sem_t mx_id_bloque;
 
 
-//--administracion de mensajes--//
+// --------- funciones generales --------- //
+void iniciar_programa();
+void iniciar_semaforos_broker();
+void reservar_memoria();
+void leer_config();
+void terminar_programa(t_log*);
+void liberar_config(t_config_broker*);
+void crear_colas_de_mensajes();
+void crear_listas_de_suscriptores();
+void liberar_listas();
+void liberar_memoria_cache();
+void crear_hilo_por_mensaje();
+void terminar_hilos_broker();
+void liberar_semaforos_broker();
+
+
+//--------- administracion de mensajes --------- //
 void encolar_mensaje(t_mensaje*, op_code);
 void agregar_mensaje(uint32_t,uint32_t,void*,uint32_t);
 uint32_t generar_id_univoco(void);
@@ -170,7 +170,8 @@ t_caught_pokemon* preparar_mensaje_caught(t_mensaje*);
 t_new_pokemon* preparar_mensaje_new(t_mensaje*);
 t_appeared_pokemon* preparar_mensaje_appeared(t_mensaje*);
 
-//--suscripciones--//
+
+//--------- suscripciones ---------//
 void recibir_suscripcion(t_suscripcion*);
 void suscribir_a_cola(t_list*, t_suscripcion*, op_code);
 bool es_la_misma_suscripcion(void*);
@@ -180,17 +181,16 @@ void destruir_suscripcion(void*);
 void enviar_mensajes_cacheados_en_particiones(op_code tipo_mensaje, uint32_t socket);
 void enviar_mensajes_cacheados_en_buddy_system(op_code tipo_mensaje, uint32_t socket);
 
-//--memoria--//
-void guardar_en_memoria(t_mensaje*,void*);
+
+//--------- memoria ---------//
+void guardar_en_memoria(t_mensaje*, void*);
 uint32_t obtenerPotenciaDe2(uint32_t);
-struct t_node* crear_nodo(uint32_t);
-void arrancar_buddy(void);
-void asignar_nodo(t_node*, void*, t_mensaje*, uint32_t);
-uint32_t recorrer_first_fit(t_node*, uint32_t,void*, t_mensaje*);
-uint32_t recorrer_best_fit(t_node*, uint32_t, void*, t_mensaje*);
 void ubicar_particion(uint32_t, t_memoria_dinamica*);
 void reemplazo_buddy(uint32_t, void*, t_mensaje*);
 void liberar_particion_dinamica(t_memoria_dinamica*);
+uint32_t obtener_nueva_base(t_memoria_dinamica*, uint32_t);
+t_memoria_dinamica* seleccionar_victima_de_reemplazo_fifo();
+t_memoria_dinamica* seleccionar_victima_de_reemplazo_lru();
 void iniciar_memoria_particiones(t_list*);
 uint32_t encontrar_primer_ajuste(uint32_t);
 uint32_t encontrar_mejor_ajuste(uint32_t);
@@ -200,19 +200,13 @@ void consolidar_particiones_dinamicas(t_list*);
 void consolidar_particiones(uint32_t, uint32_t);
 void compactar_memoria_cache(t_list*);
 void compactar_particiones_dinamicas(t_list*);
-uint32_t obtener_nueva_base(t_memoria_dinamica*, uint32_t);
-void consolidacion_buddy_systeam(t_node* nodo);
-t_memoria_dinamica* seleccionar_victima_de_reemplazo_fifo(void);
-t_memoria_dinamica* seleccionar_victima_de_reemplazo_lru(void);
 void guardar_particion(t_mensaje*, void*);
 void dump_info_particion(void*);
-void dump_info_buddy(void*);
 void guardar_contenido_de_mensaje(uint32_t,  void*, uint32_t);
 bool ambas_estan_vacias(uint32_t, uint32_t);
 t_memoria_dinamica* armar_particion(uint32_t, uint32_t, t_mensaje*, uint32_t, void*);
 char* obtener_cola_del_mensaje(t_memoria_dinamica*);
-char* obtener_cola_del_mensaje_buddy(t_node*);
-t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(void);
+t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo();
 bool tiene_siguiente(uint32_t);
 uint64_t timestamp(void);
 void sig_handler(void*);
@@ -221,24 +215,55 @@ void establecer_tiempo_de_carga(t_mensaje*);
 void actualizar_ultima_referencia(t_mensaje*);
 void dump_de_memoria();
 void liberar_mensaje_de_memoria(t_mensaje*);
-uint32_t obtener_id_buddy(t_node*);
-t_mensaje* encontrar_mensaje_buddy(uint32_t, op_code);
-t_node* seleccionar_particion_victima_de_reemplazo_buddy(void);
-t_node* armar_buddy(uint32_t, uint32_t, t_mensaje*, uint32_t, void*);
-uint32_t chequear_memoria(uint32_t);
+uint32_t crear_id_nodo();
 void* main_hilo_mensaje(void*);
 void* main_hilo_signal(void*);
-void crear_hilo_signal(void);
-uint32_t encontrar_hermano(t_node*);
-bool tiene_siguiente_buddy(uint32_t);
-bool ambas_estan_vacias_buddy(uint32_t, uint32_t );
-void consolidar_buddies(uint32_t, uint32_t);
-void chequear_buddy(t_node*, void*, uint32_t);
-void crear_companieros(t_node*);
-void consolidar_buddy(t_list*);
-uint32_t crear_id_nodo();
-void liberar_buddy(t_node*);
-void ubicar_buddy(uint32_t, t_node*);
-void eliminar_buddy(t_node*);
+void crear_hilo_signal();
+
+
+// --------- buddy nuevo --------- //
+void arrancar_buddy();
+t_memoria_buddy* crear_raiz();
+void* recorrer_first_fit(uint32_t);
+void* recorrer_best_fit(uint32_t);
+void dividir_buddy(t_memoria_buddy*);
+void guardar_buddy(void*, t_mensaje*, void*);
+uint32_t remover_buddy(t_memoria_buddy*);
+void reemplazar_buddy();
+t_memoria_buddy* armar_buddy(uint32_t, uint32_t, t_mensaje*, uint32_t, void*, uint32_t, uint32_t);
+uint32_t generar_id_bloque();
+uint32_t determinar_exponente(t_mensaje*);
+
+
+
+
+
+
+
+
+
+
+// --------- buddy viejo --------- //
+//uint32_t obtener_id_buddy(t_node*);
+//t_node* seleccionar_particion_victima_de_reemplazo_buddy();
+//uint32_t chequear_memoria(uint32_t);
+//uint32_t encontrar_hermano(t_node*);
+//bool tiene_siguiente_buddy(uint32_t);
+//bool ambas_estan_vacias_buddy(uint32_t, uint32_t );
+//void consolidar_buddies(uint32_t, uint32_t);
+//void chequear_buddy(t_node*, void*, uint32_t);
+//void crear_companieros(t_node*);
+//void consolidar_buddy(t_list*);
+//void liberar_buddy(t_node*);
+//void ubicar_buddy(uint32_t, t_node*);
+//void eliminar_buddy(t_node*);
+//char* obtener_cola_del_mensaje_buddy(t_node*);
+//void consolidacion_buddy_systeam(t_node* nodo);
+//void asignar_nodo(t_node*, void*, t_mensaje*, uint32_t);
+//uint32_t recorrer_first_fit(t_node*, uint32_t,void*, t_mensaje*);
+//uint32_t recorrer_best_fit(t_node*, uint32_t, void*, t_mensaje*);
+t_mensaje* encontrar_mensaje_buddy(uint32_t, op_code);
+void dump_info_buddy(void*);
+
 
 
