@@ -1118,10 +1118,10 @@ uint32_t chequear_memoria(uint32_t exponente){
 
 void reemplazo_buddy(uint32_t exponente, void* contenido, t_mensaje* mensaje){
 
-	    consolidar_buddy(memoria_cache);
 		t_node* buddy_victima = seleccionar_particion_victima_de_reemplazo_buddy();
 		log_info(logger, "LLEGUE ACA");
 		eliminar_buddy(buddy_victima);
+		consolidar_buddy(memoria_cache);
 
 		if(buddy_victima -> bloque -> tamanio_exponente < exponente){
 			reemplazo_buddy(exponente, contenido, mensaje);
@@ -2195,6 +2195,7 @@ t_node* crear_nodo(uint32_t tamanio) {
 void arrancar_buddy(){
 	memoria_cache = list_create();
 	t_node* root = crear_nodo(config_broker -> size_memoria);
+	root-> bloque -> base = -1;
 	list_add(memoria_cache, root);
 }
 
@@ -2338,10 +2339,10 @@ uint32_t recorrer_first_fit(t_node* nodo, uint32_t exponente, void* contenido, t
 				nodo -> izquierda -> bloque -> padre = nodo -> bloque -> id;
 			}
 			if(nodo -> izquierda -> bloque -> ocupado == 0) {
-				asignar_nodo(nodo-> izquierda, contenido, mensaje, exponente);
+				//asignar_nodo(nodo-> izquierda,nodo->derecha, contenido, mensaje, exponente);
 
 			} else if(nodo -> derecha -> bloque -> ocupado == 0) {
-				asignar_nodo(nodo -> derecha, contenido, mensaje, exponente);
+				//asignar_nodo(nodo -> derecha,nodo->izquierda ,contenido, mensaje, exponente);
 
     		}else{
 				asignado = 0;
@@ -2473,7 +2474,7 @@ bool ambas_estan_vacias_buddy(uint32_t una_posicion, uint32_t posicion_siguiente
     if(buddy != NULL){
     	if(un_buddy != NULL){
     		resultado = (!(buddy -> bloque -> ocupado)) && (!(un_buddy -> bloque -> ocupado)) &&
-    					(buddy -> bloque -> padre == buddy -> bloque -> padre);
+    					(buddy -> bloque -> padre == un_buddy -> bloque -> padre);
     	} else {
     		log_error(logger, "La segunda particion a consolidar no fue encontrada.");
     	}
