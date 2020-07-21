@@ -184,7 +184,6 @@ void enviar_mensajes_cacheados_en_buddy_system(op_code tipo_mensaje, uint32_t so
 
 //--------- memoria ---------//
 void guardar_en_memoria(t_mensaje*, void*);
-uint32_t obtenerPotenciaDe2(uint32_t);
 void ubicar_particion(uint32_t, t_memoria_dinamica*);
 void reemplazo_buddy(uint32_t, void*, t_mensaje*);
 void liberar_particion_dinamica(t_memoria_dinamica*);
@@ -229,10 +228,15 @@ void* recorrer_best_fit(uint32_t);
 void dividir_buddy(t_memoria_buddy*);
 void guardar_buddy(void*, t_mensaje*, void*);
 uint32_t remover_buddy(t_memoria_buddy*);
-void reemplazar_buddy();
+void reemplazar_buddy(t_mensaje*, void*);
 t_memoria_buddy* armar_buddy(uint32_t, uint32_t, t_mensaje*, uint32_t, void*, uint32_t, uint32_t);
 uint32_t generar_id_bloque();
 uint32_t determinar_exponente(t_mensaje*);
+uint32_t obtenerPotenciaDe2(uint32_t);
+void limpiar_buddy(t_memoria_buddy*);
+void recorrer_segun_algoritmo(uint32_t, t_mensaje*, void*);
+t_memoria_buddy* seleccionar_victima_fifo();
+t_memoria_buddy* seleccionar_victima_lru();
 
 
 
