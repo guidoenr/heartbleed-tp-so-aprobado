@@ -1081,7 +1081,6 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 
 	void* contenido = armar_contenido_de_mensaje(mensaje_original, mensaje -> codigo_operacion);
 
-
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
 		uint32_t exponente = determinar_exponente(mensaje);
 
@@ -1489,14 +1488,13 @@ uint32_t remover_buddy(t_memoria_buddy* buddy_a_remover) {
 	return indice;
 }
 
-// TODO??
 t_memoria_buddy* recorrer_best_fit(uint32_t exponente) {
 
 	bool es_de_menor_tamanio(void* un_buddy, void* otro_buddy){
 		t_memoria_buddy* buddy1 = un_buddy;
 		t_memoria_buddy* buddy2 = otro_buddy;
 
-		return (buddy1 -> tamanio_exponente) < (buddy2 -> tamanio_exponente);
+		return (buddy1 -> tamanio_exponente) <= (buddy2 -> tamanio_exponente);
 	}
 
 	t_list* lista_ordenada = list_sorted(memoria_cache, es_de_menor_tamanio);
@@ -1504,20 +1502,18 @@ t_memoria_buddy* recorrer_best_fit(uint32_t exponente) {
 	bool es_particion_apta(void* buddy3) {
 		t_memoria_buddy* un_buddy = buddy3;
 
-		return (un_buddy -> tamanio_exponente >= exponente) && (un_buddy -> ocupado == 0);
+		return (un_buddy -> ocupado) == 0 && (un_buddy -> tamanio_exponente) >= exponente;
 	}
 
 	t_memoria_buddy* buddy = list_find(lista_ordenada, es_particion_apta);
 
-	if(buddy -> tamanio_exponente == exponente) {
-		return buddy;
-
-	} else if(buddy -> tamanio_exponente > exponente) {
-		dividir_buddy(buddy);
-		return recorrer_best_fit(exponente);
-
+	if(buddy != NULL) {
+		if(buddy -> tamanio_exponente > exponente) {
+			dividir_buddy(buddy);
+			return recorrer_best_fit(exponente);
+		}
 	}
-	return NULL;
+	return buddy;
 }
 
 void dividir_buddy(t_memoria_buddy* buddy_a_dividir) {
@@ -1546,15 +1542,16 @@ void dividir_buddy(t_memoria_buddy* buddy_a_dividir) {
 
 void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje){
 
-	t_memoria_dinamica* particion_a_reemplazar = malloc(sizeof(t_memoria_dinamica));
+	 //particion_a_reemplazar = malloc(sizeof(t_memoria_dinamica));
 
-    particion_a_reemplazar = seleccionar_particion_victima_de_reemplazo();
-    log_error(logger, "Base: %d", particion_a_reemplazar -> base);
+	t_memoria_dinamica* particion_a_reemplazar = seleccionar_particion_victima_de_reemplazo();
 
     t_memoria_dinamica* particion_vacia = armar_particion(particion_a_reemplazar -> tamanio, particion_a_reemplazar -> base, NULL, 0, contenido_mensaje);
 
     uint32_t indice = encontrar_indice(particion_a_reemplazar);
     t_mensaje* mensaje_a_eliminar = encontrar_mensaje(particion_a_reemplazar -> base, particion_a_reemplazar -> codigo_operacion);
+
+    log_error(logger, "EL INDICE VICTIMA ES: %d", indice);
 
     particion_a_reemplazar = list_replace(memoria_con_particiones, indice, particion_vacia);
     eliminar_mensaje(mensaje_a_eliminar);
@@ -1565,20 +1562,17 @@ void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje
     guardar_particion(mensaje, contenido_mensaje);
 }
 
-
-
 t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
 
     t_memoria_dinamica* particion_victima;
-    t_list* memoria_ordenada = list_create();
-    t_list* memoria_duplicada = list_create();
+    t_list* memoria_ordenada;
 
     bool particion_ocupada(void* particion){
            t_memoria_dinamica* una_particion = particion;
            return (una_particion -> ocupado) != 0;
     }
 	
-    memoria_duplicada = list_filter(memoria_con_particiones, particion_ocupada);
+    t_list* memoria_duplicada = list_filter(memoria_con_particiones, particion_ocupada);
 
     bool fue_cargada_antes(void* particion1, void* particion2) {
     	t_memoria_dinamica* una_particion = particion1;
@@ -1737,8 +1731,8 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
         if(posicion_a_ubicar == -1){
             log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
             reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
+
         } else {
-			
         	particion_a_ubicar = list_get(memoria_con_particiones, posicion_a_ubicar);
 			nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1, contenido_mensaje);
 			ubicar_particion(posicion_a_ubicar, nueva_particion);
@@ -2007,11 +2001,10 @@ void consolidar_particiones(uint32_t primer_elemento, uint32_t elemento_siguient
 }
 
 void compactar_particiones_dinamicas(t_list* memoria){
-    t_list* particiones_vacias = list_create();
-    t_list* particiones_ocupadas = list_create();
+    t_list* particiones_vacias;
+    t_list* particiones_ocupadas;
 
     uint32_t posicion_lista = 0;
-
 
 	bool es_particion_vacia(void* particion){
 		t_memoria_dinamica* una_particion = particion;
@@ -2108,17 +2101,20 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 
 		particiones_liberadas++;
 
-		consolidar_particiones_dinamicas(memoria_con_particiones);
-
 		if(config_broker -> frecuencia_compactacion == 0 || (particiones_liberadas == (config_broker -> frecuencia_compactacion))){
-				compactar_particiones_dinamicas(memoria_con_particiones);
+			log_info(logger, "antes de compactar");
+			compactar_particiones_dinamicas(memoria_con_particiones);
+			log_info(logger, "despues de compactar");
 		}		
+
+		consolidar_particiones_dinamicas(memoria_con_particiones);
 
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
 	
 	} else {
 		log_error(logger, "...No se reconoce el algoritmo de memoria.");
 	}
+
 
 }
 
@@ -2317,10 +2313,7 @@ t_memoria_buddy* recorrer_first_fit(uint32_t exponente) {
     t_memoria_buddy* buddy = list_find(memoria_cache, es_particion_apta);
 
     if(buddy != NULL) {
-    	if(buddy -> tamanio_exponente == exponente) {
-			log_info(logger, "ENTRE AL 1RO");
-		} else if(buddy -> tamanio_exponente > exponente) {
-			log_info(logger, "ENTRE AL 2DO");
+    	if(buddy -> tamanio_exponente > exponente) {
 			dividir_buddy(buddy);
 			return recorrer_first_fit(exponente);
 		}
