@@ -127,6 +127,7 @@ void liberar_memoria_cache();
 void crear_hilo_por_mensaje();
 void terminar_hilos_broker();
 void liberar_semaforos_broker();
+void iniciar_logger_broker(char*, char*);
 
 
 //--------- administracion de mensajes --------- //
@@ -199,7 +200,7 @@ char* obtener_cola_del_mensaje(t_memoria_dinamica*);
 t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo();
 bool tiene_siguiente(uint32_t);
 uint64_t timestamp(void);
-void sig_handler(void*);
+void sig_handler();
 bool mensaje_recibido_por_todos(void*, t_list*);
 void establecer_tiempo_de_carga(t_mensaje*);
 void actualizar_ultima_referencia(t_mensaje*);
@@ -207,7 +208,7 @@ void dump_de_memoria();
 void liberar_mensaje_de_memoria(t_mensaje*);
 uint32_t crear_id_nodo();
 void* main_hilo_mensaje(void*);
-void* main_hilo_signal(void*);
+void* main_hilo_signal();
 void crear_hilo_signal();
 
 
@@ -232,6 +233,7 @@ void consolidar_buddy(uint32_t, t_memoria_buddy*);
 bool son_buddies_hermanos(t_memoria_buddy*, t_memoria_buddy*);
 t_mensaje* encontrar_mensaje_buddy(uint32_t, op_code);
 void dump_info_buddy(void*);
-
+uint32_t obtener_id_buddy(t_memoria_buddy*);
+char* obtener_cola_del_mensaje_buddy(t_memoria_buddy*);
 
 

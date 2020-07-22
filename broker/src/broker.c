@@ -8,13 +8,6 @@ int main(void) {
 	return 0;
 }
 
-void sig_handler(void* signo) {
-    uint32_t* un_signo = signo;
-	if((*un_signo) == SIGUSR1){
-        dump_de_memoria();
-    }
-}
-
 void iniciar_programa(){
 	id_mensaje_univoco = 0;
 	particiones_liberadas = 0;
@@ -24,34 +17,41 @@ void iniciar_programa(){
 	iniciar_semaforos_broker();
 
 	leer_config();
-	iniciar_logger(config_broker->log_file, "broker");
+	iniciar_logger(config_broker -> log_file, "broker");
 	reservar_memoria();
+	crear_hilo_signal();
 	crear_colas_de_mensajes();
 	crear_listas_de_suscriptores();
 	iniciar_servidor(config_broker -> ip_broker, config_broker -> puerto);
-	crear_hilo_signal();
 	
 
     //crear_hilo_envio_mensajes(); --> tiene como main enviar_mensajes
-    //crear_hilo_por_mensaje(); --> en el serve client
-
 	log_info(logger, "IP: %s", config_broker -> ip_broker);
-
 }
 
-// TODO
-void* main_hilo_signal(void* variable){
+void crear_hilo_signal() {
+	uint32_t err = pthread_create(&hilo_signal, NULL, main_hilo_signal, NULL);
+	if(err != 0) {
+		log_error(logger, "El hilo no pudo ser creado!!");
+	}
+	pthread_detach(hilo_signal);
+}
+
+void* main_hilo_signal(){
 
 	signal(SIGUSR1, sig_handler);
 
 	return NULL;
 }
 
-void crear_hilo_signal(){
-	uint32_t err = pthread_create(&hilo_signal, NULL, main_hilo_signal, NULL);
-	if(err != 0) {
-		log_error(logger, "El hilo no pudo ser creado!!");
-	}
+void sig_handler(uint32_t signo) {
+
+	puts("entre en sig_handler");
+
+    uint32_t un_signo = signo;
+	if(un_signo == SIGUSR1){
+        dump_de_memoria();
+    }
 }
 
 void reservar_memoria(){
@@ -980,7 +980,7 @@ void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){ // h
 
 					datos_de_mensaje -> suscriptor = un_suscriptor;
 					datos_de_mensaje -> mensaje = un_mensaje;
-
+					//TODO
 					uint32_t err = pthread_create(&hilo_envio_mensajes, NULL, main_hilo_mensaje, datos_de_mensaje);
 						if(err != 0) {
 							log_error(logger, "El hilo no pudo ser creado!!");
@@ -1035,7 +1035,7 @@ void dump_de_memoria(){
 
 	log_info(logger, "Se solicitó el dump de cache.");
     //Se tiene que crear un nuevo archivo y loggear ahi todas las cosas.
-    iniciar_logger(config_broker -> memory_log, "broker");
+	iniciar_logger_broker(config_broker -> memory_log, "broker");
 
     //Muestra el inicio del dump.
     time_t t;
@@ -1044,20 +1044,36 @@ void dump_de_memoria(){
     t = time(NULL);
     tm = localtime(&t);
     strftime(fechayhora, 25, "%d/%m/%Y %H:%M:%S", tm);
-    printf ("Hoy es: %s\n", fechayhora);
 
-    log_info(logger_memoria, "Dump: %s", fechayhora);
+    log_info(logger_memoria, "Dump: %s\n", fechayhora);
 
+    sem_wait(&muteadito);
     if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
     	//Se empieza a loguear partición por partición --> considero la lista de particiones en memoria ("memoria auxiliar").
 		list_iterate(memoria_con_particiones, dump_info_particion);
-
     } else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-		//list_iterate(memoria_cache, dump_info_buddy);
+		list_iterate(memoria_cache, dump_info_buddy);
 
     } else {
         log_error(logger_memoria, "(? No se reconoce el algoritmo de memoria a implementar.");
     }
+
+    sem_post(&muteadito);
+}
+
+void iniciar_logger_broker(char* file, char* program_name) {
+
+	if(file == NULL){
+			printf("No se pudo encontrar el path del config.");
+			return exit(-1);
+	}
+
+	logger_memoria = log_create(file, program_name, 1, LOG_LEVEL_INFO);
+
+	if (logger_memoria == NULL){
+		printf("ERROR EN LA CREACION DEL LOGGER/n");
+		exit(-2);
+	}
 }
 
 
@@ -1594,6 +1610,15 @@ uint32_t obtener_id(t_memoria_dinamica* particion){
     uint32_t id = 0;
     t_mensaje* mensaje = encontrar_mensaje(particion -> base, particion -> codigo_operacion);
     id = mensaje -> id_mensaje;
+
+    return id;
+}
+
+uint32_t obtener_id_buddy(t_memoria_buddy* particion){
+    uint32_t id = 0;
+    t_mensaje* mensaje = encontrar_mensaje_buddy(particion -> base, particion -> codigo_operacion);
+    id = mensaje -> id_mensaje;
+
     return id;
 }
 
@@ -1929,7 +1954,6 @@ uint32_t encontrar_indice(void* memory){
 
 //--------------------------------CONSOLIDACION_P--------------------------------//
 
-
 void consolidar_particiones_dinamicas(t_list* memoria){
 	t_list* memoria_duplicada = list_create();
 	memoria_duplicada = list_duplicate(memoria);
@@ -2134,11 +2158,7 @@ void eliminar_de_message_queue(t_mensaje* mensaje, op_code codigo){
 }
 
 void dump_info_particion(void* particion){
-   /* if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-		t_memoria_dinamica* una_particion = particion;	
-	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-		t_memoria_buddy* una_particion = particion;
-	}
+	t_memoria_dinamica* una_particion = particion;
 	
     char* ocupado = malloc(sizeof(char));
     ocupado = "L";
@@ -2150,29 +2170,31 @@ void dump_info_particion(void* particion){
     uint32_t* base = memoria + (una_particion -> base);//Revisar que apunte al malloc
 	//uint32_t* limite = memoria + (una_particion -> base) + (una_particion -> tamanio);
     uint32_t tamanio = 0;
-	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-		tamanio = una_particion -> tamanio_part;	
-	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-		tamanio = una_particion -> tamanio_exponente;
+
+	tamanio = una_particion -> tamanio_part;
+
+	if(una_particion -> ocupado != 0) {
+		uint32_t valor_lru = una_particion -> ultima_referencia;
+		//Relacionar al mensaje con la partición
+		char* cola_del_mensaje = obtener_cola_del_mensaje(una_particion);
+		uint32_t id_del_mensaje = obtener_id(una_particion);
+
+		//free(cola_del_mensaje);
+
+		log_info(logger_memoria, "Particion %d: %p.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, ocupado, tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
+	} else {
+
+		log_info(logger_memoria, "Particion %d: %p.  [%s] Size: %d", numero_particion, base, ocupado, tamanio);
 	}
-	uint32_t valor_lru = una_particion -> ultima_referencia;
-    //Relacionar al mensaje con la partición
-    char* cola_del_mensaje = obtener_cola_del_mensaje(una_particion);
-    uint32_t id_del_mensaje = obtener_id(una_particion);
+
+	 numero_particion++;
 
     //Revisar el tema de la dirección de memoria para loggear-->(&base?).
-    if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
-		log_info(logger_memoria, "Particion %d: %p.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, (*ocupado), tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
-	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
-		log_info(logger_memoria, "Buddy %d: %p.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, (*ocupado), tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
-	}
-		
-    numero_particion++;
-    free(cola_del_mensaje);
-    //Revisar si hay que liberar la partición!*/
+
+    //Revisar si hay que liberar la partición!
 }
 
-/*void dump_info_buddy(void* buddy){
+void dump_info_buddy(void* buddy){
     t_memoria_buddy* un_buddy = buddy;
     char* ocupado = malloc(sizeof(char));
     ocupado = "L";
@@ -2180,20 +2202,27 @@ void dump_info_particion(void* particion){
     if(un_buddy -> ocupado != 0) {
         ocupado = "X";
     }
+
     uint32_t* base = memoria + (un_buddy -> base);//Revisar que apunte al malloc
 	//uint32_t* limite = memoria + (un_buddy -> base) + (un_buddy -> tamanio_exponente);
     uint32_t tamanio = un_buddy -> tamanio_exponente;
-    uint32_t valor_lru = un_buddy -> ultima_referencia;
-    char* cola_del_mensaje = obtener_cola_del_mensaje_buddy(un_buddy);
-    uint32_t id_del_mensaje = obtener_id_buddy(un_buddy);
 
-    //Revisar el tema de la dirección de memoria para loggear-->(&base?).
-    log_info(logger_memoria, "Buddy %d: %p.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, (*ocupado), tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
-    numero_particion++; //-> semaforo? Creo que no
-    free(cola_del_mensaje);
-    free(ocupado);
-    //Revisar si hay que liberar la partición!
-}*/
+    if(un_buddy -> ocupado != 0) {
+		uint32_t valor_lru = un_buddy -> ultima_referencia;
+		char* cola_del_mensaje = obtener_cola_del_mensaje_buddy(un_buddy);
+		uint32_t id_del_mensaje = obtener_id_buddy(un_buddy);
+
+		log_info(logger_memoria, "Buddy %d: %p.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, ocupado, tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
+
+		//free(cola_del_mensaje);
+    } else {
+
+    	log_info(logger_memoria, "Buddy %d: %p.  [%s] Size: %d", numero_particion, base, ocupado, tamanio);
+    }
+    numero_particion++;
+
+    //free(ocupado);
+}
 
 char* obtener_cola_del_mensaje(t_memoria_dinamica* una_particion){
     char* una_cola;
@@ -2312,7 +2341,6 @@ void iniciar_semaforos_broker() { //REVISAR INICIALIZCIONES
 
 void terminar_hilos_broker(){
 	pthread_detach(hilo_envio_mensajes);
-	pthread_detach(hilo_signal);
 }
 
 void liberar_semaforos_broker(){
