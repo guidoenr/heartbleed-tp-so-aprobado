@@ -135,8 +135,8 @@ uint32_t seleccionar_proceso(char * parametros[]) {
     if(conexion != -1) {
 		log_info(logger, "Conexion creada con el proceso Broker");
     }
-    tamanio_mensaje = size_mensaje(armar_mensaje_suscripcion(parametros), SUBSCRIPTION);
-    mensaje = armar_mensaje_suscripcion(parametros);
+    tamanio_mensaje = size_mensaje(armar_mensaje_suscripcion(parametros, conexion), SUBSCRIPTION);
+    mensaje = armar_mensaje_suscripcion(parametros, conexion);
     enviar_mensaje(SUBSCRIPTION, mensaje, conexion, tamanio_mensaje);
   }
 
@@ -193,11 +193,11 @@ op_code obtener_enum_de_string(char * string) {
   return 0;
 }
 
-t_suscripcion* armar_mensaje_suscripcion(char * parametros[]) {
+t_suscripcion* armar_mensaje_suscripcion(char * parametros[], uint32_t socket) {
    t_suscripcion* a_enviar = malloc(sizeof(t_suscripcion));
 
   char * cola_a_suscribir = parametros[2];
-  a_enviar -> socket = 10000;
+  a_enviar -> socket = socket;
 
   if (string_equals_ignore_case(cola_a_suscribir, "GET_POKEMON")) {
     a_enviar -> cola_a_suscribir = GET_POKEMON;

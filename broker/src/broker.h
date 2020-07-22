@@ -110,14 +110,7 @@ pthread_t hilo_signal;
 
 
 //--------- semaforos --------- //
-sem_t mutex_id;
-sem_t sem_cola;
-sem_t sem_suscrip;
-sem_t mx_memoria_cache;
-sem_t mx_copia_memoria;
-sem_t sem_particion_liberada;
-sem_t mx_memoria_particiones;
-sem_t mx_id_bloque;
+sem_t mx_suscripciones;
 sem_t muteadito;
 
 // --------- funciones generales --------- //
@@ -174,7 +167,7 @@ void recibir_suscripcion(t_suscripcion*);
 void suscribir_a_cola(t_list*, t_suscripcion*, op_code);
 bool es_la_misma_suscripcion(void*);
 void informar_mensajes_previos(t_suscripcion*, op_code);
-void descargar_historial_mensajes(op_code, uint32_t);
+void descargar_historial_mensajes(op_code, uint32_t, uint32_t);
 void destruir_suscripcion(void*);
 void enviar_mensajes_cacheados_en_particiones(op_code tipo_mensaje, uint32_t socket);
 void enviar_mensajes_cacheados_en_buddy_system(op_code tipo_mensaje, uint32_t socket);
@@ -237,31 +230,6 @@ t_memoria_buddy* seleccionar_victima_fifo();
 t_memoria_buddy* seleccionar_victima_lru();
 void consolidar_buddy(uint32_t, t_memoria_buddy*);
 bool son_buddies_hermanos(t_memoria_buddy*, t_memoria_buddy*);
-
-
-
-
-
-
-// --------- buddy viejo --------- //
-//uint32_t obtener_id_buddy(t_node*);
-//t_node* seleccionar_particion_victima_de_reemplazo_buddy();
-//uint32_t chequear_memoria(uint32_t);
-//uint32_t encontrar_hermano(t_node*);
-//bool tiene_siguiente_buddy(uint32_t);
-//bool ambas_estan_vacias_buddy(uint32_t, uint32_t );
-//void consolidar_buddies(uint32_t, uint32_t);
-//void chequear_buddy(t_node*, void*, uint32_t);
-//void crear_companieros(t_node*);
-//void consolidar_buddy(t_list*);
-//void liberar_buddy(t_node*);
-//void ubicar_buddy(uint32_t, t_node*);
-//void eliminar_buddy(t_node*);
-//char* obtener_cola_del_mensaje_buddy(t_node*);
-//void consolidacion_buddy_systeam(t_node* nodo);
-//void asignar_nodo(t_node*, void*, t_mensaje*, uint32_t);
-//uint32_t recorrer_first_fit(t_node*, uint32_t,void*, t_mensaje*);
-//uint32_t recorrer_best_fit(t_node*, uint32_t, void*, t_mensaje*);
 t_mensaje* encontrar_mensaje_buddy(uint32_t, op_code);
 void dump_info_buddy(void*);
 
