@@ -20,7 +20,7 @@ int main(void) {
 
 	iniciar_tall_grass();
 
-	//conectarse_a_br(socket_br);
+	conectarse_a_br(socket_br);
 
 	sem_init(&mx_bitmap,0,1);
 	sem_init(&semaforo,0,1);
@@ -586,7 +586,7 @@ void unlock_file(char* path){
 
 /*-------------------------------------------------------------------------- NEW-POKEMON ----------------------------------------------------------------------------- */
 
-void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
+void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,uint32_t socket){
 	log_info(logger,"THREAD NEW POKEMON");
 	log_info(logger,"Llego un NEW_POKEMON %s en (%d,%d) con cantidad %d",new_pokemon->pokemon,new_pokemon->posicion[0],new_pokemon->posicion[1],new_pokemon->cantidad);
 
@@ -646,7 +646,7 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,int socket){
 	unlock_file(path_metafile);
 
 	t_appeared_pokemon* appeared = armar_appeared(new_pokemon);
-	//enviar_appeared POKKEMON TODO serializacion
+	enviar_mensaje(NEW_POKEMON,appeared,socket, size_mensaje(appeared, APPEARED_POKEMON));
 
 	free(path_metafile);
 	free(dir_path_newpoke);
@@ -1098,7 +1098,7 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 
 
 /*-------------------------------------------------------------------------- CATCH-POKEMON ----------------------------------------------------------------------------- */
-void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,int socket_br){
+void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_br){
 
 	log_info(logger,"THREAD CATCH POKEMON");
 	log_info(logger,"LLEGO UN CATCH %s en la posicion %d-%d ",catch_pokemon->pokemon,catch_pokemon->posicion[0],catch_pokemon->posicion[1]);
@@ -1145,7 +1145,7 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,int socket_br){
 
 
 	t_caught_pokemon* caught_pokemon = armar_caught_pokemon(catch_pokemon, resultado);
-	//ENVIAR CAUGHT TODO
+	enviar_mensaje(NEW_POKEMON,caught_pokemon,socket_br, size_mensaje(caught_pokemon, CAUGHT_POKEMON));
 
 
 }
@@ -1314,7 +1314,7 @@ t_caught_pokemon* armar_caught_pokemon(t_catch_pokemon* catch_pokemon,uint32_t r
 
 /*-------------------------------------------------------------------------- GET-POKEMON ----------------------------------------------------------------------------- */
 
-void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,int socket_br){
+void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 
 	 char* dir_path = obtener_path_dir_pokemon(get_pokemon->pokemon);
 	 char* meta_path = obtener_path_metafile(get_pokemon->pokemon);
@@ -1359,6 +1359,8 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,int socket_br){
 		 log_info(logger,"THREAD finished, el pokemon no existia en el filesystem");
 	 }
 
+
+	 enviar_mensaje(NEW_POKEMON,localized_pokemon,socket_br, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
 
 	 free(dir_path);
 	 free(meta_path);

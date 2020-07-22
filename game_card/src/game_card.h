@@ -13,7 +13,6 @@
 //global
 t_log* logger;
 char* punto_montaje;
-t_new_pokemon* luken;
 sem_t mx_bitmap;
 pthread_t hilo_game_boy;
 
@@ -57,7 +56,7 @@ void enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket);
 
 /* NEW POKEMON */
 void verificar_existencia_pokemon(t_new_pokemon* pokemon,int socket);
-void funcion_hilo_new_pokemon(t_new_pokemon* pokemon,int socket);
+void funcion_hilo_new_pokemon(t_new_pokemon* pokemon,uint32_t socket);
 void re_grabar_temporary_en_blocks(char* temporary_file,char* path_metafile);
 void destrozar_metadata_file(t_file_metadata metadata);
 void destrozar_new_pokemon(t_new_pokemon* new_pokemon);
