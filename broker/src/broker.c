@@ -1082,7 +1082,6 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original){
 }
 
 void recorrer_segun_algoritmo(uint32_t exponente, t_mensaje* mensaje, void* contenido) {
-	log_error(logger, "exponente: %d", exponente);
 	t_memoria_buddy* buddy_victima; // tanto vacia como reemplazable
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_particion_libre,"FF")){
@@ -1240,8 +1239,6 @@ t_memoria_buddy* crear_raiz() {
 	nodo -> tiempo_de_carga = 0;
 	nodo -> codigo_operacion = 0;
 	nodo -> contenido = 0;
-	nodo -> id_padre = 1; // si el id_padre es igual al bloque, es la raiz
-	nodo -> id_bloque = 1; // para heredar, se hereda el id_bloque * 2 como id_padre
 	nodo -> posicion = 0;
 
   return nodo;
@@ -1280,7 +1277,7 @@ void guardar_buddy(t_memoria_buddy* buddy, t_mensaje* mensaje, void* contenido) 
 
 	if(buddy != NULL) { // caso en q hay un buddy vacio en la lista
 
-		buddy_a_ubicar = armar_buddy(buddy -> tamanio_exponente, buddy -> base, mensaje, 1, contenido, buddy -> id_padre, buddy -> posicion);
+		buddy_a_ubicar = armar_buddy(buddy -> tamanio_exponente, buddy -> base, mensaje, 1, contenido, buddy -> posicion);
 		uint32_t indice = remover_buddy(buddy);
 		list_add_in_index(memoria_cache, indice, buddy_a_ubicar);
 		guardar_contenido_de_mensaje(buddy_a_ubicar -> base, contenido, buddy_a_ubicar -> tamanio_exponente);
@@ -1296,9 +1293,9 @@ void reemplazar_buddy(t_mensaje* mensaje, void* contenido) {
 
 	t_memoria_buddy* buddy_a_eliminar;
 
-	 if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "FIFO")){
-		 log_info(logger, "...El algoritmo elegido es FIFO");
-		 buddy_a_eliminar = seleccionar_victima_fifo();
+	if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "FIFO")){
+		log_info(logger, "...El algoritmo elegido es FIFO");
+		buddy_a_eliminar = seleccionar_victima_fifo();
 
 	} else if (string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "LRU")){
 		log_info(logger, "...El algoritmo elegido es LRU");
@@ -1306,10 +1303,11 @@ void reemplazar_buddy(t_mensaje* mensaje, void* contenido) {
 		buddy_a_eliminar = seleccionar_victima_lru();
 	}
 
-	 limpiar_buddy(buddy_a_eliminar);
+	limpiar_buddy(buddy_a_eliminar);
 
-	 uint32_t exponente = determinar_exponente(mensaje);
-	 recorrer_segun_algoritmo(exponente, mensaje, contenido);
+	uint32_t exponente = determinar_exponente(mensaje);
+	log_error(logger, "exponente: %d", exponente);
+	recorrer_segun_algoritmo(exponente, mensaje, contenido);
 }
 
 t_memoria_buddy* seleccionar_victima_fifo() {
@@ -1361,15 +1359,37 @@ t_memoria_buddy* seleccionar_victima_lru() {
 	return buddy_victima;
 }
 
+bool son_buddies_hermanos(t_memoria_buddy* un_buddy, t_memoria_buddy* otro_buddy) {
+	uint32_t base_mas_chica;
+	uint32_t base_mas_grande;
+	if(un_buddy -> base < otro_buddy -> base) {
+		base_mas_chica = un_buddy -> base;
+		base_mas_grande = otro_buddy -> base;
+	} else {
+		base_mas_grande = un_buddy -> base;
+		base_mas_chica = otro_buddy -> base;
+	}
+	return un_buddy -> tamanio_exponente == otro_buddy -> tamanio_exponente &&
+			base_mas_chica + un_buddy -> tamanio_exponente == base_mas_grande &&
+			base_mas_chica % ((un_buddy -> tamanio_exponente)*2) == 0;
+}
+
 void limpiar_buddy(t_memoria_buddy* buddy) { // falta eliminar el mensaje de la MQ
 
-	t_memoria_buddy* buddy_vacio = armar_buddy(buddy -> tamanio_exponente, buddy -> base, NULL, 0, NULL, buddy -> id_padre, buddy -> posicion);
+	t_memoria_buddy* buddy_vacio = armar_buddy(buddy -> tamanio_exponente, buddy -> base, NULL, 0, NULL, buddy -> posicion);
 
 	uint32_t indice = remover_buddy(buddy);
-	if(buddy_vacio -> tamanio_exponente >= config_broker -> size_memoria) {
-		log_info(logger, "llegamos a la raiz.");
-	} else {
+
+	bool es_el_hermano(void* otro_buddy) {
+		t_memoria_buddy* un_buddy = otro_buddy;
+		return son_buddies_hermanos(buddy_vacio, un_buddy);
+	}
+
+	t_memoria_buddy* buddy_hermano = list_find(memoria_cache, es_el_hermano);
+	if(buddy_hermano != NULL) {
 		consolidar_buddy(indice, buddy_vacio);
+	} else {
+		list_add_in_index(memoria_cache, indice, buddy_vacio);
 	}
 }
 
@@ -1377,37 +1397,39 @@ void consolidar_buddy(uint32_t indice, t_memoria_buddy* buddy) {
 
 	bool es_el_hermano(void* otro_buddy) {
 		t_memoria_buddy* un_buddy = otro_buddy;
-		return buddy -> id_padre == un_buddy -> id_padre;
+		return son_buddies_hermanos(buddy, un_buddy);
 	}
 
 	t_memoria_buddy* buddy_hermano = list_find(memoria_cache, es_el_hermano);
-	if(buddy_hermano == NULL) {
-		log_error(logger, "No tengo hermano."); //puede ser la raiz, validar q no entre en ese caso.
-	}
+
 	if(!buddy_hermano -> ocupado) {
-		indice = remover_buddy(buddy_hermano);
 		uint32_t base_padre;
 		if(buddy -> posicion) {
 			base_padre = buddy_hermano -> base;
 		} else {
 			base_padre = buddy -> base;
 		}
+
+		log_error(logger, "Se remueve el hermano de base %d para consolidar", buddy_hermano -> base);
+		indice = remover_buddy(buddy_hermano);
+
 		uint32_t posicion_padre;
 		if(base_padre % (buddy -> tamanio_exponente * 4)) {
 			posicion_padre = 1;
 		} else {
 			posicion_padre = 0;
 		}
-		t_memoria_buddy* buddy_padre = armar_buddy(buddy -> tamanio_exponente * 2, base_padre, NULL, 0, NULL, buddy -> id_padre / 2, posicion_padre);
+		t_memoria_buddy* buddy_padre = armar_buddy(buddy -> tamanio_exponente * 2, base_padre, NULL, 0, NULL, posicion_padre);
 
 		list_add_in_index(memoria_cache, indice, buddy_padre);
+		log_error(logger, "Se consolidaron los buddies de bases %d y %d", base_padre, base_padre + buddy -> tamanio_exponente);
 		limpiar_buddy(buddy_padre);
 	} else {
-		list_add_in_index(memoria_cache, indice, armar_buddy(buddy -> tamanio_exponente, buddy -> base, NULL, 0, NULL, buddy -> id_padre, buddy -> posicion));
+		list_add_in_index(memoria_cache, indice, armar_buddy(buddy -> tamanio_exponente, buddy -> base, NULL, 0, NULL, buddy -> posicion));
 	}
 }
 
-t_memoria_buddy* armar_buddy(uint32_t exponente, uint32_t base, t_mensaje* mensaje, uint32_t ocupacion, void* contenido, uint32_t padre, uint32_t posicion){
+t_memoria_buddy* armar_buddy(uint32_t exponente, uint32_t base, t_mensaje* mensaje, uint32_t ocupacion, void* contenido, uint32_t posicion) {
 
 	t_memoria_buddy* nuevo_buddy = malloc(sizeof(t_memoria_buddy));
 
@@ -1418,12 +1440,6 @@ t_memoria_buddy* armar_buddy(uint32_t exponente, uint32_t base, t_mensaje* mensa
 		nuevo_buddy -> ocupado = ocupacion;
 		nuevo_buddy -> codigo_operacion = mensaje -> codigo_operacion;
 		nuevo_buddy -> contenido = contenido;
-    	nuevo_buddy -> id_padre = padre;
-
-    	sem_wait(&mx_id_bloque);
-    	nuevo_buddy -> id_bloque = generar_id_bloque();
-    	sem_post(&mx_id_bloque);
-
     	nuevo_buddy -> posicion = posicion;
 		mensaje -> payload = nuevo_buddy;
 
@@ -1434,12 +1450,6 @@ t_memoria_buddy* armar_buddy(uint32_t exponente, uint32_t base, t_mensaje* mensa
     	nuevo_buddy -> ocupado = 0;
     	nuevo_buddy -> codigo_operacion = 0;
     	nuevo_buddy -> contenido = 0;
-    	nuevo_buddy -> id_padre = padre;
-
-    	sem_wait(&mx_id_bloque);
-    	nuevo_buddy -> id_bloque = generar_id_bloque();
-    	sem_post(&mx_id_bloque);
-
     	nuevo_buddy -> posicion = posicion;
     }
 
@@ -1450,6 +1460,9 @@ uint32_t remover_buddy(t_memoria_buddy* buddy_a_remover) {
 
 	uint32_t indice = encontrar_indice(buddy_a_remover);
 
+	t_mensaje* mensaje_a_eliminar = encontrar_mensaje_buddy(buddy_a_remover -> base, buddy_a_remover -> codigo_operacion);
+	eliminar_de_message_queue(mensaje_a_eliminar, buddy_a_remover -> codigo_operacion);
+
 	bool es_el_buddy(void* un_buddy) {
 
 		t_memoria_buddy* otro_buddy = un_buddy;
@@ -1457,9 +1470,7 @@ uint32_t remover_buddy(t_memoria_buddy* buddy_a_remover) {
 		return otro_buddy == buddy_a_remover;
 	}
 
-	t_memoria_buddy* eliminado = list_remove_by_condition(memoria_cache, es_el_buddy); // ya tira free adentro.
-
-	log_info(logger, "Se removio el buddy con base %d", eliminado -> base);
+	list_remove_by_condition(memoria_cache, es_el_buddy); // ya tira free adentro.
 
 	return indice;
 }
@@ -1503,16 +1514,14 @@ void dividir_buddy(t_memoria_buddy* buddy_a_dividir) {
 		uint32_t exponente_hijos = (buddy_a_dividir -> tamanio_exponente) / 2;
 		uint32_t base_izquierda = buddy_a_dividir -> base;
 		uint32_t base_derecha = base_izquierda + exponente_hijos;
-		uint32_t id_padre = buddy_a_dividir -> id_bloque * 2;
 
-		t_memoria_buddy* buddy_izquierdo = armar_buddy(exponente_hijos, base_izquierda, NULL, 0, NULL, id_padre, 0);
-		t_memoria_buddy* buddy_derecho = armar_buddy(exponente_hijos, base_derecha, NULL, 0, NULL, id_padre, 1);
+		t_memoria_buddy* buddy_izquierdo = armar_buddy(exponente_hijos, base_izquierda, NULL, 0, NULL, 0);
+		t_memoria_buddy* buddy_derecho = armar_buddy(exponente_hijos, base_derecha, NULL, 0, NULL, 1);
 
 		list_add_in_index(memoria_cache, indice_removido, buddy_izquierdo);
 		list_add_in_index(memoria_cache, indice_removido + 1, buddy_derecho);
 
 		log_info(logger, "Se dividio el buddy %d, en dos con base %d y %d", buddy_a_dividir -> tamanio_exponente, buddy_izquierdo -> base, buddy_derecho -> base);
-		log_info(logger, "Me quedaron %d hojas", memoria_cache -> elements_count);
 	} else {
 
 		log_error(logger, "No puedo dividirme mas, mi tamanio es %d", buddy_a_dividir -> tamanio_exponente);
@@ -1563,23 +1572,23 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
     memoria_duplicada = list_filter(memoria_con_particiones, particion_ocupada);
 	//sem_post(&mx_memoria_particiones);
 
-    bool fue_cargada_antes(void* particion1, void* particion2){
+    bool fue_cargada_antes(void* particion1, void* particion2) {
     	t_memoria_dinamica* una_particion = particion1;
     	t_memoria_dinamica* otra_particion = particion2;
 
-    	return (una_particion -> tiempo_de_carga) < (otra_particion -> tiempo_de_carga) ;
+    	return (una_particion -> tiempo_de_carga) < (otra_particion -> tiempo_de_carga);
     }
 
-    bool fue_referenciada_antes(void* particion1, void* particion2){
+    bool fue_referenciada_antes(void* particion1, void* particion2) {
 		t_memoria_dinamica* una_particion = particion1;
 		t_memoria_dinamica* otra_particion = particion2;
-		return (una_particion -> ultima_referencia) < (otra_particion -> ultima_referencia) ;
+		return (una_particion -> ultima_referencia) < (otra_particion -> ultima_referencia);
     }
 
-    if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "FIFO")){
+    if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "FIFO")) {
 		memoria_ordenada = list_sorted(memoria_duplicada, fue_cargada_antes);
     	particion_victima = list_get(memoria_ordenada, 0);
-	} else if (string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "LRU")){
+	} else if (string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "LRU")) {
 		memoria_ordenada = list_sorted(memoria_duplicada, fue_referenciada_antes);
 		particion_victima = list_get(memoria_ordenada, 0);
 	}
@@ -2208,7 +2217,10 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 }
 
 void eliminar_de_message_queue(t_mensaje* mensaje, op_code codigo){
-
+	if(mensaje == NULL) {
+		log_error(logger, "se intento remover un mensaje nulo");
+		return;
+	}
 	bool es_el_mismo_mensaje(void* msj){
 		t_mensaje* el_mensaje = msj;
 		return (el_mensaje -> id_mensaje) == (mensaje -> id_mensaje);
@@ -2374,24 +2386,21 @@ t_memoria_buddy* recorrer_first_fit(uint32_t exponente) {
 
     bool es_particion_apta(void* buddy1) {
     	t_memoria_buddy* un_buddy = buddy1;
-
-    	return (un_buddy -> tamanio_exponente >= exponente) && (un_buddy -> ocupado == 0);
+    	return (un_buddy -> ocupado) == 0 && (un_buddy -> tamanio_exponente) >= exponente;
     }
-
+    log_info(logger, "Chequeando por first fit, %d hojas en cache", memoria_cache -> elements_count);
     t_memoria_buddy* buddy = list_find(memoria_cache, es_particion_apta);
 
-    if(buddy -> tamanio_exponente == exponente) {
-    	log_info(logger, "ENTRE AL 1RO");
-    	return buddy;
-
-    } else if(buddy -> tamanio_exponente > exponente) {
-    	log_info(logger, "ENTRE AL 2DO");
-    	dividir_buddy(buddy);
-    	return recorrer_first_fit(exponente);
-
+    if(buddy != NULL) {
+    	if(buddy -> tamanio_exponente == exponente) {
+			log_info(logger, "ENTRE AL 1RO");
+		} else if(buddy -> tamanio_exponente > exponente) {
+			log_info(logger, "ENTRE AL 2DO");
+			dividir_buddy(buddy);
+			return recorrer_first_fit(exponente);
+		}
     }
-	log_info(logger, "ENTRE AL 3RO");
-	return NULL;
+	return buddy;
 }
 
 

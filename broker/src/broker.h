@@ -60,8 +60,6 @@ typedef struct{
 	uint64_t tiempo_de_carga;
 	op_code codigo_operacion;
 	void* contenido;
-	uint32_t id_padre;
-	uint32_t id_bloque;
 	uint32_t posicion; // 0 = izquierda y 1 = derecha
 } t_memoria_buddy;
 
@@ -229,7 +227,7 @@ void dividir_buddy(t_memoria_buddy*);
 void guardar_buddy(t_memoria_buddy*, t_mensaje*, void*);
 uint32_t remover_buddy(t_memoria_buddy*);
 void reemplazar_buddy(t_mensaje*, void*);
-t_memoria_buddy* armar_buddy(uint32_t, uint32_t, t_mensaje*, uint32_t, void*, uint32_t, uint32_t);
+t_memoria_buddy* armar_buddy(uint32_t, uint32_t, t_mensaje*, uint32_t, void*, uint32_t);
 uint32_t generar_id_bloque();
 uint32_t determinar_exponente(t_mensaje*);
 uint32_t obtenerPotenciaDe2(uint32_t);
@@ -237,10 +235,8 @@ void limpiar_buddy(t_memoria_buddy*);
 void recorrer_segun_algoritmo(uint32_t, t_mensaje*, void*);
 t_memoria_buddy* seleccionar_victima_fifo();
 t_memoria_buddy* seleccionar_victima_lru();
-
 void consolidar_buddy(uint32_t, t_memoria_buddy*);
-
-
+bool son_buddies_hermanos(t_memoria_buddy*, t_memoria_buddy*);
 
 
 
