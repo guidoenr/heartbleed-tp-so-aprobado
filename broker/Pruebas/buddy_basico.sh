@@ -7,6 +7,3 @@ cd /home/utnso/workspace/tp-2020-1c-heartbleed/game_boy/Debug/
 
 ./gameboy BROKER CATCH_POKEMON Onyx 4 5
 
-./gameboy SUSCRIPTOR NEW_POKEMON 10
-
-./gameboy BROKER CATCH_POKEMON Charmander 4 5
