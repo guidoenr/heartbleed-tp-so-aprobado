@@ -27,12 +27,8 @@ void iniciar_programa() {
 	iniciar_hilos_ejecucion();
 
 	iniciar_conexion_game_boy();
+	sleep(2);
 	conexion_inicial_broker();
-
-	enviar_get_pokemon();
-
-
-
 }
 
 void crear_listas_globales() {
@@ -241,7 +237,7 @@ void conectarse_a_br(){
 	sleep(2);
 	suscribirse_a(CAUGHT_POKEMON);
 	sleep(2);
-
+	enviar_get_pokemon();
 }
 
 
@@ -250,22 +246,22 @@ void suscribirse_a(op_code cola) {
 	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
 	t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
 
-	if (socket == -1 ){
+	if (socket == -1){
 			int time = config->tiempo_reconexion;
-			log_info(logger,"imposible conectar con broker, reintento en: %d",time);
+			log_info(logger,"Intento de reconexion con broker fallido");
 			sleep(time);
+			log_info(logger,"Inicio de proceso de reintento de comunicacion con el broker");
 			suscribirse_a(cola);
 	}else {
 
 		suscripcion -> cola_a_suscribir= cola;
-		suscripcion -> id_proceso= 1; //ESTE VALOR SE SACA DE CONFIG
+		suscripcion -> id_proceso= config -> id_proceso; //ESTE VALOR SE SACA DE CONFIG
 		suscripcion -> socket = socket;
 		suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
 
 		uint32_t tamanio_suscripcion = size_mensaje(suscripcion, SUBSCRIPTION);
 
 		enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
-
 	}
 
 }
@@ -285,6 +281,7 @@ void iniciar_conexion_game_boy() {
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
 		}
+	pthread_detach(hilo_game_boy);
 }
 
 void* conexion_con_game_boy() {
@@ -1353,7 +1350,6 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 		//pedido -> entrenador -> socket_mensaje_catch = socket; // ver comentario t_entrenador
 		pedido -> entrenador -> id_espera_catch = recibir_id_de_mensaje_enviado(socket);
 
-
 	} else { // Comportamiento default *ATRAPÓ*
 		log_info(logger, "No se pudo establecer la conexion con broker, se realiza el comportamiento default del catch");
 		pedido -> entrenador -> resultado_caught = 1;
@@ -1367,8 +1363,8 @@ void enviar_mensaje_get(char* pokemon) {
 	t_get_pokemon* mensaje = malloc(sizeof(t_get_pokemon));
 
 	mensaje -> id_mensaje = 0;
+	mensaje -> pokemon = malloc(strlen(pokemon)+1);
 	mensaje -> pokemon = pokemon;
-
 
 	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
 
@@ -1379,13 +1375,9 @@ void enviar_mensaje_get(char* pokemon) {
 
 		int id = recibir_id_de_mensaje_enviado(socket);
 
-		close(socket);
-
 	} else{
 		log_info(logger, "No se pudo establecer la conexion con broker, se realiza el comportamiento default del get");
 	}
-
-
 }
 
 void enviar_get_pokemon() {
