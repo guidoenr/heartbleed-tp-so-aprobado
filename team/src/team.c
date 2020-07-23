@@ -26,7 +26,7 @@ void iniciar_programa() {
 	iniciar_entrenadores();
 	iniciar_hilos_ejecucion();
 
-	iniciar_conexion_game_boy();
+	iniciar_conexion();
 	sleep(2);
 	conexion_inicial_broker();
 }
@@ -232,11 +232,11 @@ void eliminar_los_que_ya_tengo() {
 void conectarse_a_br(){
 
 	suscribirse_a(LOCALIZED_POKEMON);
-	sleep(2);
+	//sleep(2);
 	suscribirse_a(APPEARED_POKEMON);
-	sleep(2);
+	//sleep(2);
 	suscribirse_a(CAUGHT_POKEMON);
-	sleep(2);
+	//sleep(2);
 	enviar_get_pokemon();
 }
 
@@ -268,14 +268,15 @@ void suscribirse_a(op_code cola) {
 
 void conexion_inicial_broker() {
 
-	uint32_t err = pthread_create(&hilo_game_boy, NULL, conectarse_a_br, NULL);
+	uint32_t err = pthread_create(&hilo_broker, NULL, conectarse_a_br, NULL);
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
 		}
+	pthread_detach(hilo_broker);
 }
 
 
-void iniciar_conexion_game_boy() {
+void iniciar_conexion() {
 
 	uint32_t err = pthread_create(&hilo_game_boy, NULL, conexion_con_game_boy, NULL);
 		if(err != 0) {
@@ -1400,10 +1401,23 @@ void enviar_get_pokemon() {
 	/* ---------- */
 	void enviar_mensaje_por_especie(void* pokemon) {
 
-		enviar_mensaje_get((char*) pokemon);
+		uint32_t err = pthread_create(&hilo_get, NULL, hilo_mensaje_get, pokemon);
+			if(err != 0) {
+				log_error(logger, "El hilo no pudo ser creado!!");
+			}
+		pthread_detach(hilo_get);
+
+		//sleep(2);
 	}
 
 	list_iterate(especies_objetivo_global, enviar_mensaje_por_especie);
+}
+
+void* hilo_mensaje_get(void* un_pokemon) {
+
+	enviar_mensaje_get((char*) un_pokemon);
+
+	return NULL;
 }
 
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {

@@ -13,6 +13,9 @@
 #include<string.h>
 #include<pthread.h>
 #include<semaphore.h>
+#include<arpa/inet.h>
+#include<sys/types.h>
+#include<fcntl.h>
 
 sem_t semaforo;
 typedef enum {
@@ -79,8 +82,7 @@ typedef struct {
 	t_list* posiciones;
 } t_localized_pokemon;
 
-
-
+struct sockaddr_in direccionServidor;
 pthread_t thread;
 t_log* logger;
 uint32_t id_mensaje_univoco;
@@ -99,7 +101,7 @@ uint32_t crear_conexion(char* ip, char* puerto);
 //void eliminar_paquete(t_paquete* paquete);
 void iniciar_servidor(char *IP, char *PUERTO);
 void esperar_cliente(uint32_t);
-void serve_client(uint32_t *socket);
+void serve_client(uint32_t socket);
 void process_request(uint32_t cod_op, uint32_t cliente_fd);
 uint32_t recibir_operacion(uint32_t);
 void* recibir_paquete(uint32_t,uint32_t*,op_code*);
