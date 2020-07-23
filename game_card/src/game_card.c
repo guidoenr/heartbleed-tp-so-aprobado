@@ -23,11 +23,10 @@ int main(void) {
 	sem_init(&mx_bitmap,0,1);
 	sem_init(&semaforo,0,1);
 
-	//conectarse_a_br(socket_br);
-	//iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
+	conectarse_a_br(socket_br);
+	iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
 
-
-	pruebas_get_pokemon(socket_br);
+	//pruebas_get_pokemon(socket_br);
 	terminar_programa(socket_br, config_gc);
 
 }
@@ -86,17 +85,17 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 		case NEW_POKEMON:
 			informar_al_broker(msg, NEW_POKEMON);
 			funcion_hilo_new_pokemon(msg,cliente_fd);
-			free(msg);
+
 			break;
 		case GET_POKEMON:
 			informar_al_broker(msg, GET_POKEMON);
 			funcion_hilo_get_pokemon(msg,cliente_fd);
-			free(msg);
+
 			break;
 		case CATCH_POKEMON:
 			informar_al_broker(msg, CATCH_POKEMON);
 			funcion_hilo_catch_pokemon(msg,cliente_fd);
-			free(msg);
+
 			break;
 		case 0:
 			log_info(logger,"No se encontro el tipo de mensaje");
@@ -1334,9 +1333,9 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 
 		 localized_pokemon->posiciones = obtener_posiciones_y_cantidades(meta_path,temporary_file);
 		 localized_pokemon->tamanio_lista = localized_pokemon->posiciones->elements_count;
-		 char* lista_a_mandar = list_to_string_array(localized_pokemon->posiciones);
-		 log_warning(logger,"Localized de %s : %s",get_pokemon->pokemon,lista_a_mandar);
-		 free(lista_a_mandar);
+//		 char* lista_a_mandar = list_to_string_array(localized_pokemon->posiciones);
+//		 log_warning(logger,"Localized de %s : %s",get_pokemon->pokemon,lista_a_mandar);
+//		 free(lista_a_mandar);
 		 remove(temporary_file);
 		 estaba=1;
 
@@ -1391,11 +1390,11 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 	for(int i=0; i<keys_amount; i++){
 
 		char* linea = leer_linea(temporary);
-		int value = get_value_from_linea(linea);
+		char* value = get_value_from_linea(linea);
 
-		for (int i=0 ; i<value; i++){
-			int x = get_x_from_linea(linea);
-			int y = get_y_from_linea(linea);
+		for (int i=0 ; i<atoi(value); i++){
+			char* x = get_x_from_linea(linea);
+			char* y = get_y_from_linea(linea);
 			list_add(lista_de_todo,x);
 			list_add(lista_de_todo,y);
 
@@ -1432,28 +1431,30 @@ char* leer_linea(FILE* archivo){
 	return linea;
 }
 
-int get_value_from_linea(char* linea){
 
+char* get_value_from_linea(char* linea){
 	char** lista = string_split(linea,"=");
-	int size_chardoble = size_char_doble(lista);
-	int variable = atoi(lista[size_chardoble - 1]);
+	char* variable = malloc(strlen(lista[1])+1);
+	variable = lista[1];
 	return variable;
 }
 
 
-int get_x_from_linea(char* linea){
+char* get_x_from_linea(char* linea){
 
 	char** lista = string_split(linea,"-");
-	int variable = atoi(lista[0]);
+	char* variable = malloc(strlen(lista[0])+1);
+	variable = lista[0];
 	return variable;
 }
 
 
-int get_y_from_linea(char* linea){
+char* get_y_from_linea(char* linea){
 
 	char** lista_entera = string_split(linea,"=");
 	char** lista_key_value = string_split(lista_entera[0],"-");
-	int variable = atoi(lista_key_value[1]);
+	char* variable = malloc(strlen(lista_key_value[1])+1);
+	variable = lista_key_value[1];
 	return variable;
 
 }

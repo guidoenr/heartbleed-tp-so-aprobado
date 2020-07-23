@@ -30,6 +30,14 @@ typedef struct {
 	char* puerto_gameCard;
 } t_config_game_card;
 
+typedef struct{
+	char* x;
+	char* y;
+	char* value;
+}t_localized_lista;
+
+
+
 t_config_game_card* config_gc;
 t_config_game_card* leer_config(void);
 
@@ -122,6 +130,9 @@ char* buscar_block_libre();
 char* posicion_into_string(char*key,char*value);
 t_file_metadata generar_file_metadata(t_new_pokemon* newPoke);
 t_bitarray* obtener_bitmap();
+char* get_y_from_linea(char* linea);
+char* get_x_from_linea(char* linea);
+char* get_value_from_linea(char* linea);
 
 void pruebas_catch_pokemon(int socket);
 t_list* obtener_posiciones_y_cantidades(char* meta_path,char* temporary_file);

@@ -704,13 +704,11 @@ void* serializar_localized_pokemon(void* mensaje_localized, uint32_t size_mensaj
 
 
 	void serializar_numero(void* numero){
-    	uint32_t* un_numero = numero;
-
 
     	//log_warning(logger,"un numero %d",*un_numero);
-    	log_warning(logger,"me anoto u nanmiigo");
-    	memcpy(stream + offset, un_numero, sizeof(uint32_t));
-    	offset += sizeof(uint32_t);
+    	log_warning(logger,"me anoto un anmigo");
+    	memcpy(stream + offset,(char*) numero, strlen((char*) numero));
+    	offset += strlen((char*) numero);
 
     }
 
@@ -724,7 +722,7 @@ void* serializar_localized_pokemon(void* mensaje_localized, uint32_t size_mensaj
 }
 
 t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_mensaje){
-
+	// todo todo todo todo
 	t_localized_pokemon* mensaje_localized_pokemon = malloc(sizeof(t_localized_pokemon));
     uint32_t tamanio_pokemon = 0;
     uint32_t cantidad_coordenadas = 0;
