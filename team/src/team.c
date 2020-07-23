@@ -22,16 +22,17 @@ void iniciar_programa() {
 	inicializar_estados();
 	inicializar_semaforos();
 	determinar_objetivo_global();
-
-	conexion_inicial_broker();
-	iniciar_conexion_game_boy();
-
 	crear_listas_globales();
+	iniciar_entrenadores();
+	iniciar_hilos_ejecucion();
+
+	iniciar_conexion_game_boy();
+	conexion_inicial_broker();
 
 	enviar_get_pokemon();
 
-	iniciar_entrenadores();
-	iniciar_hilos_ejecucion();
+
+
 }
 
 void crear_listas_globales() {
@@ -232,56 +233,51 @@ void eliminar_los_que_ya_tengo() {
 
 }
 
+void conectarse_a_br(){
+
+	suscribirse_a(LOCALIZED_POKEMON);
+	sleep(2);
+	suscribirse_a(APPEARED_POKEMON);
+	sleep(2);
+	suscribirse_a(CAUGHT_POKEMON);
+	sleep(2);
+
+}
+
+
+void suscribirse_a(op_code cola) {
+
+	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+	t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
+
+	if (socket == -1 ){
+			int time = config->tiempo_reconexion;
+			log_info(logger,"imposible conectar con broker, reintento en: %d",time);
+			sleep(time);
+			suscribirse_a(cola);
+	}else {
+
+		suscripcion -> cola_a_suscribir= cola;
+		suscripcion -> id_proceso= 1; //ESTE VALOR SE SACA DE CONFIG
+		suscripcion -> socket = socket;
+		suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
+
+		uint32_t tamanio_suscripcion = size_mensaje(suscripcion, SUBSCRIPTION);
+
+		enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
+
+	}
+
+}
+
 void conexion_inicial_broker() {
 
-	uint32_t err = pthread_create(&hilo_game_boy, NULL, suscribirme_a_colas, NULL);
+	uint32_t err = pthread_create(&hilo_game_boy, NULL, conectarse_a_br, NULL);
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
 		}
 }
 
-void* suscribirme_a_colas() {
-	suscribirse_a(APPEARED_POKEMON);
-	suscribirse_a(CAUGHT_POKEMON);
-	suscribirse_a(LOCALIZED_POKEMON);
-
-	levantar_server_broker();
-
-	return NULL;
-}
-
-void suscribirse_a(op_code cola) {
-	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
-
-	while(socket == -1) {
-
-		log_info(logger, "Inicio de proceso de reintento de comunicacion con el Broker");
-		sleep(config -> tiempo_reconexion);
-
-		socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
-
-		if(socket == -1){
-			log_info(logger, "Proceso de reintento de comunicacion con el Broker fallido");
-
-		} else{
-			t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
-			uint32_t tamanio_suscripcion = sizeof(t_suscripcion);
-
-			suscripcion -> cola_a_suscribir = cola;
-			suscripcion -> id_proceso = config -> id_proceso;
-			suscripcion -> socket = socket;
-			suscripcion -> tiempo_suscripcion = 0; //este valor es siempre 0
-
-			enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
-
-			log_info(logger, "Proceso de reintento de comunicacion con el Broker exitoso");
-
-			free(suscripcion);
-
-			break;
-		}
-	}
-}
 
 void iniciar_conexion_game_boy() {
 
@@ -294,21 +290,6 @@ void iniciar_conexion_game_boy() {
 void* conexion_con_game_boy() {
 
 	iniciar_servidor(config -> ip_gameboy, config -> puerto_gameboy); // puerto robado de la config de gameboy
-
-	return NULL;
-}
-
-void levantar_server_broker() {
-
-	uint32_t err = pthread_create(&hilo_broker, NULL, conexion_con_broker, NULL);
-		if(err != 0) {
-			log_error(logger, "El hilo no pudo ser creado!!");
-		}
-}
-
-void* conexion_con_broker() {
-
-	iniciar_servidor(config -> ip_broker, config -> puerto_broker);
 
 	return NULL;
 }
@@ -421,19 +402,22 @@ void manejar_desalojo_captura(t_pedido_captura* pedido){
 		sem_post(&mx_estados);
 		sem_post(&entrenadores_ready);
 		pedido -> entrenador -> pasos_a_moverse = config -> quantum;
-
+		sem_post(&mx_estado_exec);
 
 	} else if(!(pedido -> entrenador -> tire_accion)) { // SJF Con Desalojo DESALOJADO
 
 		log_info(logger, "El entrenador %d fue desalojado por otro entrenador", pedido -> entrenador -> id);
 		sem_post(&mx_desalojo_exec);
+		sem_post(&mx_estado_exec);
 
 	} else { // FIFO o SJF Sin Desalojo // RR/SJF NO DESALOJADO
+		sem_post(&mx_estado_exec);
 		sem_wait(&(pedido -> entrenador -> esperar_caught));
+
 		procesar_caught(pedido);
 
 	}
-	sem_post(&mx_estado_exec);
+
 }
 
 bool cumplio_objetivo_personal(t_entrenador* entrenador) {
@@ -1362,13 +1346,13 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 	pedido -> entrenador -> tire_accion = 1;
 
 	if(socket != -1) {
-		log_info(logger, "Comportamiento *NO DEFAULT*");
+
 		uint32_t tamanio_mensaje = size_mensaje(mensaje, CATCH_POKEMON);
 		enviar_mensaje(CATCH_POKEMON, mensaje, socket, tamanio_mensaje);
 
 		//pedido -> entrenador -> socket_mensaje_catch = socket; // ver comentario t_entrenador
 		pedido -> entrenador -> id_espera_catch = recibir_id_de_mensaje_enviado(socket);
-		close(socket);
+
 
 	} else { // Comportamiento default *ATRAPÓ*
 		log_info(logger, "No se pudo establecer la conexion con broker, se realiza el comportamiento default del catch");
@@ -1376,7 +1360,6 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 		sem_post(&(pedido -> entrenador -> esperar_caught));
 	}
 
-	free(mensaje);
 }
 
 void enviar_mensaje_get(char* pokemon) {
@@ -1388,6 +1371,7 @@ void enviar_mensaje_get(char* pokemon) {
 
 
 	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
+
 	if(socket != -1) {
 		uint32_t tamanio_mensaje = size_mensaje(mensaje, GET_POKEMON);
 
@@ -1401,7 +1385,7 @@ void enviar_mensaje_get(char* pokemon) {
 		log_info(logger, "No se pudo establecer la conexion con broker, se realiza el comportamiento default del get");
 	}
 
-	free(mensaje);
+
 }
 
 void enviar_get_pokemon() {
@@ -1435,9 +1419,9 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	uint32_t size = 0; // check if 0, si no inicializo se queja valgrind
 	op_code* codigo_op = malloc(sizeof(op_code));
 
-	sem_wait(&mx_paquete);
+
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
-	sem_post(&mx_paquete);
+	sem_wait(&mx_paquete);
 
 	cod_op = (*codigo_op);
 
@@ -1461,7 +1445,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 					((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, ((t_appeared_pokemon*) mensaje_recibido) -> pokemon,
 					((t_appeared_pokemon*) mensaje_recibido) -> posicion[0], ((t_appeared_pokemon*) mensaje_recibido) -> posicion[1]);
 			procesar_mensaje_appeared((t_appeared_pokemon*) mensaje_recibido);
-			//enviar_ack_broker(((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, APPEARED_POKEMON); // y si viene del gameboy?
+			enviar_ack_broker(((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, APPEARED_POKEMON); // y si viene del gameboy?
 			break;
 		case 0:
 			log_error(logger,"No se encontro el tipo de mensaje");
@@ -1470,7 +1454,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 		case -1:
 			pthread_exit(NULL);
 	}
-
+	sem_post(&mx_paquete);
 	free(codigo_op);
 	free(stream);
 }
@@ -1491,7 +1475,7 @@ void enviar_ack_broker(uint32_t id_mensaje, op_code codigo) {
 		enviar_mensaje(ACK, ack, socket, size_mensaje);
 		close(socket);
 	}
-	free(ack);
+
 }
 
 void procesar_mensaje_appeared(t_appeared_pokemon* mensaje_recibido) {

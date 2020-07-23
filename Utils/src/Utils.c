@@ -42,7 +42,9 @@ void enviar_mensaje(op_code codigo_op, void* mensaje, uint32_t socket_cliente, u
 
     uint32_t* size_serializado = malloc(sizeof(uint32_t));
     (*size_serializado) = size_mensaje + (sizeof(uint32_t) *2) + sizeof(op_code);
-
+    if(codigo_op == ACK || codigo_op == SUBSCRIPTION || codigo_op == CAUGHT_POKEMON){
+    	*size_serializado-=4;
+    }
 
 	void* stream = malloc((*size_serializado));
 	stream = serializar_paquete(mensaje, size_mensaje, codigo_op, size_serializado);
@@ -262,7 +264,7 @@ char* concatenar(char* str1,char* str2){
 }
 
 void* serializar_paquete(void* mensaje, uint32_t size_mensaje, op_code codigo, uint32_t* size_serializado){
-    uint32_t malloc_size   = (*size_serializado);
+
     void* paquete_a_enviar;
 
     switch(codigo){
@@ -696,14 +698,18 @@ void* serializar_localized_pokemon(void* mensaje_localized, uint32_t size_mensaj
 	offset += tamanio_pokemon;
 
 	memcpy(stream + offset, &(mensaje_a_enviar->tamanio_lista), sizeof(uint32_t));
-	    log_info(logger,"Serializacion tamanio de la lista %d:", *(int*) (stream + offset));
-		offset += sizeof(uint32_t);
+	log_info(logger,"Serializacion tamanio de la lista %d:", mensaje_a_enviar->tamanio_lista);
+	offset += sizeof(uint32_t);
 
 	void serializar_numero(void* numero){
     	uint32_t* un_numero = numero;
 
+    	if (*un_numero == 1){
+    		log_warning(logger,"EH?");
+    	}
     	memcpy(stream + offset, un_numero, sizeof(uint32_t));
     	offset += sizeof(uint32_t);
+
     }
 
     list_iterate(mensaje_a_enviar -> posiciones, serializar_numero);

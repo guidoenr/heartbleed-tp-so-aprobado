@@ -61,7 +61,7 @@ void re_grabar_temporary_en_blocks(char* temporary_file,char* path_metafile);
 void destrozar_metadata_file(t_file_metadata metadata);
 void destrozar_new_pokemon(t_new_pokemon* new_pokemon);
 void escribir_data_sin_fragmentacion_interna(char* block_nuevo,char* block_viejo, char*key, char*value);
-void conectarse_a_br(int socket);
+void conectarse_a_br();
 void conectarse_a_gb(int socket);
 void verificar_apertura_pokemon(char* path_metafile,char* nombre_pokemon);
 void actualizar_pokemon(char* temporary_path,char* path_metafile,char* key,char* value);

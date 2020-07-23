@@ -122,7 +122,7 @@ void enviar_ack_broker(uint32_t, op_code);
 // segun algoritmo:
 int distancia_segun_algoritmo(t_pedido_captura*);
 void planificar_segun_algoritmo(t_pedido_captura* pedido);
-
+void conectarse_a_br();
 // planificacion
 void* planificar_entrenadores();
 void planificar_fifo_o_rr(t_pedido_captura*);

@@ -106,7 +106,6 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 }
 
 void iniciar_servidor_gamecard(char* ip, char* puerto){
-
 	log_info(logger,"Iniciando servidor game_card");
 	iniciar_servidor(ip, puerto);
 }
@@ -119,12 +118,12 @@ void informar_al_broker(uint32_t id_mensaje, op_code codigo){
 	ack -> tipo_mensaje = codigo;
 	ack -> id_proceso = config_gc -> id_proceso;
 
-	uint32_t size_mensaje = size_ack(ack) + sizeof(uint32_t) * 2;
+	uint32_t size_mensajee = size_mensaje(ack,ACK);
 
 	uint32_t socket = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
 
 	if(socket != -1) {
-		enviar_mensaje(ACK, ack, socket, size_mensaje);
+		enviar_mensaje(ACK, ack, socket, size_mensajee);
 		close(socket);
 	}
 
@@ -154,45 +153,41 @@ void iniciar_conexion_game_boy() {
 
 
 
-void conectarse_a_br(int socket){
-	socket = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
-	int time = config_gc->tiempo_reintento_conexion;
-	if (socket == -1 ){
-		log_info(logger,"imposible conectar con broker, reintento en: %d",time);
-		sleep(time);
-		socket=0;
-		conectarse_a_br(socket); //terrible negrada, pero anda o no nada?
-	} else {
-		log_info(logger,"conexion exitosa con broker ");
-		suscribirse_a(NEW_POKEMON);
-		suscribirse_a(CATCH_POKEMON);
-		suscribirse_a(GET_POKEMON);
-	}
-//
-//	suscribirse_a(NEW_POKEMON);
-//	suscribirse_a(CATCH_POKEMON);
-//	suscribirse_a(GET_POKEMON);
+void conectarse_a_br(){
+
+	suscribirse_a(NEW_POKEMON);
+	sleep(2);
+	suscribirse_a(CATCH_POKEMON);
+	sleep(2);
+	suscribirse_a(GET_POKEMON);
+	sleep(2);
 
 }
 
 
 void suscribirse_a(op_code cola) {
 
-	uint32_t socket 			      = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
-	t_suscripcion* suscripcion	 = malloc(sizeof(t_suscripcion));
-	uint32_t tamanio_suscripcion	  = sizeof(uint32_t) * 6;
+	uint32_t socket = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
+	t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
 
-	suscripcion -> cola_a_suscribir   = cola;
-	suscripcion -> id_proceso         = 1; //ESTE VALOR SE SACA DE CONFIG
-	suscripcion -> socket 		      = socket;
-	suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
+	if (socket == -1 ){
+			int time = config_gc->tiempo_reintento_conexion;
+			log_info(logger,"imposible conectar con broker, reintento en: %d",time);
+			sleep(time);
+			suscribirse_a(cola);
+	}else {
 
-	enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
-/*TODO
+		suscripcion -> cola_a_suscribir= cola;
+		suscripcion -> id_proceso= 1; //ESTE VALOR SE SACA DE CONFIG
+		suscripcion -> socket = socket;
+		suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
 
-	enviar_mensaje(SUBSCRIPTION, suscripcion_get, socket, tamanio_suscripcion);
-	enviar_mensaje(SUBSCRIPTION, suscripcion_localized, socket, tamanio_suscripcion);
-*/
+		uint32_t tamanio_suscripcion = size_mensaje(suscripcion, SUBSCRIPTION);
+
+		enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
+
+	}
+
 }
 
 t_config_game_card* leer_config() {
@@ -645,8 +640,15 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,uint32_t socket){
 
 	unlock_file(path_metafile);
 
+	log_error(logger,"TERMINOFS");
+
+
+	uint32_t socket_piola = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
 	t_appeared_pokemon* appeared = armar_appeared(new_pokemon);
-	enviar_mensaje(NEW_POKEMON,appeared,socket, size_mensaje(appeared, APPEARED_POKEMON));
+	log_error(logger,"ASD1");
+	enviar_mensaje(APPEARED_POKEMON,appeared,socket_piola, size_mensaje(appeared, APPEARED_POKEMON));
+	log_error(logger,"ASD2");
+	close(socket_piola);
 
 	free(path_metafile);
 	free(dir_path_newpoke);
@@ -1089,6 +1091,7 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 	t_appeared_pokemon* appeared = malloc(sizeof(t_appeared_pokemon));
 	appeared->id_mensaje = new_pokemon->id_mensaje;
 	appeared->id_mensaje_correlativo = 0;
+	appeared->pokemon = malloc(strlen(new_pokemon->pokemon));
 	appeared->pokemon = new_pokemon->pokemon;
 	appeared->posicion[0] = new_pokemon->posicion[0];
 	appeared->posicion[1] = new_pokemon->posicion[1];
@@ -1128,6 +1131,7 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 			log_error(logger,"No existe la posicion %d - %d del pokemon %s en el mapa",catch_pokemon->posicion[0],catch_pokemon->posicion[1],catch_pokemon->pokemon);
 			}
 			remove(temporaryfile);
+			unlock_file(meta_path);
 
 	}else{
 		log_error(logger,"No se encuentra el pokemon %s creado",catch_pokemon->pokemon);
@@ -1141,12 +1145,12 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 
 	log_info(logger,"THREAD FINISHED, unlockeo el pokemon");
 
-	unlock_file(meta_path);
 
 
 	t_caught_pokemon* caught_pokemon = armar_caught_pokemon(catch_pokemon, resultado);
-	enviar_mensaje(NEW_POKEMON,caught_pokemon,socket_br, size_mensaje(caught_pokemon, CAUGHT_POKEMON));
-
+	uint32_t socket_piola = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
+	enviar_mensaje(CAUGHT_POKEMON,caught_pokemon,socket_piola, size_mensaje(caught_pokemon, CAUGHT_POKEMON));
+	close(socket_piola);
 
 }
 
@@ -1329,10 +1333,10 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 
 		 t_list* posiciones = obtener_posiciones_y_cantidades(meta_path,temporary_file);
 		 localized_pokemon->posiciones = posiciones;
-		 localized_pokemon->tamanio_lista = posiciones->elements_count * 4 ;
-		 char* lista_a_mandar = list_to_string_array(posiciones);
-		 log_warning(logger,"Localized de %s : %s",get_pokemon->pokemon,lista_a_mandar);
-		 free(lista_a_mandar);
+		 localized_pokemon->tamanio_lista = posiciones->elements_count;
+//		 char* lista_a_mandar = list_to_string_array(posiciones);
+//		 log_warning(logger,"Localized de %s : %s",get_pokemon->pokemon,lista_a_mandar);
+//		 free(lista_a_mandar);
 		 remove(temporary_file);
 		 estaba=1;
 
@@ -1347,6 +1351,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 	 }
 
 	 localized_pokemon->id_mensaje = get_pokemon->id_mensaje;
+	 localized_pokemon->pokemon = malloc(strlen(get_pokemon->pokemon) + 1);
 	 localized_pokemon->pokemon = get_pokemon->pokemon;
 
 	 log_info(logger,"Esperando el tiempo de reintento de operacion");
@@ -1359,8 +1364,9 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 		 log_info(logger,"THREAD finished, el pokemon no existia en el filesystem");
 	 }
 
-
-	 enviar_mensaje(NEW_POKEMON,localized_pokemon,socket_br, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
+	 uint32_t socket_piola = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
+	 enviar_mensaje(LOCALIZED_POKEMON,localized_pokemon,socket_piola, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
+	 close(socket_piola);
 
 	 free(dir_path);
 	 free(meta_path);
@@ -1391,15 +1397,20 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 		for (int i=0 ; i<value; i++){
 			int x = get_x_from_linea(linea);
 			int y = get_y_from_linea(linea);
-			list_add(lista_de_todo,x);
-			list_add(lista_de_todo,y);
+			list_add(lista_de_todo,&x);
+			list_add(lista_de_todo,&y);
+
 		}
 		free(linea);
 	}
 
-	int elements_count = lista_de_todo->elements_count;
 
-	list_add_in_index(lista_de_todo,0,(elements_count+1)/2);
+
+	uint32_t* resultadodecuuenta = malloc(sizeof(uint32_t));
+	resultadodecuuenta = (lista_de_todo->elements_count )/2;
+	list_add_in_index(lista_de_todo,0,resultadodecuuenta);
+
+
 	fclose(temporary);
 }
 
