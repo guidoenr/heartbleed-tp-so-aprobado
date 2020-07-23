@@ -1331,9 +1331,8 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 
 		 char* temporary_file = generar_archivo_temporal(meta_path,get_pokemon->pokemon);
 
-		 t_list* posiciones = obtener_posiciones_y_cantidades(meta_path,temporary_file);
-		 localized_pokemon->posiciones = posiciones;
-		 localized_pokemon->tamanio_lista = posiciones->elements_count;
+		 localized_pokemon->posiciones = obtener_posiciones_y_cantidades(meta_path,temporary_file);
+		 localized_pokemon->tamanio_lista = localized_pokemon->posiciones->elements_count;
 //		 char* lista_a_mandar = list_to_string_array(posiciones);
 //		 log_warning(logger,"Localized de %s : %s",get_pokemon->pokemon,lista_a_mandar);
 //		 free(lista_a_mandar);
@@ -1397,8 +1396,8 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 		for (int i=0 ; i<value; i++){
 			int x = get_x_from_linea(linea);
 			int y = get_y_from_linea(linea);
-			list_add(lista_de_todo,&x);
-			list_add(lista_de_todo,&y);
+			list_add(lista_de_todo,x);
+			list_add(lista_de_todo,y);
 
 		}
 		free(linea);
@@ -1406,9 +1405,9 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 
 
 
-	uint32_t* resultadodecuuenta = malloc(sizeof(uint32_t));
+	/*uint32_t* resultadodecuuenta = malloc(sizeof(uint32_t));
 	resultadodecuuenta = (lista_de_todo->elements_count )/2;
-	list_add_in_index(lista_de_todo,0,resultadodecuuenta);
+	list_add_in_index(lista_de_todo,0,resultadodecuuenta);*/
 
 
 	fclose(temporary);
