@@ -26,7 +26,7 @@ void iniciar_programa(){
 	
 
     //crear_hilo_envio_mensajes(); --> tiene como main enviar_mensajes
-	log_info(logger, "IP: %s", config_broker -> ip_broker);
+	//log_info(logger, "IP: %s", config_broker -> ip_broker);
 }
 
 void crear_hilo_signal() {
@@ -46,8 +46,6 @@ void* main_hilo_signal(){
 
 void sig_handler(uint32_t signo) {
 
-	puts("entre en sig_handler");
-
     uint32_t un_signo = signo;
 	if(un_signo == SIGUSR1){
         dump_de_memoria();
@@ -59,9 +57,7 @@ void reservar_memoria(){
 	memoria = malloc(config_broker ->  size_memoria);
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
 		arrancar_buddy();
-	}
-
-    if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
+	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
 		memoria_con_particiones = list_create();
         iniciar_memoria_particiones(memoria_con_particiones);
     }
@@ -97,8 +93,8 @@ void leer_config() {
 	config = config_create("Debug/broker.config");
 
 	if(config == NULL){
-		    	printf("No se pudo encontrar el path del config.");
-		    	exit(-2);
+		printf("No se pudo encontrar el path del config.");
+		exit(-2);
 	}
 	config_broker -> size_memoria 			   = config_get_int_value(config, "TAMANO_MEMORIA");
 	config_broker -> size_min_memoria 		   = config_get_int_value(config, "TAMANO_MINIMO_PARTICION");
@@ -160,7 +156,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	op_code* codigo_op = malloc(sizeof(op_code));
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
 	cod_op = (*codigo_op);
-	log_info(logger,"Codigo de operacion %d", cod_op);
+	//log_info(logger,"Codigo de operacion %d", cod_op);
 	void* mensaje_e_agregar = deserealizar_paquete(stream, *codigo_op, size);
 
 	switch (cod_op) {
@@ -205,7 +201,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			sem_post(&muteadito);
 			break;
 		case 0:
-			log_error(logger,"...No se encontro el tipo de mensaje");
+			log_error(logger,"...No se encontro el tipo de mensaje en el process request.");
 			pthread_exit(NULL);
 		case -1:
 			pthread_exit(NULL);
@@ -216,10 +212,6 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 }
 
 void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t socket_cliente){
-	//log_info(logger, "...Agregando mensaje");
-	//log_info(logger, "...Size: %d", size);
-	//log_info(logger, "...Socket_cliente: %d", socket_cliente);
-	//log_info(logger, "...Payload: %s", (char*) mensaje);
 	t_mensaje* mensaje_a_agregar = malloc(sizeof(t_mensaje));
 	uint32_t nuevo_id     = generar_id_univoco();
 
@@ -256,7 +248,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 
     } else {
 
-        log_error(logger, "...No se reconoce el algoritmo de memoria.");
+        log_error(logger, "...No se reconoce el algoritmo de memoria en agregar mensaje.");
     }
 
 	mensaje_a_agregar -> codigo_operacion    = cod_op;
@@ -403,7 +395,7 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes new.");
 				break;
 			default:
-				log_error(logger, "...El codigo de operacion es invalido");
+				log_error(logger, "...El codigo de operacion es invalido en encolar mensaje.");
 				exit(-6);
 	}
 }
@@ -413,7 +405,6 @@ void recibir_suscripcion(t_suscripcion* mensaje_suscripcion){
 
 	op_code cola_a_suscribir = mensaje_suscripcion -> cola_a_suscribir;
 
-	log_info(logger, "Se recibe una suscripción.");
 		switch (cola_a_suscribir) {
 			 case GET_POKEMON:
 				sem_wait(&mx_suscripciones);
@@ -456,22 +447,22 @@ void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion, op
 	char* cola;
 	switch(cola_a_suscribir){
 		case GET_POKEMON:
-			cola = "cola get";
+			cola = "get";
 			break;
 		case CATCH_POKEMON:
-			cola = "cola catch";
+			cola = "catch";
 			break;
 		case LOCALIZED_POKEMON:
-			cola = "cola localized";
+			cola = "localized";
 			break;
 		case CAUGHT_POKEMON:
-			cola = "cola caught";
+			cola = "caught";
 			break;
 		case APPEARED_POKEMON:
-			cola = "cola appeared";
+			cola = "appeared";
 			break;
 		case NEW_POKEMON:
-			cola = "cola new";
+			cola = "new";
 			break;
 		default:
 			log_error(logger, "...Se desconoce la cola a suscribir.");
@@ -479,7 +470,7 @@ void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion, op
 	}
 
 	list_add(lista_suscriptores, suscripcion);
-	log_info(logger, "EL cliente fue suscripto a la cola de mensajes: %s.", cola);
+	log_info(logger, "El cliente fue suscripto a la cola de mensajes %s.", cola);
 	
 	informar_mensajes_previos(suscripcion, cola_a_suscribir);
 
@@ -496,37 +487,40 @@ void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion, op
 
 }
 
-void destruir_suscripcion(void* suscripcion) {
-	//free(suscripcion);
-}
-
 void informar_mensajes_previos(t_suscripcion* una_suscripcion, op_code cola_a_suscribir){
 
+	char* cola;
 		switch(cola_a_suscribir){
 			case GET_POKEMON: //GAME_CARD SUSCRIPTO
 				descargar_historial_mensajes(GET_POKEMON, una_suscripcion -> socket, una_suscripcion -> id_proceso);
+				cola = "get";
 				break;
 			case CATCH_POKEMON: //GAME_CARD SUSCRIPTO
 				descargar_historial_mensajes(CATCH_POKEMON, una_suscripcion -> socket, una_suscripcion -> id_proceso);
+				cola = "catch";
 				break;
 			case LOCALIZED_POKEMON: //TEAM SUSCRIPTO
 				descargar_historial_mensajes(LOCALIZED_POKEMON, una_suscripcion -> socket, una_suscripcion -> id_proceso);
+				cola = "localized";
 				break;
 			case CAUGHT_POKEMON: //TEAM SUSCRIPTO
 				descargar_historial_mensajes(CAUGHT_POKEMON, una_suscripcion -> socket, una_suscripcion -> id_proceso);
+				cola = "caught";
 				break;
 			case NEW_POKEMON: //GAME_CARD SUSCRIPTO
 				descargar_historial_mensajes(NEW_POKEMON, una_suscripcion -> socket, una_suscripcion -> id_proceso);
+				cola = "new";
 				break;
 			case APPEARED_POKEMON: //TEAM SUSCRIPTO
 				descargar_historial_mensajes(APPEARED_POKEMON, una_suscripcion -> socket, una_suscripcion -> id_proceso);
+				cola = "appeared";
 				break;
 			default:
 				log_error(logger, "...No se pudo descargar el historial de mensajes satisfactoriamente.");
 				break;
 		}
 
-	log_info(logger, "...El proceso suscripto recibe los mensajes del historial");
+	log_info(logger, "El suscriptor %d recibe los mensajes del historial de la cola %s", una_suscripcion -> id_proceso, cola);
 }
 
 void descargar_historial_mensajes(op_code tipo_mensaje, uint32_t socket_cliente, uint32_t id_proceso){
@@ -540,10 +534,7 @@ void descargar_historial_mensajes(op_code tipo_mensaje, uint32_t socket_cliente,
 			size = size_mensaje(mensaje_a_enviar, tipo_mensaje);
 			enviar_mensaje(tipo_mensaje, mensaje_a_enviar, socket_cliente, size);
 			//free(mensaje_a_enviar);
-    	} else {
-    		log_error(logger, "EL MENSAJE VINO DE GAME BOY");
     	}
-
     	actualizar_ultima_referencia(un_mensaje);
     }
 
@@ -567,14 +558,10 @@ void descargar_historial_mensajes(op_code tipo_mensaje, uint32_t socket_cliente,
 			list_iterate(cola_new, mandar_mensajes_viejos);
 			break;
 		default:
-			log_info(logger, "...No se puede enviar el mensaje pedido.");
+			log_info(logger, "...No se puede enviar el mensaje pedido en descargar historial mensajes.");
 			break;
 	}
-
-//    log_info(logger, "...Los mensajes previos a la suscripcion fueron informados al nuevo cliente suscripto.");
-
 }
-
 
 void* preparar_mensaje(t_mensaje* un_mensaje){
 	void* mensaje_armado;
@@ -779,12 +766,12 @@ void actualizar_ultima_referencia(t_mensaje* un_mensaje){
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 		((t_memoria_dinamica*) un_mensaje -> payload) -> ultima_referencia = timestamp();
-		log_warning(logger, "Se actualiza el tiempo de referencia %d del mensaje con id %d", ((t_memoria_dinamica*) un_mensaje -> payload) -> ultima_referencia, un_mensaje -> id_mensaje);	
+		//log_warning(logger, "Se actualiza el tiempo de referencia %d del mensaje con id %d", ((t_memoria_dinamica*) un_mensaje -> payload) -> ultima_referencia, un_mensaje -> id_mensaje);
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
 		((t_memoria_buddy*) un_mensaje -> payload) -> ultima_referencia = timestamp();
-		log_warning(logger, "Se actualiza el tiempo de referencia %d del mensaje con id %d", ((t_memoria_buddy*) un_mensaje -> payload) -> ultima_referencia, un_mensaje -> id_mensaje);
+		//log_warning(logger, "Se actualiza el tiempo de referencia %d del mensaje con id %d", ((t_memoria_buddy*) un_mensaje -> payload) -> ultima_referencia, un_mensaje -> id_mensaje);
 	} else {
-		log_error(logger, "...No se reconoce el algoritmo de memoria.");
+		log_error(logger, "...No se reconoce el algoritmo de memoria al actualizar la ultima referencia.");
 	}
 
 }
@@ -793,12 +780,12 @@ void establecer_tiempo_de_carga(t_mensaje* un_mensaje){
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
 		((t_memoria_dinamica*) un_mensaje -> payload) -> tiempo_de_carga = timestamp();
-		log_warning(logger, "Se actualiza el tiempo de referencia %d del mensaje con id %d", ((t_memoria_dinamica*) un_mensaje -> payload) -> tiempo_de_carga, un_mensaje -> id_mensaje);	
+		//log_warning(logger, "Se actualiza el tiempo de referencia %d del mensaje con id %d", ((t_memoria_dinamica*) un_mensaje -> payload) -> tiempo_de_carga, un_mensaje -> id_mensaje);
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
 	    ((t_memoria_buddy*) un_mensaje -> payload) -> tiempo_de_carga = timestamp();
-		log_warning(logger, "Se actualiza el tiempo de referencia %d del mensaje con id %d", ((t_memoria_buddy*) un_mensaje -> payload) -> tiempo_de_carga, un_mensaje -> id_mensaje);
+		//log_warning(logger, "Se actualiza el tiempo de referencia %d del mensaje con id %d", ((t_memoria_buddy*) un_mensaje -> payload) -> tiempo_de_carga, un_mensaje -> id_mensaje);
 	} else {
-		log_error(logger, "...No se reconoce el algoritmo de memoria.");
+		log_error(logger, "...No se reconoce el algoritmo de memoria al establecer el tiempo de carga.");
 	}
 	actualizar_ultima_referencia(un_mensaje);
 }
@@ -807,6 +794,8 @@ void establecer_tiempo_de_carga(t_mensaje* un_mensaje){
 //---------------------------MENSAJES---------------------------//
 
 void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
+
+	log_info(logger, "Se recibio un ACK del mensaje con id %d", mensaje_confirmado -> id_mensaje);
 
 	void actualizar_suscripto(void* mensaje){
 		t_mensaje* mensaje_ok = mensaje;
@@ -824,7 +813,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 	switch(mensaje_confirmado -> tipo_mensaje){
 		case GET_POKEMON:
 			if(!list_any_satisfy(lista_suscriptores_get, es_la_misma_suscripcion)){
-				log_info(logger, "Me llego un ACK de un mensaje que no esta :(");
+				log_info(logger, "El ACK recibido es de un mensaje que no se encuentra en memoria.");
 			} else {
 				list_iterate(cola_get, actualizar_suscripto);
 				borrar_mensajes_confirmados(GET_POKEMON, cola_get, lista_suscriptores_get);
@@ -834,7 +823,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 		case CATCH_POKEMON:
 			
 			if(!list_any_satisfy(lista_suscriptores_catch, es_la_misma_suscripcion)){
-				log_info(logger, "Me llego un ACK de un mensaje que no esta :(");
+				log_info(logger, "El ACK recibido es de un mensaje que no se encuentra en memoria.");
 			} else {
 				list_iterate(cola_catch, actualizar_suscripto);
 				borrar_mensajes_confirmados(CATCH_POKEMON, cola_catch, lista_suscriptores_catch);
@@ -843,7 +832,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 
 		case LOCALIZED_POKEMON:
 			if(!list_any_satisfy(lista_suscriptores_localized, es_la_misma_suscripcion)){
-				log_info(logger, "Me llego un ACK de un mensaje que no esta :(");
+				log_info(logger, "El ACK recibido es de un mensaje que no se encuentra en memoria.");
 			} else {
 				list_iterate(cola_localized, actualizar_suscripto);
 				borrar_mensajes_confirmados(LOCALIZED_POKEMON, cola_localized, lista_suscriptores_localized);;
@@ -852,7 +841,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 
 		case CAUGHT_POKEMON:
 			if(!list_any_satisfy(lista_suscriptores_caught, es_la_misma_suscripcion)){
-					log_info(logger, "Me llego un ACK de un mensaje que no esta :(");
+				log_info(logger, "El ACK recibido es de un mensaje que no se encuentra en memoria.");
 			} else {
 				list_iterate(cola_caught, actualizar_suscripto);
 				borrar_mensajes_confirmados(CAUGHT_POKEMON, cola_caught, lista_suscriptores_caught);
@@ -861,7 +850,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 
 		case APPEARED_POKEMON:
 			if(!list_any_satisfy(lista_suscriptores_appeared, es_la_misma_suscripcion)){
-					log_info(logger, "Me llego un ACK de un mensaje que no esta :(");
+				log_info(logger, "El ACK recibido es de un mensaje que no se encuentra en memoria.");
 			} else {
 				list_iterate(cola_appeared, actualizar_suscripto);
 				borrar_mensajes_confirmados(APPEARED_POKEMON, cola_appeared, lista_suscriptores_appeared);
@@ -870,7 +859,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 
 		case NEW_POKEMON:
 			if(!list_any_satisfy(lista_suscriptores_appeared, es_la_misma_suscripcion)){
-					log_info(logger, "Me llego un ACK de un mensaje que no esta :(");
+				log_info(logger, "El ACK recibido es de un mensaje que no se encuentra en memoria.");
 			} else {
 				list_iterate(cola_new, actualizar_suscripto);
 				borrar_mensajes_confirmados(NEW_POKEMON, cola_new, lista_suscriptores_new);
@@ -878,7 +867,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado){
 			break;
 
 		default:
-			log_error(logger, "...El mensaje de id %d no se encuentra disponible.", mensaje_confirmado -> id_mensaje);
+			log_error(logger, "...El mensaje de id %d no se encuentra disponible en actualizar mensajes confirmados.", mensaje_confirmado -> id_mensaje);
 			break;
 	}
 	//Se chequea si un mensaje fue recibido por todos los suscriptores.
@@ -899,13 +888,16 @@ void borrar_mensajes_confirmados(op_code tipo_lista, t_list* cola_mensajes, t_li
 
 		if(mensaje_recibido_por_todos(un_mensaje, suscriptores)){
 			mensaje_a_borrar = list_find(cola_mensajes, es_el_mismo_mensaje);
-			eliminar_mensaje(mensaje_a_borrar);
+
+			if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
+				eliminar_mensaje(mensaje_a_borrar);
+			} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
+				limpiar_buddy((t_memoria_buddy*) mensaje_a_borrar -> payload);
+			}
 		}
 	}
 
 	list_iterate(cola_duplicada, borrar_mensaje_recibido_por_todos);
-	//log_info(logger, "...Los mensajes confirmados por todos los suscriptores fueron eliminados.");
-
 }
 
 bool mensaje_recibido_por_todos(void* mensaje, t_list* suscriptores){
@@ -943,11 +935,11 @@ void eliminar_suscriptor_de_enviados_sin_confirmar(t_mensaje* mensaje, uint32_t 
 
 	list_remove_by_condition(mensaje -> suscriptor_enviado, es_el_mismo_suscriptor);
 
-	if(!list_any_satisfy(mensaje -> suscriptor_enviado, es_el_mismo_suscriptor)){
+	/*if(!list_any_satisfy(mensaje -> suscriptor_enviado, es_el_mismo_suscriptor)){
 		log_info(logger, "...Se eliminó al suscriptor de la lista de enviados sin confirmar.");
 	} else {
 		log_error(logger, "...No se eliminó al suscriptor confirmado.");
-	}
+	}*/
 
 }
 
@@ -959,11 +951,11 @@ void agregar_suscriptor_a_enviados_confirmados(t_mensaje* mensaje, uint32_t conf
 		return confirmacion == (*suscripto);
 	}
 
-	if(list_any_satisfy(mensaje -> suscriptor_recibido, es_el_mismo_suscriptor)){
+	/*if(list_any_satisfy(mensaje -> suscriptor_recibido, es_el_mismo_suscriptor)){
 		log_info(logger, "...Se agregó al suscriptor a la lista de enviados que recibieron el mensaje.");
 	} else {
 		log_error(logger, "...No se agregó al suscriptor confirmado.");
-	}
+	}*/
 }
 
 void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){ // hilo
@@ -982,9 +974,10 @@ void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){ // h
 					datos_de_mensaje -> mensaje = un_mensaje;
 					//TODO
 					uint32_t err = pthread_create(&hilo_envio_mensajes, NULL, main_hilo_mensaje, datos_de_mensaje);
-						if(err != 0) {
-							log_error(logger, "El hilo no pudo ser creado!!");
+					if(err != 0) {
+						log_error(logger, "El hilo no pudo ser creado!!");
 					}
+						pthread_detach(hilo_envio_mensajes);
 				}
 			}
 			list_iterate(lista_suscriptores, mandar_mensaje);
@@ -1002,11 +995,12 @@ void* main_hilo_mensaje(void* unos_datos_de_mensaje) {
 	uint32_t tamanio_mensaje = size_mensaje(mensaje_a_enviar, datos_de_mensaje -> mensaje -> codigo_operacion);
 
 	enviar_mensaje(datos_de_mensaje -> mensaje -> codigo_operacion, mensaje_a_enviar, datos_de_mensaje -> suscriptor -> socket, tamanio_mensaje);
-	//actualizar_ultima_referencia(datos_de_mensaje -> mensaje);
+	actualizar_ultima_referencia(datos_de_mensaje -> mensaje);
 	agregar_suscriptor_a_enviados_sin_confirmar(datos_de_mensaje -> mensaje, datos_de_mensaje -> suscriptor -> id_proceso);
-
-	log_error(logger, "...No se reconoce el algoritmo de memoria. ");
 	
+	log_error(logger, "...estoy tratando de mandar el mensaje");
+	log_info(logger, "Se envia un mensaje al suscriptor %d", datos_de_mensaje -> suscriptor -> id_proceso);
+
 	return NULL;
 }
 
@@ -1033,8 +1027,7 @@ void agregar_suscriptor_a_enviados_sin_confirmar(t_mensaje* mensaje_enviado, uin
 
 void dump_de_memoria(){
 
-	log_info(logger, "Se solicitó el dump de cache.");
-    //Se tiene que crear un nuevo archivo y loggear ahi todas las cosas.
+	log_info(logger, "Se solicito el dump de cache.");
 	iniciar_logger_broker(config_broker -> memory_log, "broker");
 
     //Muestra el inicio del dump.
@@ -1055,7 +1048,7 @@ void dump_de_memoria(){
 		list_iterate(memoria_cache, dump_info_buddy);
 
     } else {
-        log_error(logger_memoria, "(? No se reconoce el algoritmo de memoria a implementar.");
+        log_error(logger_memoria, "...No se reconoce el algoritmo de memoria a implementar en dump de memoria.");
     }
 
     sem_post(&muteadito);
@@ -1064,8 +1057,8 @@ void dump_de_memoria(){
 void iniciar_logger_broker(char* file, char* program_name) {
 
 	if(file == NULL){
-			printf("No se pudo encontrar el path del config.");
-			return exit(-1);
+		printf("No se pudo encontrar el path del config.");
+		return exit(-1);
 	}
 
 	logger_memoria = log_create(file, program_name, 1, LOG_LEVEL_INFO);
@@ -1387,7 +1380,7 @@ bool son_buddies_hermanos(t_memoria_buddy* un_buddy, t_memoria_buddy* otro_buddy
 			base_mas_chica % ((un_buddy -> tamanio_exponente)*2) == 0;
 }
 
-void limpiar_buddy(t_memoria_buddy* buddy) { // falta eliminar el mensaje de la MQ
+void limpiar_buddy(t_memoria_buddy* buddy) {
 
 	t_memoria_buddy* buddy_vacio = armar_buddy(buddy -> tamanio_exponente, buddy -> base, NULL, 0, NULL, buddy -> posicion);
 
@@ -1426,8 +1419,9 @@ void consolidar_buddy(uint32_t indice, t_memoria_buddy* buddy) {
 			base_padre = buddy -> base;
 		}
 
-		log_error(logger, "Se remueve el hermano de base %d para consolidar", buddy_hermano -> base);
 		indice = remover_buddy(buddy_hermano);
+
+		log_error(logger, "Se remueve el buddy de base %d", buddy -> base);
 
 		uint32_t posicion_padre;
 		if(base_padre % (buddy -> tamanio_exponente * 4)) {
@@ -1531,7 +1525,7 @@ void dividir_buddy(t_memoria_buddy* buddy_a_dividir) {
 		list_add_in_index(memoria_cache, indice_removido, buddy_izquierdo);
 		list_add_in_index(memoria_cache, indice_removido + 1, buddy_derecho);
 
-		log_info(logger, "Se dividio el buddy %d, en dos con base %d y %d", buddy_a_dividir -> tamanio_exponente, buddy_izquierdo -> base, buddy_derecho -> base);
+		//log_info(logger, "Se dividio el buddy %d, en dos con base %d y %d", buddy_a_dividir -> tamanio_exponente, buddy_izquierdo -> base, buddy_derecho -> base);
 	} else {
 
 		log_error(logger, "No puedo dividirme mas, mi tamanio es %d", buddy_a_dividir -> tamanio_exponente);
@@ -1550,8 +1544,6 @@ void reemplazar_particion_de_memoria(t_mensaje* mensaje, void* contenido_mensaje
 
     uint32_t indice = encontrar_indice(particion_a_reemplazar);
     t_mensaje* mensaje_a_eliminar = encontrar_mensaje(particion_a_reemplazar -> base, particion_a_reemplazar -> codigo_operacion);
-
-    log_error(logger, "EL INDICE VICTIMA ES: %d", indice);
 
     particion_a_reemplazar = list_replace(memoria_con_particiones, indice, particion_vacia);
     eliminar_mensaje(mensaje_a_eliminar);
@@ -1700,8 +1692,6 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
     t_memoria_dinamica* particion_a_ubicar;
 	t_memoria_dinamica* nueva_particion;
 
-	log_info(logger, "ACA ESTOYYY");
-
 	uint32_t tamanio_a_buscar = 0;
 	if((un_mensaje -> tamanio_mensaje) < (config_broker -> size_min_memoria)){
 		tamanio_a_buscar = (config_broker -> size_min_memoria);
@@ -1720,8 +1710,6 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
         	particion_a_ubicar = list_get(memoria_con_particiones, posicion_a_ubicar);
 			nueva_particion = armar_particion(un_mensaje -> tamanio_mensaje, particion_a_ubicar -> base, un_mensaje, 1, contenido_mensaje);
 			ubicar_particion(posicion_a_ubicar, nueva_particion);
-			
-			log_info(logger, "ENTRO A GUARDAR MENSAJE");
 
 			guardar_contenido_de_mensaje(nueva_particion -> base, contenido_mensaje, nueva_particion -> tamanio);
         }
@@ -1747,10 +1735,10 @@ void guardar_contenido_de_mensaje(uint32_t offset, void* contenido, uint32_t tam
 
 	if(contenido != NULL){
 		memcpy(memoria + offset, contenido, tamanio);
-		log_info(logger, "Se guardó un mensaje en la particion de tamaño %d que comienza en la posicion %d.", tamanio, offset);
+		log_info(logger, "Se guardo un mensaje en la particion que comienza en la posicion %d de tamaño %d.", offset, tamanio);
 
 	} else {
-		log_info(logger, "Se libera una partición de tamaño %d que comienza en la posicion %d.", tamanio, offset);
+		log_info(logger, "Se libera una partición que comienza en la posicion %d de tamaño %d.", offset, tamanio);
 	}
 }
 
@@ -2030,6 +2018,7 @@ void compactar_particiones_dinamicas(t_list* memoria){
 
 	list_iterate(memoria, actualizar_base);
 
+	log_info(logger, "Se inicia la compactacion");
 	compactar_memoria_cache(memoria);
 	
 	list_destroy(particiones_vacias);
@@ -2050,7 +2039,7 @@ uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion, uint32_t indice_t
 		if(particion_buscada!=NULL){
 			nueva_base = (particion_buscada -> base) + (particion_buscada -> tamanio);
 		} else {
-			log_error(logger, "No se puede actualizar la base para compactar :/");
+			log_error(logger, "...No se puede actualizar la base para compactar :/");
 		}
 	} else {
 		nueva_base = 0;
@@ -2095,16 +2084,14 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 		t_memoria_dinamica* particion_vacia = armar_particion(particion_a_liberar -> tamanio, particion_a_liberar -> base, NULL, 0, NULL);
 		particion_a_liberar = list_replace(memoria_con_particiones, indice, particion_vacia);
 
-		eliminar_de_message_queue(mensaje, mensaje -> codigo_operacion);
+		guardar_contenido_de_mensaje(particion_a_liberar -> base, NULL, particion_a_liberar -> tamanio);
 
-		log_info(logger, "El mensaje fue eliminado correctamente.");
+		eliminar_de_message_queue(mensaje, mensaje -> codigo_operacion);
 
 		particiones_liberadas++;
 
 		if(config_broker -> frecuencia_compactacion == 0 || (particiones_liberadas == (config_broker -> frecuencia_compactacion))){
-			log_info(logger, "antes de compactar");
 			compactar_particiones_dinamicas(memoria_con_particiones);
-			log_info(logger, "despues de compactar");
 		}		
 
 		consolidar_particiones_dinamicas(memoria_con_particiones);
@@ -2112,7 +2099,7 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
 	
 	} else {
-		log_error(logger, "...No se reconoce el algoritmo de memoria.");
+		log_error(logger, "...Algoritmo no reconocido al liberar mensaje.");
 	}
 
 
@@ -2120,9 +2107,20 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 
 void eliminar_de_message_queue(t_mensaje* mensaje, op_code codigo){
 	if(mensaje == NULL) {
-		log_error(logger, "se intento remover un mensaje nulo");
+		log_error(logger, "...Se intento remover un mensaje nulo de la message queue");
 		return;
+	} else {
+
+		if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")){
+			t_memoria_buddy* un_buddy = mensaje -> payload;
+			guardar_contenido_de_mensaje(un_buddy -> base, NULL, un_buddy -> tamanio_exponente);
+
+		} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"PARTICIONES")){
+			t_memoria_dinamica* una_particion = mensaje -> payload;
+			guardar_contenido_de_mensaje(una_particion -> base, NULL, una_particion -> tamanio_part);
+	    }
 	}
+
 	bool es_el_mismo_mensaje(void* msj){
 		t_mensaje* el_mensaje = msj;
 		return (el_mensaje -> id_mensaje) == (mensaje -> id_mensaje);
@@ -2148,7 +2146,7 @@ void eliminar_de_message_queue(t_mensaje* mensaje, op_code codigo){
 		list_remove_by_condition(cola_new, es_el_mismo_mensaje);
 		break;
 	default:
-		log_error(logger, "No se pudo eliminar el mensaje de la message queue.");
+		log_error(logger, "...No se pudo eliminar el mensaje de la message queue.");
 		break;
 	}
 }
@@ -2309,7 +2307,7 @@ t_memoria_buddy* recorrer_first_fit(uint32_t exponente) {
     	t_memoria_buddy* un_buddy = buddy1;
     	return (un_buddy -> ocupado) == 0 && (un_buddy -> tamanio_exponente) >= exponente;
     }
-    log_info(logger, "Chequeando por first fit, %d hojas en cache", memoria_cache -> elements_count);
+    //log_info(logger, "Chequeando por first fit, %d hojas en cache", memoria_cache -> elements_count);
     t_memoria_buddy* buddy = list_find(memoria_cache, es_particion_apta);
 
     if(buddy != NULL) {
