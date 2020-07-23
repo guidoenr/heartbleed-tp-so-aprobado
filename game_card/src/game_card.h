@@ -112,7 +112,7 @@ void liberar_config_gc(t_config_game_card*);
 void suscribirme_a_colas();
 void suscribirse_a(op_code);
 void process_request(uint32_t cod_op, uint32_t cliente_fd);
-
+uint32_t recibir_id_de_mensaje_enviado(uint32_t socket_cliente);
 //parsers + tools
 char* concatenar(char* str1,char* str2);
 bool isFile(char* path);

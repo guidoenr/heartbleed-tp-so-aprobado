@@ -647,12 +647,22 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,uint32_t socket){
 	t_appeared_pokemon* appeared = armar_appeared(new_pokemon);
 	log_error(logger,"ASD1");
 	enviar_mensaje(APPEARED_POKEMON,appeared,socket_piola, size_mensaje(appeared, APPEARED_POKEMON));
+	uint32_t id = recibir_id_de_mensaje_enviado(socket_piola);
 	log_error(logger,"ASD2");
-	close(socket_piola);
 
 	free(path_metafile);
 	free(dir_path_newpoke);
 
+}
+
+uint32_t recibir_id_de_mensaje_enviado(uint32_t socket_cliente) {
+  uint32_t id = 0;
+
+  recv(socket_cliente, &id, sizeof(uint32_t), MSG_WAITALL);
+  log_info(logger, "El ID de mensaje enviado es: %d", id);
+
+  close(socket_cliente);
+  return id;
 }
 
 void crear_pokemon(t_new_pokemon* newPoke,char* path){
@@ -1150,8 +1160,7 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 	t_caught_pokemon* caught_pokemon = armar_caught_pokemon(catch_pokemon, resultado);
 	uint32_t socket_piola = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
 	enviar_mensaje(CAUGHT_POKEMON,caught_pokemon,socket_piola, size_mensaje(caught_pokemon, CAUGHT_POKEMON));
-	close(socket_piola);
-
+	uint32_t id = recibir_id_de_mensaje_enviado(socket_piola);
 }
 
 
@@ -1365,7 +1374,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 
 	 uint32_t socket_piola = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
 	 enviar_mensaje(LOCALIZED_POKEMON,localized_pokemon,socket_piola, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
-	 close(socket_piola);
+	 uint32_t id = recibir_id_de_mensaje_enviado(socket_piola);
 
 	 free(dir_path);
 	 free(meta_path);
