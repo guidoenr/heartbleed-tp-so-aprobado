@@ -20,13 +20,14 @@ int main(void) {
 
 	iniciar_tall_grass();
 
-	conectarse_a_br(socket_br);
-
 	sem_init(&mx_bitmap,0,1);
 	sem_init(&semaforo,0,1);
-	iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
+
+	//conectarse_a_br(socket_br);
+	//iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
 
 
+	pruebas_get_pokemon(socket_br);
 	terminar_programa(socket_br, config_gc);
 
 }
@@ -39,8 +40,8 @@ void pruebas_new_pokemon(int socket){
 	luca->posicion[1] = 547;
 	luca->cantidad=11;
 	luca->id_mensaje = 124;
-	luca->pokemon= "Charmander";
-	unlock_file(obtener_path_metafile("Charmander"));
+	luca->pokemon= "meyern";
+	unlock_file(obtener_path_metafile("meyern"));
 	funcion_hilo_new_pokemon(luca, socket);
 
 
@@ -63,9 +64,9 @@ void pruebas_get_pokemon(int socket){
 
 	t_get_pokemon* get_poke = malloc(sizeof(t_get_pokemon));
 	get_poke->id_mensaje = 1;
-	get_poke->pokemon = "Riva";
+	get_poke->pokemon = "meyern";
 
-	unlock_file(obtener_path_metafile("Riva"));
+	unlock_file(obtener_path_metafile("meyern"));
 	funcion_hilo_get_pokemon(get_poke, socket);
 
 
@@ -1333,9 +1334,9 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 
 		 localized_pokemon->posiciones = obtener_posiciones_y_cantidades(meta_path,temporary_file);
 		 localized_pokemon->tamanio_lista = localized_pokemon->posiciones->elements_count;
-//		 char* lista_a_mandar = list_to_string_array(posiciones);
-//		 log_warning(logger,"Localized de %s : %s",get_pokemon->pokemon,lista_a_mandar);
-//		 free(lista_a_mandar);
+		 char* lista_a_mandar = list_to_string_array(localized_pokemon->posiciones);
+		 log_warning(logger,"Localized de %s : %s",get_pokemon->pokemon,lista_a_mandar);
+		 free(lista_a_mandar);
 		 remove(temporary_file);
 		 estaba=1;
 
@@ -1344,8 +1345,8 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 		 log_info(logger,"El pokemon %s no existe en el filesystem, te mando la lista vacia",get_pokemon->pokemon);
 		 localized_pokemon->tamanio_lista = 0;
 		 localized_pokemon->posiciones = list_create();
-		 list_add(localized_pokemon->posiciones,0);
-		 log_warning(logger,"Localized de %s : [0]",get_pokemon->pokemon);
+
+		 log_warning(logger,"Localized de %s : %d",get_pokemon->pokemon,localized_pokemon->posiciones->head->data);
 
 	 }
 
@@ -1385,7 +1386,6 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 	t_config* temporary_config = config_create(temporary_file);
 	int keys_amount = config_keys_amount(temporary_config);
 	config_destroy(temporary_config);
-
 	FILE* temporary = fopen(temporary_file,"rb");
 
 	for(int i=0; i<keys_amount; i++){
@@ -1400,7 +1400,7 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 			list_add(lista_de_todo,y);
 
 		}
-		free(linea);
+		//free(linea);
 	}
 
 
@@ -1418,8 +1418,7 @@ char* leer_linea(FILE* archivo){
 	int i = 0;
 
 	char* linea = string_new();
-	char* a = malloc(sizeof(char));
-	a=string_new();
+	char* a =string_new();
 
 	fread(a,1,1,archivo);
 
@@ -1428,7 +1427,7 @@ char* leer_linea(FILE* archivo){
 		fread(a,1,1,archivo);
 		i++;
 	}
-	free(a);
+	//free(a);
 
 	return linea;
 }
@@ -1437,16 +1436,16 @@ int get_value_from_linea(char* linea){
 
 	char** lista = string_split(linea,"=");
 	int size_chardoble = size_char_doble(lista);
-
-	return atoi(lista[size_chardoble - 1]);
+	int variable = atoi(lista[size_chardoble - 1]);
+	return variable;
 }
 
 
 int get_x_from_linea(char* linea){
 
 	char** lista = string_split(linea,"-");
-
-	return atoi(lista[0]);
+	int variable = atoi(lista[0]);
+	return variable;
 }
 
 
@@ -1454,8 +1453,8 @@ int get_y_from_linea(char* linea){
 
 	char** lista_entera = string_split(linea,"=");
 	char** lista_key_value = string_split(lista_entera[0],"-");
-
-	return atoi(lista_key_value[1]);
+	int variable = atoi(lista_key_value[1]);
+	return variable;
 
 }
 /*-------------------------------------------------------------------------- TOOLS ----------------------------------------------------------------------------- */
