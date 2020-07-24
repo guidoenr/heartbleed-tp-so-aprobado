@@ -316,14 +316,14 @@ void iniciar_hilo_caught(){
 
 void iniciar_conexion() {
 
-	uint32_t err = pthread_create(&hilo_game_boy, NULL, conexion_con_game_boy, NULL);
+	uint32_t err = pthread_create(&hilo_game_boy, NULL, iniciar_server_gamecard, NULL);
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
 		}
 	pthread_detach(hilo_game_boy);
 }
 
-void* conexion_con_game_boy() {
+void* iniciar_server_gamecard() {
 
 	iniciar_servidor(config -> ip_gameboy, config -> puerto_gameboy); // puerto robado de la config de gameboy
 

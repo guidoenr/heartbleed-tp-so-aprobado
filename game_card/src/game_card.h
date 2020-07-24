@@ -60,15 +60,25 @@ typedef struct{
 	t_list* blocks;
 	char* open;
 }t_file_metadata;
-
+void grabar_metadata_file(t_file_metadata metadata,char* path);
 //package sending
+int bitarray_default_size_in_bytes();
 void enviar_new_pokemon(t_new_pokemon* pokemon, uint32_t socket_cliente);
 t_new_pokemon* recibir_new_pokemon(uint32_t socket_cliente, uint32_t* size);
 void informar_al_broker(uint32_t id_mensaje, op_code codigo);
 t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon);
 bool existePokemonEnPosicion(t_new_pokemon* pokemon);
 void enviar_appeared_pokemon(t_appeared_pokemon* appeared_pokemon,int socket);
-
+int block_que_tiene_esa_posicion(char** blocks,char* key);
+int calcular_size_inicial(t_new_pokemon* newPoke);
+void appendy(char* s, char c);
+void iniciar_hilo_catch();
+void iniciar_hilo_new();
+void iniciar_hilo_get();
+void iniciar_hilos_suscripcion();
+void iniciar_semaforos();
+void limpiar_blocks(char** blocks);
+verificar_espacio_ocupado_por_pokemon(t_catch_pokemon* catch_pokemon,char* meta_path);
 /* NEW POKEMON */
 void verificar_existencia_pokemon(t_new_pokemon* pokemon,int socket);
 void funcion_hilo_new_pokemon(t_new_pokemon* pokemon,uint32_t socket);
@@ -82,8 +92,12 @@ void verificar_apertura_pokemon(char* path_metafile,char* nombre_pokemon);
 void actualizar_pokemon(char* temporary_path,char* path_metafile,char* key,char* value);
 char* get_key_from_position(uint32_t posicion[2]);
 char* get_value_from_cantidad(uint32_t cantidad);
+int file_current_size(block);
 char* list_to_string_array(t_list* blocks);
 char* block_path(char* block);
+int hay_algun_block_vacio(char** blocks);
+int posicion_block_vacio(char** blocks, char* block_vacio);
+void liberar_block_de_la_indextable(char* metapath,char* block_vacio,t_config* metaconfig);
 char* rand_string(char* nombre_pokemon);
 char* generar_string_desde_blocks(char** blocks);
 char* generar_archivo_temporal(char* metapath_file,char* nombre_pokemon);
@@ -96,7 +110,7 @@ bool existe_la_posicion(char* key,char* temporary_path);
 bool el_pokemon_esta_creado(char* path);
 void iniciar_conexion();
 bool es_directorio(char* path);
-void* conexion_con_game_boy();
+void* iniciar_server_gamecard();
 int size_char_doble(char** array);
 int la_posicion_ya_existe(t_new_pokemon* newpoke,char* meta_path, char* key_posicion);
 t_list* chardoble_to_tlist(char** chardoble);
@@ -105,29 +119,35 @@ void informar_al_broker(uint32_t, op_code);
 void iniciar_hilo_broker();
 void llenar_lista(t_list* lista_de_todo, char* temporary_file);
 void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br);
-void verificar_espacio_ocupado_por_pokemon(t_catch_pokemon* catch_pokemon,char* meta_path);
 void verificar_espacio_en_blocks(char* metapath);
 void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_br);
 void liberar_block_de_la_indextable(char* metapath,char* block_vacio,t_config* metaconfig);
 void liberar_block_del_bitmap(char* numero_block);
+int block_default_size();
 void crear_directorios(char* path);
 void crear_bitmap(char* path);
 void crear_blocks(char* path);
 void create_file_with_size(char* path,int size);
 void destrozar_fs_metadata(t_metadata metadata);
+void crear_pokemon(t_new_pokemon* newpoke,char* path);
 /* CATCH POKEMON */
 t_caught_pokemon* armar_caught_pokemon(t_catch_pokemon* catch_pokemon,uint32_t resultado);
 /* FS */
+void agregar_nueva_posicion(t_new_pokemon* newpoke,char* pathmeta_poke,char* key,char* value);
+void escribir_data_en_block(char* path_last_block,char* key,char* value);
 void iniciar_tall_grass();
 t_metadata leer_fs_metadata();
 void escribirMetadata();
 void crear_metadata_fs();
+void escribir_block_inicial(t_file_metadata metadata,t_new_pokemon* newPoke);
 int tamanio_de_metadata(t_metadata metadata);
 int tamanio_file_metadata(t_file_metadata fileMeta);
 t_file_metadata leer_file_metadata(char* path);
 char* leer_linea(FILE* archivo);
-
+int file_size(char* path);
+void actualizar_size_new_pokemon(char* pathmetafile,int nuevosize);
 /* COMMONS */
+void unlock_file(char* path);
 void terminar_programa(int, t_config_game_card*);
 void liberar_conexion(uint32_t);
 void liberar_logger();

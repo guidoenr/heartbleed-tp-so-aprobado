@@ -16,31 +16,22 @@ int main(void) {
 	iniciar_logger("gameCard.log","gamercard");
 	punto_montaje = config_gc->punto_montaje_tallgrass;
 
-	int socket_br;
-
-	sem_init(&mx_bitmap,0,1);
-	sem_init(&semaforo,0,1);
 	sem_init(&terminarprograma,0,0);
-	sem_init(&muteadito,0,1);
+
+	int socket;
+
 	iniciar_tall_grass();
-
-	//iniciar_conexion();
-	//iniciar_hilo_broker();
-	//unlock_file(obtener_path_metafile("Guido"));
-
+	iniciar_semaforos();
 
 	iniciar_conexion();
 	sleep(1);
-	iniciar_hilo_new();
-
-	iniciar_hilo_get();
-
-	iniciar_hilo_catch();
+	iniciar_hilos_suscripcion();
 
 
-	//pruebas_get_pokemon(socket_br);
+	//pruebas_new_pokemon(socket);
+	//pruebas_catch_pokemon(socket);
 	sem_wait(&terminarprograma);
-	terminar_programa(socket_br, config_gc);
+	terminar_programa(socket, config_gc);
 
 }
 
@@ -52,8 +43,8 @@ void pruebas_new_pokemon(int socket){
 	luca->posicion[1] = 547;
 	luca->cantidad=11;
 	luca->id_mensaje = 124;
-	luca->pokemon= "meyern";
-	unlock_file(obtener_path_metafile("meyern"));
+	luca->pokemon= "Luken";
+
 	funcion_hilo_new_pokemon(luca, socket);
 
 
@@ -61,13 +52,12 @@ void pruebas_new_pokemon(int socket){
 void pruebas_catch_pokemon(int socket){
 
 	t_catch_pokemon* kenny = malloc(sizeof(t_catch_pokemon));
-	kenny->pokemon="Charmander";
-	kenny->posicion[0] = 413;
-	kenny->posicion[1] = 17;
+	kenny->pokemon="Luken";
+	kenny->posicion[0] = 129;
+	kenny->posicion[1] = 547;
 	kenny->id_mensaje = 123;
 
 
-	unlock_file(obtener_path_metafile(kenny->pokemon));
 	funcion_hilo_catch_pokemon(kenny, socket);
 
 
@@ -122,25 +112,35 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 	}
 	sem_post(&muteadito);
 }
-void* conexion_con_game_boy(){
 
-	iniciar_servidor(config_gc->ip_gameCard,config_gc->puerto_gameCard); // puerto robado de la config de gameboy
+void iniciar_semaforos(){
+	sem_init(&semaforo,0,1);
+	sem_init(&muteadito,0,1);
+	sem_init(&mx_bitmap,0,1);
 
+}
+void* iniciar_server_gamecard(){
+
+	iniciar_servidor(config_gc->ip_gameCard,config_gc->puerto_gameCard);
 	return NULL;
 }
 
-
 void iniciar_conexion() {
+	log_warning(logger,"Iniciando servidor gamecard [THREAD]");
 
-	uint32_t err = pthread_create(&hilo_servidor, NULL, conexion_con_game_boy, NULL);
+	uint32_t err = pthread_create(&hilo_servidor, NULL, iniciar_server_gamecard, NULL);
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
 		}
 	pthread_detach(hilo_servidor);
-	log_info(logger,"LLEGUE HASTA ACA");
+
 }
 
-
+void iniciar_hilos_suscripcion(){
+	iniciar_hilo_new();
+	iniciar_hilo_get();
+	iniciar_hilo_catch();
+}
 
 
 
@@ -171,7 +171,7 @@ void informar_al_broker(uint32_t id_mensaje, op_code codigo){
 //}
 
 void iniciar_conexion_game_boy() {
-	uint32_t err = pthread_create(&hilo_game_boy, NULL, conexion_con_game_boy, NULL);
+	uint32_t err = pthread_create(&hilo_game_boy, NULL, iniciar_server_gamecard, NULL);
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
 		}
@@ -294,6 +294,7 @@ void iniciar_tall_grass(){
 
 	} else {
 		log_info(logger, "Tallgrass ya existente en %s",punto_montaje);
+
 	}
 }
 
@@ -391,10 +392,6 @@ void crear_bitmap(char* path){
 	free(data);
 
 	log_info(logger,"Se creo el bitarray de %d posiciones, con un tamaño de %d bytes",fs_metadata.blocks,size_in_bytes);
-
-	sem_init(&mx_bitmap,0,1);
-
-	log_warning(logger,"Mutex para usar el bitmap iniciado");
 
 }
 
@@ -629,6 +626,7 @@ void unlock_file(char* path){
 /*-------------------------------------------------------------------------- NEW-POKEMON ----------------------------------------------------------------------------- */
 
 void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,uint32_t socket){
+	log_info(logger,"----------------------------------------------------------------");
 	log_info(logger,"THREAD NEW POKEMON");
 	log_info(logger,"Llego un NEW_POKEMON %s en (%d,%d) con cantidad %d",new_pokemon->pokemon,new_pokemon->posicion[0],new_pokemon->posicion[1],new_pokemon->cantidad);
 
@@ -675,7 +673,7 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,uint32_t socket){
 		log_info(logger,"Se creo el archivo metafile del pokemon %s vacio",new_pokemon->pokemon);
 
 		crear_pokemon(new_pokemon, path_metafile);
-		log_info(logger,"Se creo por completo el pokemon %s",new_pokemon->pokemon);
+		log_warning(logger,"Se creo por completo el pokemon %s",new_pokemon->pokemon);
 
 		}
 
@@ -683,22 +681,26 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,uint32_t socket){
 
 	sleep(config_gc->tiempo_retardo_operacion);
 
-	log_info(logger,"THREAD FINISHED, unlockeo el pokemon");
+	log_warning(logger,"UNLOCK al pokemon");
 
 	unlock_file(path_metafile);
 
-	log_error(logger,"TERMINOFS");
-
+	log_info(logger,"Creando socket para mandar el APPEARED");
 
 	uint32_t socket_piola = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
 	t_appeared_pokemon* appeared = armar_appeared(new_pokemon);
-	log_error(logger,"ASD1");
-	enviar_mensaje(APPEARED_POKEMON,appeared,socket_piola, size_mensaje(appeared, APPEARED_POKEMON));
-	uint32_t id = recibir_id_de_mensaje_enviado(socket_piola);
-	log_error(logger,"ASD2");
 
+	log_warning(logger,"t_appeared_pokemon armado, envio el mensaje");
+
+	enviar_mensaje(APPEARED_POKEMON,appeared,socket_piola, size_mensaje(appeared, APPEARED_POKEMON));
+	log_info(logger,"Mensaje enviado");
+	uint32_t id = recibir_id_de_mensaje_enviado(socket_piola);
+
+	log_warning(logger,"Recibo ID del mensaje enviado: %d",id);
 	free(path_metafile);
 	free(dir_path_newpoke);
+
+	log_error(logger,"THREAD FINISHED");
 
 }
 
@@ -947,7 +949,7 @@ void verificar_apertura_pokemon(char* path_metafile,char* nombre_pokemon){
 
 	while (esta_en_uso){
 		int secs = config_gc->tiempo_retardo_operacion;
-		log_warning(logger,"No se puede leer ni escribir este pokemon porque esta en uso OPEN=Y, reintentando en: %d",secs);
+		log_error(logger,"No se puede leer ni escribir este pokemon porque esta lockeado, reintentando en: %d",secs);
 		sleep(secs);
 		esta_en_uso = esta_lockeado(path_metafile);
 	}
@@ -1159,17 +1161,17 @@ t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 
 /*-------------------------------------------------------------------------- CATCH-POKEMON ----------------------------------------------------------------------------- */
 void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_br){
-
+	log_info(logger,"----------------------------------------------------------------");
 	log_info(logger,"THREAD CATCH POKEMON");
 	log_info(logger,"LLEGO UN CATCH %s en la posicion %d-%d ",catch_pokemon->pokemon,catch_pokemon->posicion[0],catch_pokemon->posicion[1]);
 	uint32_t resultado = 0;
-
+	int creado = 0;
 	char* meta_path = obtener_path_metafile(catch_pokemon->pokemon);
 	char* dir_path = obtener_path_dir_pokemon(catch_pokemon->pokemon);
 	char* key = get_key_from_position(catch_pokemon->posicion);
 
 	if (el_pokemon_esta_creado(dir_path)){
-
+		creado=1;
 		verificar_apertura_pokemon(meta_path, catch_pokemon->pokemon);
 		log_info(logger,"Existe el pokemon en el filesystem");
 
@@ -1179,7 +1181,7 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 
 			remover_posicion(temporaryfile,key,meta_path);
 			re_grabar_temporary_en_blocks(temporaryfile,meta_path);
-			log_info(logger,"Se retiro una cantidad en la posicion %s",key);
+			log_info(logger,"Se retiro una cantidad en la posicion %s del pokemon %s",key,catch_pokemon->pokemon);
 
 			verificar_espacio_en_blocks(meta_path);
 			resultado = 1;
@@ -1187,27 +1189,40 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 			} else{
 			log_error(logger,"No existe la posicion %d - %d del pokemon %s en el mapa",catch_pokemon->posicion[0],catch_pokemon->posicion[1],catch_pokemon->pokemon);
 			}
+
 			remove(temporaryfile);
-			unlock_file(meta_path);
 
 	}else{
 		log_error(logger,"No se encuentra el pokemon %s creado",catch_pokemon->pokemon);
+		creado=0;
 	}
 
 	verificar_espacio_ocupado_por_pokemon(catch_pokemon,meta_path);
 
 	log_info(logger,"Esperando el tiempo de retardo de operacion");
-
 	sleep(config_gc->tiempo_retardo_operacion);
 
-	log_info(logger,"THREAD FINISHED, unlockeo el pokemon");
+	if (creado != 1){
+		log_warning(logger,"No se accedio al pokemon para lectura ni escritura");
+	}else {
+		log_warning(logger,"UNLOCK AL POKEMON");
+		unlock_file(meta_path);
+	}
 
-
+	log_info(logger,"Armo el caught_pokemon");
 
 	t_caught_pokemon* caught_pokemon = armar_caught_pokemon(catch_pokemon, resultado);
+	log_info(logger,"Creando socket para mandar el CAUGHT");
 	uint32_t socket_piola = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
+	log_warning(logger,"Caught armado, envio el mensaje");
+
 	enviar_mensaje(CAUGHT_POKEMON,caught_pokemon,socket_piola, size_mensaje(caught_pokemon, CAUGHT_POKEMON));
+
 	uint32_t id = recibir_id_de_mensaje_enviado(socket_piola);
+
+	log_warning(logger,"Recibo ID del mensaje enviado :%d",id);
+
+	log_error(logger,"THREAD FINISHED");
 }
 
 
@@ -1375,7 +1390,9 @@ t_caught_pokemon* armar_caught_pokemon(t_catch_pokemon* catch_pokemon,uint32_t r
 /*-------------------------------------------------------------------------- GET-POKEMON ----------------------------------------------------------------------------- */
 
 void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
-
+	log_info(logger,"----------------------------------------------------------------");
+	log_error(logger,"THREAD GET_POKEMON");
+	log_info(logger,"Llego un GET_POKEMON de %s",get_pokemon->pokemon);
 	 char* dir_path = obtener_path_dir_pokemon(get_pokemon->pokemon);
 	 char* meta_path = obtener_path_metafile(get_pokemon->pokemon);
 	 bool estaba = 0;
@@ -1490,7 +1507,7 @@ char* leer_linea(FILE* archivo){
 	fread(&a,1,1,archivo);
 
 	while (a!= '\n'){
-		concatenar_s(linea,a);
+		appendy(linea,a);
 		fread(&a,1,1,archivo);
 		i++;
 	}
@@ -1499,7 +1516,7 @@ char* leer_linea(FILE* archivo){
 	return linea;
 }
 
-void concatenar_s(char* s, char c) {
+void appendy(char* s, char c) {
         int len = strlen(s);
         s[len] = c;
         s[len+1] = '\0';

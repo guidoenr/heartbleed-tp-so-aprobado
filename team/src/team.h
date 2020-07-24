@@ -153,7 +153,7 @@ void crear_hilo_planificar_entrenadores();
 void terminar_hilos();
 void terminar_hilos_entrenadores();
 void iniciar_conexion();
-void* conexion_con_game_boy();
+void* iniciar_server_gamecard();
 void levantar_server_broker();
 void* conexion_con_broker();
 void* hilo_mensaje_get(void*);
