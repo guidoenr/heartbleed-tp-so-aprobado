@@ -159,15 +159,15 @@ uint32_t size_new_pokemon(t_new_pokemon* pokemon) {
 }
 
 uint32_t size_appeared_pokemon(t_appeared_pokemon* pokemon) {
-	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
+	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon);
 }
 
 uint32_t size_get_pokemon(t_get_pokemon* pokemon) {
-	return sizeof(uint32_t) + strlen(pokemon->pokemon) + 1;
+	return sizeof(uint32_t) + strlen(pokemon->pokemon);
 }
 
 uint32_t size_localized_pokemon(t_localized_pokemon* pokemon) {
-	return sizeof(uint32_t)*3 + strlen(pokemon->pokemon) + 1 + (pokemon->posiciones->elements_count)*4;
+	return sizeof(uint32_t)*3 + strlen(pokemon->pokemon) + (pokemon->posiciones->elements_count)*4;
 }
 
 uint32_t size_ack(t_ack* confirmacion) {
@@ -179,7 +179,7 @@ uint32_t size_suscripcion(t_suscripcion* suscripcion) {
 }
 
 uint32_t size_catch_pokemon(t_catch_pokemon* pokemon) {
-	return sizeof(uint32_t) * 3 + strlen(pokemon->pokemon) + 1;
+	return sizeof(uint32_t) * 3 + strlen(pokemon->pokemon);
 }
 
 uint32_t size_caught_pokemon(t_caught_pokemon* pokemon) {
@@ -409,7 +409,7 @@ void* serializar_get_pokemon(void* mensaje_get, uint32_t size_mensaje,
 
 	log_info(logger, "...Codigo de operacion a enviar: %d", GET_POKEMON);
 	log_info(logger, "...Tamaño a enviar: %d", malloc_size);
-	liberar_mensaje_get(mensaje_a_enviar);
+	//liberar_mensaje_get(mensaje_a_enviar);
 	return stream;
 }
 
@@ -439,7 +439,7 @@ t_get_pokemon* deserealizar_get_pokemon(void* stream, uint32_t size_mensaje) {
 void* serializar_catch_pokemon(void* mensaje_catch, uint32_t size_mensaje,
 		uint32_t* size_serializado) {
 	t_catch_pokemon* mensaje_a_enviar = mensaje_catch;
-	uint32_t tamanio_pokemon = strlen(mensaje_a_enviar->pokemon) + 1;
+	uint32_t tamanio_pokemon = strlen(mensaje_a_enviar->pokemon);
 
 	uint32_t malloc_size = (*size_serializado);
 
@@ -520,7 +520,7 @@ t_catch_pokemon* deserealizar_catch_pokemon(void* stream, uint32_t size_mensaje)
 void* serializar_appeared_pokemon(void* mensaje_appeared, uint32_t size_mensaje,
 		uint32_t* size_serializado) {
 	t_appeared_pokemon* mensaje_a_enviar = mensaje_appeared;
-	uint32_t tamanio_pokemon = strlen(mensaje_a_enviar->pokemon) + 1;
+	uint32_t tamanio_pokemon = strlen(mensaje_a_enviar->pokemon);
 
 	uint32_t malloc_size = (*size_serializado);
 
@@ -613,7 +613,7 @@ t_appeared_pokemon* deserealizar_appeared_pokemon(void* stream,
 void* serializar_new_pokemon(void* mensaje_new, uint32_t size_mensaje,
 		uint32_t* size_serializado) {
 	t_new_pokemon* mensaje_a_enviar = mensaje_new;
-	uint32_t tamanio_pokemon = strlen(mensaje_a_enviar->pokemon) + 1;
+	uint32_t tamanio_pokemon = strlen(mensaje_a_enviar->pokemon);
 
 	uint32_t malloc_size = (*size_serializado);
 
@@ -765,13 +765,13 @@ t_caught_pokemon* deserealizar_caught_pokemon(void* stream,
 void* serializar_localized_pokemon(void* mensaje_localized,uint32_t size_mensaje, uint32_t* size_serializado) {
 
 	t_localized_pokemon* mensaje_a_enviar = mensaje_localized;
-	uint32_t tamanio_pokemon = strlen(mensaje_a_enviar->pokemon) + 1;
+	uint32_t tamanio_pokemon = strlen(mensaje_a_enviar->pokemon);
 
 	uint32_t malloc_size = (*size_serializado);
 
 	void* stream;
 
-	stream = malloc(malloc_size + sizeof(uint32_t) + (mensaje_a_enviar->tamanio_lista)*4 );
+	stream = malloc(malloc_size);
 	uint32_t offset = 0;
 
 	op_code codigo_operacion = LOCALIZED_POKEMON;
@@ -896,7 +896,7 @@ void* serializar_ack(void* mensaje_ack, uint32_t size_mensaje,
 	//log_info(logger, "...Codigo de operacion a enviar: %d", ACK);
 	//log_info(logger, "...Tamaño a enviar: %d", malloc_size);
 
-	liberar_ack(mensaje_a_enviar);
+	//liberar_ack(mensaje_a_enviar);
 	return stream;
 }
 
@@ -927,7 +927,7 @@ t_ack* deserealizar_ack(void* stream, uint32_t size_mensaje) {
 void* serializar_suscripcion(void* mensaje_suscripcion, uint32_t size_mensaje,uint32_t* size_serializado) {
 	t_suscripcion* mensaje_a_enviar = mensaje_suscripcion;
 
-	uint32_t malloc_size = (*size_serializado) + sizeof(uint32_t) * 2;
+	uint32_t malloc_size = (*size_serializado);
 
 	void* stream = malloc(malloc_size);
 	uint32_t offset = 0;
@@ -960,7 +960,7 @@ void* serializar_suscripcion(void* mensaje_suscripcion, uint32_t size_mensaje,ui
 	//log_info(logger, "...Codigo de operacion a enviar: %d", SUBSCRIPTION);
 	//log_info(logger, "...Tamaño a enviar: %d", malloc_size);
 
-	liberar_suscripcion(mensaje_a_enviar);
+	//liberar_suscripcion(mensaje_a_enviar);
 	return stream;
 }
 
