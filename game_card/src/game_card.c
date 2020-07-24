@@ -685,18 +685,22 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,uint32_t socket){
 
 	unlock_file(path_metafile);
 
-	log_info(logger,"Creando socket para mandar el APPEARED");
-
-	uint32_t socket_piola = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
 	t_appeared_pokemon* appeared = armar_appeared(new_pokemon);
+	log_info(logger,"APPEARED Armado");
 
-	log_warning(logger,"t_appeared_pokemon armado, envio el mensaje");
+	uint32_t socket_appeared = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
 
-	enviar_mensaje(APPEARED_POKEMON,appeared,socket_piola, size_mensaje(appeared, APPEARED_POKEMON));
-	log_info(logger,"Mensaje enviado");
-	uint32_t id = recibir_id_de_mensaje_enviado(socket_piola);
+	if (socket_appeared == -1){
+		log_error(logger,"El broker esta muerto");
+		log_error(logger,"socket: %d",socket_appeared);
+	}else {
+		enviar_mensaje(APPEARED_POKEMON,appeared,socket_appeared, size_mensaje(appeared, APPEARED_POKEMON));
+		log_info(logger,"Mensaje enviado");
+		uint32_t id = recibir_id_de_mensaje_enviado(socket_appeared);
+		log_warning(logger,"Recibo ID del mensaje enviado: %d",id);
+	}
 
-	log_warning(logger,"Recibo ID del mensaje enviado: %d",id);
+
 	free(path_metafile);
 	free(dir_path_newpoke);
 
@@ -1209,18 +1213,20 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 		unlock_file(meta_path);
 	}
 
-	log_info(logger,"Armo el caught_pokemon");
+	t_caught_pokemon* caught = armar_caught_pokemon(catch_pokemon, resultado);
+	log_info(logger,"CAUGHT Armado");
 
-	t_caught_pokemon* caught_pokemon = armar_caught_pokemon(catch_pokemon, resultado);
-	log_info(logger,"Creando socket para mandar el CAUGHT");
-	uint32_t socket_piola = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
-	log_warning(logger,"Caught armado, envio el mensaje");
+	uint32_t socket_caught = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
 
-	enviar_mensaje(CAUGHT_POKEMON,caught_pokemon,socket_piola, size_mensaje(caught_pokemon, CAUGHT_POKEMON));
-
-	uint32_t id = recibir_id_de_mensaje_enviado(socket_piola);
-
-	log_warning(logger,"Recibo ID del mensaje enviado :%d",id);
+	if (socket_caught == -1){
+		log_error(logger,"El broker esta muerto");
+		log_error(logger,"socket: %d",socket_caught);
+	}else {
+		enviar_mensaje(CAUGHT_POKEMON,caught,socket_caught, size_mensaje(caught, CAUGHT_POKEMON));
+		log_info(logger,"Mensaje enviado");
+		uint32_t id = recibir_id_de_mensaje_enviado(socket_caught);
+		log_warning(logger,"Recibo ID del mensaje enviado: %d",id);
+	}
 
 	log_error(logger,"THREAD FINISHED");
 }
@@ -1393,49 +1399,49 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 	log_info(logger,"----------------------------------------------------------------");
 	log_error(logger,"THREAD GET_POKEMON");
 	log_info(logger,"Llego un GET_POKEMON de %s",get_pokemon->pokemon);
-	 char* dir_path = obtener_path_dir_pokemon(get_pokemon->pokemon);
-	 char* meta_path = obtener_path_metafile(get_pokemon->pokemon);
-	 bool estaba = 0;
-	 t_localized_pokemon* localized_pokemon = malloc(sizeof(t_localized_pokemon));
 
+	char* dir_path = obtener_path_dir_pokemon(get_pokemon->pokemon);
+	char* meta_path = obtener_path_metafile(get_pokemon->pokemon);
+	char* temporary_file;
 
-	 char* temporary_file;
-	 uint32_t socket_piola = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
-	 if (socket_piola != -1 ){
+	bool estaba = 0;
 
-		 localized_pokemon->id_mensaje = 0;
-		 localized_pokemon->id_mensaje_correlativo = get_pokemon->id_mensaje;
-		 localized_pokemon->pokemon = malloc(strlen(get_pokemon -> pokemon));
-		 localized_pokemon->pokemon = get_pokemon->pokemon;
+	t_localized_pokemon* localized_pokemon = malloc(sizeof(t_localized_pokemon));
+
+	uint32_t socket_localized = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
+
+	if (socket_localized != -1 ){
+		localized_pokemon->id_mensaje = 0;
+	    localized_pokemon->id_mensaje_correlativo = get_pokemon->id_mensaje;
+		localized_pokemon->pokemon = malloc(strlen(get_pokemon -> pokemon));
+		localized_pokemon->pokemon = get_pokemon->pokemon;
 
 		 if (el_pokemon_esta_creado(dir_path)){
 
-		 		 verificar_apertura_pokemon(meta_path, get_pokemon->pokemon);
+		 	verificar_apertura_pokemon(meta_path, get_pokemon->pokemon);
 
-		 		 temporary_file = generar_archivo_temporal(meta_path,get_pokemon->pokemon);
+		 	temporary_file = generar_archivo_temporal(meta_path,get_pokemon->pokemon);
 
-		 		 localized_pokemon->posiciones = obtener_posiciones_y_cantidades(meta_path,temporary_file);
-		 		 localized_pokemon->tamanio_lista = localized_pokemon->posiciones->elements_count;
+		 	localized_pokemon->posiciones = obtener_posiciones_y_cantidades(meta_path,temporary_file);
+		 	localized_pokemon->tamanio_lista = localized_pokemon->posiciones->elements_count;
 
-		 		 estaba=1;
-
+		 	estaba=1;
 		 	 }else{
-
 		 		 log_info(logger,"El pokemon %s no existe en el filesystem, te mando la lista vacia",get_pokemon->pokemon);
 		 		 localized_pokemon->tamanio_lista = 0;
 		 		 localized_pokemon->posiciones = list_create();
-
 		 	 }
+		log_info(logger,"LOCALIZED Armado");
 
-		//localized_pokemon->pokemon = malloc(strlen(get_pokemon->pokemon));
+		enviar_mensaje(LOCALIZED_POKEMON,localized_pokemon,socket_localized, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
+		uint32_t id = recibir_id_de_mensaje_enviado(socket_localized);
 
-		enviar_mensaje(LOCALIZED_POKEMON,localized_pokemon,socket_piola, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
-		uint32_t id = recibir_id_de_mensaje_enviado(socket_piola);
+		log_warning(logger,"Mensaje enviado, ID del mensaje enviado: %d",id);
+	 }else {
+		 log_error(logger,"El broker esta muerto");
+		 log_error(logger,"Socket: %d",socket_localized);
 
 	 }
-
-
-
 
 	 log_info(logger,"Esperando el tiempo de reintento de operacion");
 	 sleep(config_gc->tiempo_retardo_operacion);
