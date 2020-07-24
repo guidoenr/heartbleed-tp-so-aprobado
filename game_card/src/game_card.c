@@ -1388,6 +1388,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 
 		 localized_pokemon->id_mensaje = 0;
 		 localized_pokemon->id_mensaje_correlativo = get_pokemon->id_mensaje;
+		 localized_pokemon->pokemon = malloc(strlen(get_pokemon -> pokemon));
 		 localized_pokemon->pokemon = get_pokemon->pokemon;
 
 		 if (el_pokemon_esta_creado(dir_path)){

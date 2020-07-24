@@ -1372,6 +1372,7 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 
 	t_catch_pokemon* mensaje = malloc(sizeof(t_catch_pokemon));
 
+	mensaje -> pokemon = malloc(strlen(pedido -> pokemon -> nombre))
 	mensaje -> pokemon = pedido -> pokemon -> nombre;
 	mensaje -> posicion[0] = pedido -> pokemon -> posicion[0];
 	mensaje -> posicion[1] = pedido -> pokemon -> posicion[1];
@@ -1402,7 +1403,7 @@ void enviar_mensaje_get(char* pokemon) {
 	t_get_pokemon* mensaje = malloc(sizeof(t_get_pokemon));
 
 	mensaje -> id_mensaje = 0;
-	mensaje -> pokemon = malloc(strlen(pokemon)+1);
+	mensaje -> pokemon = malloc(strlen(pokemon));
 	mensaje -> pokemon = pokemon;
 
 	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
