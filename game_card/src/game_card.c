@@ -80,10 +80,10 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 	uint32_t size;
 	op_code* codigo_op = malloc(sizeof(op_code));
 
-	sem_wait(&muteadito);
+
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
 	//cod_op = (*codigo_op);
-
+	sem_wait(&muteadito);
 	void* msg = deserealizar_paquete(stream, cod_op, size);
 
 	t_new_pokemon* newpoke;
@@ -1415,7 +1415,6 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 	if (socket_localized != -1 ){
 		localized_pokemon->id_mensaje = 0;
 	    localized_pokemon->id_mensaje_correlativo = get_pokemon->id_mensaje;
-		localized_pokemon->pokemon = malloc(strlen(get_pokemon -> pokemon));
 		localized_pokemon->pokemon = get_pokemon->pokemon;
 
 		 if (el_pokemon_esta_creado(dir_path)){
