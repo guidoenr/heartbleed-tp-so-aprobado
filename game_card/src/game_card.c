@@ -1195,18 +1195,18 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 			}
 
 			remove(temporaryfile);
+			verificar_espacio_ocupado_por_pokemon(catch_pokemon,meta_path);
 
 	}else{
 		log_error(logger,"No se encuentra el pokemon %s creado",catch_pokemon->pokemon);
 		creado=0;
 	}
 
-	verificar_espacio_ocupado_por_pokemon(catch_pokemon,meta_path);
 
 	log_info(logger,"Esperando el tiempo de retardo de operacion");
 	sleep(config_gc->tiempo_retardo_operacion);
 
-	if (creado != 1){
+	if (creado ==0 ){
 		log_warning(logger,"No se accedio al pokemon para lectura ni escritura");
 	}else {
 		log_warning(logger,"UNLOCK AL POKEMON");
