@@ -26,7 +26,7 @@ int main(void) {
 
 	//iniciar_conexion();
 	//iniciar_hilo_broker();
-	unlock_file(obtener_path_metafile("Guido"));
+	//unlock_file(obtener_path_metafile("Guido"));
 	iniciar_conexion();
 	iniciar_hilo_broker();
 

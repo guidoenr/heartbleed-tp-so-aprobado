@@ -771,7 +771,7 @@ void* serializar_localized_pokemon(void* mensaje_localized,uint32_t size_mensaje
 	log_warning(logger,"Primero elemento: %d",*(int*) mensaje_a_enviar->posiciones->head->data);
 	void* stream;
 
-	if (mensaje_a_enviar->tamanio_lista > 0){
+
 		stream = malloc(malloc_size + sizeof(uint32_t) + (mensaje_a_enviar->tamanio_lista)*4 );
 		uint32_t offset = 0;
 
@@ -796,13 +796,15 @@ void* serializar_localized_pokemon(void* mensaje_localized,uint32_t size_mensaje
 		log_info(logger, "Serialiazacion pokemon %s:", (char*) stream + offset);
 		offset += tamanio_pokemon;
 
+
 		memcpy(stream + offset, &(mensaje_a_enviar->tamanio_lista),sizeof(uint32_t));
 		log_info(logger, "Serializacion tamanio de la lista: %d",*(int*) (stream + offset));
 		offset += sizeof(uint32_t);
 
+
 		void serializar_numero(void* numero) {
 			uint32_t* numerito = (uint32_t*) numero;
-			log_info(logger,"HOLA SOY U NNUMERITO Y ME ANOTO UN AMIGO %d",*numerito);
+			//log_info(logger,"HOLA SOY U NNUMERITO Y ME ANOTO UN AMIGO %d",*numerito);
 			memcpy(stream + offset,numerito,4);
 			offset += 4;
 		}
@@ -813,10 +815,7 @@ void* serializar_localized_pokemon(void* mensaje_localized,uint32_t size_mensaje
 		//log_info(logger, "...Tamaño a enviar: %d", malloc_size);
 		//liberar_mensaje_localized(mensaje_a_enviar);
 
-	}else {
 
-		stream = malloc(malloc_size + sizeof(uint32_t) + 4 );
-	}
 	return stream;
 
 
@@ -854,12 +853,16 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_
 	uint32_t posicion[mensaje_localized_pokemon->tamanio_lista];
 	uint32_t i = 0;
 
-	for (i = 0; i < mensaje_localized_pokemon->tamanio_lista; i++) {
-		memcpy(&(posicion[i]), stream + offset, sizeof(uint32_t));
+	if(mensaje_localized_pokemon->tamanio_lista > 0){
+		for (i = 0; i < mensaje_localized_pokemon->tamanio_lista; i++) {
+			memcpy(&(posicion[i]), stream + offset, sizeof(uint32_t));
 
-		offset += sizeof(uint32_t);
-		list_add(mensaje_localized_pokemon->posiciones, &posicion[i]);
-		log_warning(logger,"%d",posicion[i]);
+			offset += sizeof(uint32_t);
+			list_add(mensaje_localized_pokemon->posiciones, &posicion[i]);
+			log_warning(logger,"%d",posicion[i]);
+		}
+	} else{
+		log_info(logger,"no me vino ninguna posicion");
 	}
 
 	return mensaje_localized_pokemon;
