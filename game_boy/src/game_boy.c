@@ -5,8 +5,10 @@ int main(int argc, char * argv[]) {
   uint32_t id_mensaje = 0;
   iniciar_programa(argc);
   uint32_t socket = seleccionar_proceso(argv);
-  recibir_id_de_mensaje_enviado(socket, id_mensaje);
-
+  if(string_equals_ignore_case(argv[1],"BROKER"))
+  {
+	  recibir_id_de_mensaje_enviado(socket, id_mensaje);
+  }
   terminar_programa(socket, logger, config_game_boy);
 
 }
@@ -19,8 +21,6 @@ void iniciar_programa(uint32_t argc) {
     log_error(logger, "\n No se han ingresado parametros. \n");
     exit(-1);
   }
-
-  log_info(logger, "El size del comando es: %i", argc); // delete
 }
 ///char*  parametros[] = BROKER GET_POKEMON PIKACHU 2 5 // vector de punteros de char === vector de strings
 uint32_t seleccionar_proceso(char * parametros[]) {
@@ -305,20 +305,21 @@ t_new_pokemon* armar_mensaje_new_pokemon(char * parametros[]) {
   uint32_t tamanio = strlen(parametros[3]);
   t_new_pokemon* a_enviar = malloc(sizeof(t_new_pokemon));
   a_enviar -> pokemon = malloc(tamanio);
-
+  log_info(logger,"en armar tengo el pokemon por param: %s", parametros[3] );
   a_enviar -> pokemon = parametros[3];
+  log_info(logger, "en armar en la variable tengo : %s", a_enviar->pokemon);
+
   a_enviar -> posicion[0] = atof(parametros[4]);
   a_enviar -> posicion[1] = atof(parametros[5]);
   a_enviar -> cantidad = atof(parametros[6]);
   if(parametros[7] != NULL){
-	  a_enviar -> id_mensaje = atof(parametros[7]);
+      a_enviar -> id_mensaje = atof(parametros[7]);
   } else {
-	  a_enviar -> id_mensaje = 0; /// A futuro
+      a_enviar -> id_mensaje = 0; /// A futuro
   }
 
-  return a_enviar;
+ return a_enviar;
 }
-
 
 void leer_config() {
 
@@ -327,7 +328,7 @@ void leer_config() {
   config = config_create("game_boy.config"); ///Si queres debuguear agrega el path seria Debug/game_boy.config
 
   if (config == NULL) {
-    log_error(logger, "no se pudo encontrar el path del config");
+    printf("no se pudo encontrar el path del config");
     exit(-2);
   }
   config_game_boy -> ip_broker = config_get_string_value(config, "IP_BROKER");

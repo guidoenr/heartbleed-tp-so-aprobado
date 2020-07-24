@@ -79,6 +79,8 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 
 	uint32_t size;
 	op_code* codigo_op = malloc(sizeof(op_code));
+
+	sem_wait(&muteadito);
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
 	//cod_op = (*codigo_op);
 
@@ -87,7 +89,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 	t_new_pokemon* newpoke;
 	t_get_pokemon* getpoke;
 	t_catch_pokemon* catchpoke;
-	sem_wait(&muteadito);
+
 	switch (cod_op) {
 		case NEW_POKEMON:
 			newpoke = msg;
@@ -221,7 +223,7 @@ void suscribirse_a(op_code cola) {
 	}else {
 
 		suscripcion -> cola_a_suscribir= cola;
-		suscripcion -> id_proceso = 1;
+		suscripcion -> id_proceso = config_gc->id_proceso;
 		log_warning(logger,"Socket antes %d",socket);
 		suscripcion -> socket = socket;
 		log_warning(logger,"Socket dsp %d",suscripcion->socket);

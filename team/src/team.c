@@ -233,18 +233,6 @@ void eliminar_los_que_ya_tengo() {
 
 }
 
-void conectarse_a_br(){
-
-	suscribirse_a(LOCALIZED_POKEMON);
-
-	suscribirse_a(APPEARED_POKEMON);
-
-	suscribirse_a(CAUGHT_POKEMON);
-
-
-}
-
-
 void suscribirse_a(op_code cola) {
 
 	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
@@ -272,16 +260,6 @@ void suscribirse_a(op_code cola) {
 	}
 
 }
-
-void conexion_inicial_broker() {
-
-	uint32_t err = pthread_create(&hilo_broker, NULL, conectarse_a_br, NULL);
-		if(err != 0) {
-			log_error(logger, "El hilo no pudo ser creado!!");
-		}
-	pthread_detach(hilo_broker);
-}
-
 
 void iniciar_hilo_appeared(){
 
@@ -1372,7 +1350,7 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 
 	t_catch_pokemon* mensaje = malloc(sizeof(t_catch_pokemon));
 
-	mensaje -> pokemon = malloc(strlen(pedido -> pokemon -> nombre))
+	mensaje -> pokemon = malloc(strlen(pedido -> pokemon -> nombre));
 	mensaje -> pokemon = pedido -> pokemon -> nombre;
 	mensaje -> posicion[0] = pedido -> pokemon -> posicion[0];
 	mensaje -> posicion[1] = pedido -> pokemon -> posicion[1];
@@ -1464,9 +1442,9 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	uint32_t size = 0; // check if 0, si no inicializo se queja valgrind
 	op_code* codigo_op = malloc(sizeof(op_code));
 
-
-	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
 	sem_wait(&mx_paquete);
+	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
+
 
 	//cod_op = (*codigo_op);
 
