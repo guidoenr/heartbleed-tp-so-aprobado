@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-//
+
 
 int main(void) {
 
@@ -18,15 +18,21 @@ int main(void) {
 
 	int socket_br;
 
-	iniciar_tall_grass();
-
 	sem_init(&mx_bitmap,0,1);
 	sem_init(&semaforo,0,1);
+	sem_init(&terminarprograma,0,0);
+	sem_init(&muteadito,0,1);
+	iniciar_tall_grass();
 
-	conectarse_a_br(socket_br);
-	iniciar_servidor_gamecard(config_gc->ip_gameCard,config_gc->puerto_gameCard);
+	//iniciar_conexion();
+	//iniciar_hilo_broker();
+	unlock_file(obtener_path_metafile("Guido"));
+	iniciar_conexion();
+	iniciar_hilo_broker();
+
 
 	//pruebas_get_pokemon(socket_br);
+	sem_wait(&terminarprograma);
 	terminar_programa(socket_br, config_gc);
 
 }
@@ -63,9 +69,9 @@ void pruebas_get_pokemon(int socket){
 
 	t_get_pokemon* get_poke = malloc(sizeof(t_get_pokemon));
 	get_poke->id_mensaje = 1;
-	get_poke->pokemon = "meyern";
+	get_poke->pokemon = "Kuni";
 
-	unlock_file(obtener_path_metafile("meyern"));
+	unlock_file(obtener_path_metafile("Kuni"));
 	funcion_hilo_get_pokemon(get_poke, socket);
 
 
@@ -81,21 +87,25 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 	log_info(logger,"Codigo de operacion %d", cod_op);
 	void* msg = deserealizar_paquete(stream, *codigo_op, size);
 
+	t_new_pokemon* newpoke;
+	t_get_pokemon* getpoke;
+	t_catch_pokemon* catchpoke;
+	sem_wait(&muteadito);
 	switch (cod_op) {
 		case NEW_POKEMON:
-			informar_al_broker(msg, NEW_POKEMON);
+			newpoke = msg;
+			informar_al_broker(newpoke->id_mensaje,NEW_POKEMON);
 			funcion_hilo_new_pokemon(msg,cliente_fd);
-
 			break;
 		case GET_POKEMON:
-			informar_al_broker(msg, GET_POKEMON);
+			getpoke = msg;
+			informar_al_broker(getpoke->id_mensaje,GET_POKEMON);
 			funcion_hilo_get_pokemon(msg,cliente_fd);
-
 			break;
 		case CATCH_POKEMON:
-			informar_al_broker(msg, CATCH_POKEMON);
+			catchpoke = msg;
+			informar_al_broker(catchpoke->id_mensaje,CATCH_POKEMON);
 			funcion_hilo_catch_pokemon(msg,cliente_fd);
-
 			break;
 		case 0:
 			log_info(logger,"No se encontro el tipo de mensaje");
@@ -103,11 +113,37 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 		case -1:
 			pthread_exit(NULL);
 	}
+	sem_post(&muteadito);
+}
+void* conexion_con_game_boy(){
+
+	iniciar_servidor(config_gc->ip_gameCard,config_gc->puerto_gameCard); // puerto robado de la config de gameboy
+
+	return NULL;
 }
 
-void iniciar_servidor_gamecard(char* ip, char* puerto){
-	log_info(logger,"Iniciando servidor game_card");
-	iniciar_servidor(ip, puerto);
+
+void iniciar_conexion() {
+
+	uint32_t err = pthread_create(&hilo_servidor, NULL, conexion_con_game_boy, NULL);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+	pthread_detach(hilo_servidor);
+	log_info(logger,"LLEGUE HASTA ACA");
+}
+
+
+
+void iniciar_hilo_broker(){
+
+	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
+	uint32_t err = pthread_create(&hilo_broker, NULL, conectarse_a_br, NULL);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+	pthread_detach(hilo_broker);
+
 }
 
 void informar_al_broker(uint32_t id_mensaje, op_code codigo){
@@ -118,7 +154,7 @@ void informar_al_broker(uint32_t id_mensaje, op_code codigo){
 	ack -> tipo_mensaje = codigo;
 	ack -> id_proceso = config_gc -> id_proceso;
 
-	uint32_t size_mensajee = size_mensaje(ack,ACK);
+	uint32_t size_mensajee = size_ack(ack);
 
 	uint32_t socket = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
 
@@ -126,23 +162,15 @@ void informar_al_broker(uint32_t id_mensaje, op_code codigo){
 		enviar_mensaje(ACK, ack, socket, size_mensajee);
 		close(socket);
 	}
-
 }
 
-//void conexion_inicial_broker() {
-//
-//	uint32_t err = pthread_create(&hilo_game_boy, NULL, suscribirme_a_colas, NULL);
-//		if(err != 0) {
-//			log_error(logger, "El hilo no pudo ser creado!!");
-//		}
+
+//void* conexion_con_game_boy() {
+//	log_info(logger,"Iniciando conexion con gameboy");
+//	iniciar_servidor("127.0.0.2", "5662");
+//	log_info(logger,"Conexion con gameboy establecida exitosamente");
+//	return NULL;
 //}
-
-void* conexion_con_game_boy() {
-	log_info(logger,"Iniciando conexion con gameboy");
-	iniciar_servidor("127.0.0.2", "5662");
-	log_info(logger,"Conexion con gameboy establecida exitosamente");
-	return NULL;
-}
 
 void iniciar_conexion_game_boy() {
 	uint32_t err = pthread_create(&hilo_game_boy, NULL, conexion_con_game_boy, NULL);
@@ -153,14 +181,14 @@ void iniciar_conexion_game_boy() {
 
 
 
+
 void conectarse_a_br(){
 
 	suscribirse_a(NEW_POKEMON);
-	sleep(2);
+
 	suscribirse_a(CATCH_POKEMON);
-	sleep(2);
+
 	suscribirse_a(GET_POKEMON);
-	sleep(2);
 
 }
 
@@ -178,7 +206,7 @@ void suscribirse_a(op_code cola) {
 	}else {
 
 		suscripcion -> cola_a_suscribir= cola;
-		suscripcion -> id_proceso= 1; //ESTE VALOR SE SACA DE CONFIG
+		suscripcion -> id_proceso = 1; //ESTE VALOR SE SACA DE CONFIG
 		suscripcion -> socket = socket;
 		suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
 
@@ -463,7 +491,7 @@ t_file_metadata generar_file_metadata(t_new_pokemon* newPoke){
 
 	t_file_metadata metadata;
 
-	metadata.directory = "N"; //TODO, esto solamente para que entendamos la teoria? nunca habla de entradas de directorio ni nada.
+	metadata.directory = "N";
 	metadata.open = "Y";
 	metadata.blocks = asignar_block_inicial();
 	metadata.size = string_itoa(calcular_size_inicial(newPoke));
@@ -1099,8 +1127,8 @@ char* get_value_from_cantidad(uint32_t cantidad){
 t_appeared_pokemon* armar_appeared(t_new_pokemon* new_pokemon){
 
 	t_appeared_pokemon* appeared = malloc(sizeof(t_appeared_pokemon));
-	appeared->id_mensaje = new_pokemon->id_mensaje;
-	appeared->id_mensaje_correlativo = 0;
+	appeared->id_mensaje = 0;
+	appeared->id_mensaje_correlativo = new_pokemon->id_mensaje;
 	appeared->pokemon = malloc(strlen(new_pokemon->pokemon));
 	appeared->pokemon = new_pokemon->pokemon;
 	appeared->posicion[0] = new_pokemon->posicion[0];
@@ -1318,8 +1346,8 @@ t_caught_pokemon* armar_caught_pokemon(t_catch_pokemon* catch_pokemon,uint32_t r
 
 	t_caught_pokemon* caught_pokemon = malloc(sizeof(t_caught_pokemon));
 	caught_pokemon->resultado = resultado;
-	caught_pokemon->id_mensaje = catch_pokemon->id_mensaje;
-	caught_pokemon->id_mensaje_correlativo = 0;
+	caught_pokemon->id_mensaje_correlativo = catch_pokemon->id_mensaje;
+	caught_pokemon->id_mensaje = 0;
 
 	return caught_pokemon;
 }
@@ -1334,33 +1362,43 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 	 bool estaba = 0;
 	 t_localized_pokemon* localized_pokemon = malloc(sizeof(t_localized_pokemon));
 
-	 if (el_pokemon_esta_creado(dir_path)){
 
-		 verificar_apertura_pokemon(meta_path, get_pokemon->pokemon);
+	 char* temporary_file;
+	 uint32_t socket_piola = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
+	 if (socket_piola != -1 ){
 
-		 char* temporary_file = generar_archivo_temporal(meta_path,get_pokemon->pokemon);
+		 localized_pokemon->id_mensaje = 0;
+		 localized_pokemon->id_mensaje_correlativo = get_pokemon->id_mensaje;
+		 localized_pokemon->pokemon = get_pokemon->pokemon;
 
-		 localized_pokemon->posiciones = obtener_posiciones_y_cantidades(meta_path,temporary_file);
-		 localized_pokemon->tamanio_lista = localized_pokemon->posiciones->elements_count;
-//		 char* lista_a_mandar = list_to_string_array(localized_pokemon->posiciones);
-//		 log_warning(logger,"Localized de %s : %s",get_pokemon->pokemon,lista_a_mandar);
-//		 free(lista_a_mandar);
-		 remove(temporary_file);
-		 estaba=1;
+		 if (el_pokemon_esta_creado(dir_path)){
 
-	 }else{
+		 		 verificar_apertura_pokemon(meta_path, get_pokemon->pokemon);
 
-		 log_info(logger,"El pokemon %s no existe en el filesystem, te mando la lista vacia",get_pokemon->pokemon);
-		 localized_pokemon->tamanio_lista = 0;
-		 localized_pokemon->posiciones = list_create();
+		 		 temporary_file = generar_archivo_temporal(meta_path,get_pokemon->pokemon);
 
-		 log_warning(logger,"Localized de %s : %d",get_pokemon->pokemon,localized_pokemon->posiciones->head->data);
+		 		 localized_pokemon->posiciones = obtener_posiciones_y_cantidades(meta_path,temporary_file);
+		 		 localized_pokemon->tamanio_lista = localized_pokemon->posiciones->elements_count;
+
+		 		 estaba=1;
+
+		 	 }else{
+
+		 		 log_info(logger,"El pokemon %s no existe en el filesystem, te mando la lista vacia",get_pokemon->pokemon);
+		 		 localized_pokemon->tamanio_lista = 0;
+		 		 localized_pokemon->posiciones = list_create();
+
+		 	 }
+
+		//localized_pokemon->pokemon = malloc(strlen(get_pokemon->pokemon));
+
+		enviar_mensaje(LOCALIZED_POKEMON,localized_pokemon,socket_piola, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
+		uint32_t id = recibir_id_de_mensaje_enviado(socket_piola);
 
 	 }
 
-	 localized_pokemon->id_mensaje = get_pokemon->id_mensaje;
-	 localized_pokemon->pokemon = malloc(strlen(get_pokemon->pokemon) + 1);
-	 localized_pokemon->pokemon = get_pokemon->pokemon;
+
+
 
 	 log_info(logger,"Esperando el tiempo de reintento de operacion");
 	 sleep(config_gc->tiempo_reintento_operacion);
@@ -1368,13 +1406,13 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 	 if (estaba==1){
 		 unlock_file(meta_path);
 		 log_info("THREAD finished, unlockeo el pokemon %s",localized_pokemon->pokemon);
+		 remove(temporary_file);
 	 } else {
 		 log_info(logger,"THREAD finished, el pokemon no existia en el filesystem");
 	 }
 
-	 uint32_t socket_piola = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
-	 enviar_mensaje(LOCALIZED_POKEMON,localized_pokemon,socket_piola, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
-	 uint32_t id = recibir_id_de_mensaje_enviado(socket_piola);
+
+
 
 	 free(dir_path);
 	 free(meta_path);
@@ -1400,12 +1438,14 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 
 		char* linea = leer_linea(temporary);
 		char* value = get_value_from_linea(linea);
-
+		log_info(logger,"%s",value);
 		for (int i=0 ; i<atoi(value); i++){
 			char* x = get_x_from_linea(linea);
 			char* y = get_y_from_linea(linea);
-			list_add(lista_de_todo,x);
-			list_add(lista_de_todo,y);
+			uint32_t xx =  atoi(x);
+			uint32_t yy = atoi(y);
+			list_add(lista_de_todo,&xx);
+			list_add(lista_de_todo,&yy);
 
 		}
 		//free(linea);
@@ -1417,7 +1457,6 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 	resultadodecuuenta = (lista_de_todo->elements_count )/2;
 	list_add_in_index(lista_de_todo,0,resultadodecuuenta);*/
 
-
 	fclose(temporary);
 }
 
@@ -1426,13 +1465,13 @@ char* leer_linea(FILE* archivo){
 	int i = 0;
 
 	char* linea = string_new();
-	char* a =string_new();
+	char a;
 
-	fread(a,1,1,archivo);
+	fread(&a,1,1,archivo);
 
-	while (*a!= '\n'){
-		linea=concatenar(linea,a);
-		fread(a,1,1,archivo);
+	while (a!= '\n'){
+		concatenar_s(linea,a);
+		fread(&a,1,1,archivo);
 		i++;
 	}
 	//free(a);
@@ -1440,6 +1479,11 @@ char* leer_linea(FILE* archivo){
 	return linea;
 }
 
+void concatenar_s(char* s, char c) {
+        int len = strlen(s);
+        s[len] = c;
+        s[len+1] = '\0';
+}
 
 char* get_value_from_linea(char* linea){
 	char** lista = string_split(linea,"=");

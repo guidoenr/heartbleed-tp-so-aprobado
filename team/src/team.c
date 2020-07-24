@@ -232,11 +232,11 @@ void eliminar_los_que_ya_tengo() {
 void conectarse_a_br(){
 
 	suscribirse_a(LOCALIZED_POKEMON);
-	//sleep(2);
+
 	suscribirse_a(APPEARED_POKEMON);
-	//sleep(2);
+
 	suscribirse_a(CAUGHT_POKEMON);
-	//sleep(2);
+
 	enviar_get_pokemon();
 }
 

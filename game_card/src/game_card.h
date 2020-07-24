@@ -14,7 +14,11 @@
 t_log* logger;
 char* punto_montaje;
 sem_t mx_bitmap;
+sem_t terminarprograma;
+sem_t muteadito;
 pthread_t hilo_game_boy;
+pthread_t hilo_broker;
+pthread_t hilo_servidor;
 
 typedef struct {
     int tiempo_reintento_conexion;
@@ -87,11 +91,27 @@ bool existe_la_key_mal_grabada(char* key,char* temporary_file);
 bool esta_la_posicion_mal_grabada(char* key,char* temporary_file);
 bool existe_la_posicion(char* key,char* temporary_path);
 bool el_pokemon_esta_creado(char* path);
+void iniciar_conexion();
 bool es_directorio(char* path);
+void* conexion_con_game_boy();
 int size_char_doble(char** array);
 int la_posicion_ya_existe(t_new_pokemon* newpoke,char* meta_path, char* key_posicion);
 t_list* chardoble_to_tlist(char** chardoble);
 void remover_posicion(char* a,char* key,char* meta_path);
+void informar_al_broker(uint32_t, op_code);
+void iniciar_hilo_broker();
+void llenar_lista(t_list* lista_de_todo, char* temporary_file);
+void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br);
+void verificar_espacio_ocupado_por_pokemon(t_catch_pokemon* catch_pokemon,char* meta_path);
+void verificar_espacio_en_blocks(char* metapath);
+void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_br);
+void liberar_block_de_la_indextable(char* metapath,char* block_vacio,t_config* metaconfig);
+void liberar_block_del_bitmap(char* numero_block);
+void crear_directorios(char* path);
+void crear_bitmap(char* path);
+void crear_blocks(char* path);
+void create_file_with_size(char* path,int size);
+void destrozar_fs_metadata(t_metadata metadata);
 /* CATCH POKEMON */
 t_caught_pokemon* armar_caught_pokemon(t_catch_pokemon* catch_pokemon,uint32_t resultado);
 /* FS */
