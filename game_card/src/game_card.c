@@ -1426,7 +1426,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 		 		 localized_pokemon->posiciones = list_create();
 
 		 	 }
-		 //
+
 		//localized_pokemon->pokemon = malloc(strlen(get_pokemon->pokemon));
 
 		enviar_mensaje(LOCALIZED_POKEMON,localized_pokemon,socket_piola, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
