@@ -68,6 +68,11 @@ uint32_t deadlocks_totales;
 uint32_t deadlocks_resueltos;
 uint32_t ciclos_cpu_totales;
 uint32_t cambios_de_contexto;
+void iniciar_hilo_caught();
+void iniciar_hilo_localized();
+void iniciar_hilo_appeared();
+
+
 
 // utils
 char* append(const char*, char);
@@ -139,7 +144,10 @@ pthread_t hilo_algoritmo;
 pthread_t hilo_planificar;
 pthread_t hilo_game_boy;
 pthread_t hilo_broker;
+pthread_t hilo_localized;
+pthread_t hilo_appeared;
 pthread_t hilo_get;
+pthread_t hilo_caught;
 void crear_hilo_segun_algoritmo();
 void crear_hilo_planificar_entrenadores();
 void terminar_hilos();

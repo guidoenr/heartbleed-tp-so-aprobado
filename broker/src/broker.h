@@ -87,6 +87,7 @@ t_list* lista_suscriptores_appeared;
 t_list* memoria_cache;
 t_list* memoria_con_particiones;
 sem_t muteadito;
+sem_t envio_mensaje;
 t_config* config;
 t_config_broker* config_broker;
 t_log* logger;
@@ -164,7 +165,7 @@ t_appeared_pokemon* preparar_mensaje_appeared(t_mensaje*);
 
 
 //--------- suscripciones ---------//
-void recibir_suscripcion(t_suscripcion*);
+void recibir_suscripcion(t_suscripcion* mensaje_suscripcion,uint32_t socket);
 void suscribir_a_cola(t_list*, t_suscripcion*, op_code);
 bool es_la_misma_suscripcion(void*);
 void informar_mensajes_previos(t_suscripcion*, op_code);

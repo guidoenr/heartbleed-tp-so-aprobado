@@ -154,51 +154,60 @@ void liberar_listas(){
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	uint32_t size;
 	op_code* codigo_op = malloc(sizeof(op_code));
+	sem_wait(&muteadito);
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
-	cod_op = (*codigo_op);
+	//cod_op = (*codigo_op);
 	//log_info(logger,"Codigo de operacion %d", cod_op);
-	void* mensaje_e_agregar = deserealizar_paquete(stream, *codigo_op, size);
+	void* mensaje_e_agregar = deserealizar_paquete(stream, cod_op, size);
+
 
 	switch (cod_op) {
 		case GET_POKEMON:
-			sem_wait(&muteadito);
+			//sem_wait(&muteadito);
+
 			agregar_mensaje(GET_POKEMON, size, mensaje_e_agregar, cliente_fd);
-			sem_post(&muteadito);
+			//sem_post(&muteadito);
 			break;
 		case CATCH_POKEMON:
-			sem_wait(&muteadito);
+			//sem_wait(&muteadito);
+
 			agregar_mensaje(CATCH_POKEMON, size, mensaje_e_agregar, cliente_fd);
-			sem_post(&muteadito);
+			//sem_post(&muteadito);
 			break;
 		case LOCALIZED_POKEMON:
-			sem_wait(&muteadito);
+//			sem_wait(&muteadito);
+
 			agregar_mensaje(LOCALIZED_POKEMON, size, mensaje_e_agregar, cliente_fd);
-			sem_post(&muteadito);
+//			sem_post(&muteadito);
 			break;
 		case CAUGHT_POKEMON:
-			sem_wait(&muteadito);
+//			sem_wait(&muteadito);
+
 			agregar_mensaje(CAUGHT_POKEMON, size, mensaje_e_agregar, cliente_fd);
-			sem_post(&muteadito);
+//			sem_post(&muteadito);
 			break;
 		case APPEARED_POKEMON:
-			sem_wait(&muteadito);
+//			sem_wait(&muteadito);
+
 			agregar_mensaje(APPEARED_POKEMON, size, mensaje_e_agregar, cliente_fd);
-			sem_post(&muteadito);
+//			sem_post(&muteadito);
 			break;
 		case NEW_POKEMON:
-			sem_wait(&muteadito);
+//			sem_wait(&muteadito);
+
 			agregar_mensaje(NEW_POKEMON, size, mensaje_e_agregar, cliente_fd);
-			sem_post(&muteadito);
+//			sem_post(&muteadito);
 			break;
 		case SUBSCRIPTION:
-			sem_wait(&muteadito);
-			recibir_suscripcion(mensaje_e_agregar);
-			sem_post(&muteadito);
+//			sem_wait(&muteadito);
+
+			recibir_suscripcion(mensaje_e_agregar,cliente_fd);
+//			sem_post(&muteadito);
 			break;
 		case ACK:
-			sem_wait(&muteadito);
+//			sem_wait(&muteadito);
 			actualizar_mensajes_confirmados(mensaje_e_agregar);
-			sem_post(&muteadito);
+//			sem_post(&muteadito);
 			break;
 		case 0:
 			log_error(logger,"...No se encontro el tipo de mensaje en el process request.");
@@ -206,7 +215,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 		case -1:
 			pthread_exit(NULL);
 	}
-
+	sem_post(&muteadito);
 	free(codigo_op);
 	free(stream);
 }
@@ -214,7 +223,6 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t socket_cliente){
 	t_mensaje* mensaje_a_agregar = malloc(sizeof(t_mensaje));
 	uint32_t nuevo_id     = generar_id_univoco();
-
 
 	mensaje_a_agregar -> id_mensaje = nuevo_id;
 
@@ -261,7 +269,7 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
     	mensaje_a_agregar -> tamanio_lista_localized = localized -> tamanio_lista;
     }
 
-	send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
+	int a = send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
 
 	if(puede_guardarse_mensaje(mensaje_a_agregar)){
 		guardar_en_memoria(mensaje_a_agregar, mensaje);
@@ -401,40 +409,40 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 }
 
 //-----------------------SUSCRIPCIONES------------------------//
-void recibir_suscripcion(t_suscripcion* mensaje_suscripcion){
+void recibir_suscripcion(t_suscripcion* mensaje_suscripcion,uint32_t socket){
 
 	op_code cola_a_suscribir = mensaje_suscripcion -> cola_a_suscribir;
-
+	mensaje_suscripcion->socket= socket;
 		switch (cola_a_suscribir) {
 			 case GET_POKEMON:
-				sem_wait(&mx_suscripciones);
+
 				suscribir_a_cola(lista_suscriptores_get, mensaje_suscripcion, cola_a_suscribir);
-				sem_post(&mx_suscripciones);
+
 				break;
 			 case CATCH_POKEMON:
-				sem_wait(&mx_suscripciones);
+
 				suscribir_a_cola(lista_suscriptores_catch, mensaje_suscripcion, cola_a_suscribir);
-				sem_post(&mx_suscripciones);
+
 				break;
 			 case LOCALIZED_POKEMON:
-				sem_wait(&mx_suscripciones);
+
 				suscribir_a_cola(lista_suscriptores_localized, mensaje_suscripcion, cola_a_suscribir);
-				sem_post(&mx_suscripciones);
+
 				break;
 			 case CAUGHT_POKEMON:
-				sem_wait(&mx_suscripciones);
+
 				suscribir_a_cola(lista_suscriptores_caught, mensaje_suscripcion, cola_a_suscribir);
-				sem_post(&mx_suscripciones);
+
 				break;
 			 case APPEARED_POKEMON:
-				sem_wait(&mx_suscripciones);
+
 				suscribir_a_cola(lista_suscriptores_appeared, mensaje_suscripcion, cola_a_suscribir);
-				sem_post(&mx_suscripciones);
+
 				break;
 			 case NEW_POKEMON:
-				sem_wait(&mx_suscripciones);
+
 				suscribir_a_cola(lista_suscriptores_new, mensaje_suscripcion, cola_a_suscribir);
-				sem_post(&mx_suscripciones);
+
 				break;
 			 default:
 				log_info(logger, "...La suscripcion no se puede realizar.");
@@ -583,7 +591,7 @@ void* preparar_mensaje(t_mensaje* un_mensaje){
 		mensaje_armado = preparar_mensaje_appeared(un_mensaje);
 		break;
 		case NEW_POKEMON:
-		mensaje_armado = preparar_mensaje_catch(un_mensaje);
+		mensaje_armado = preparar_mensaje_new(un_mensaje);
 		break;
 		default:
 		log_error(logger, "... El broker no puede preparar el mensaje para enviarlo a otro modulo.");
@@ -596,18 +604,23 @@ void* preparar_mensaje(t_mensaje* un_mensaje){
 t_get_pokemon* preparar_mensaje_get(t_mensaje* mensaje){
 		uint32_t tamanio;
 		t_get_pokemon* mensaje_get = malloc(sizeof(t_get_pokemon));
+
 		if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
+
 			t_memoria_dinamica* particion_del_mensaje = mensaje -> payload;	
 			mensaje_get -> id_mensaje = mensaje -> id_mensaje;
 			tamanio = particion_del_mensaje -> tamanio;
 			mensaje_get -> pokemon = malloc(tamanio);
 			memcpy(mensaje_get -> pokemon, particion_del_mensaje -> contenido, tamanio);
+
 		} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
+
 			t_memoria_buddy* buddy_del_mensaje = mensaje -> payload;
 			mensaje_get -> id_mensaje = mensaje -> id_mensaje;
 			tamanio = buddy_del_mensaje -> tamanio_mensaje;
 			mensaje_get -> pokemon = malloc(tamanio);
 			memcpy(mensaje_get -> pokemon, buddy_del_mensaje -> contenido, tamanio);
+
 		} else {
 			log_error(logger, "...No se reconoce el algoritmo de memoria para preparar el mensaje get.");
 		}
@@ -648,11 +661,16 @@ t_catch_pokemon* preparar_mensaje_catch(t_mensaje* un_mensaje){
 
 t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje){
 	uint32_t tamanio;
+
 	t_localized_pokemon* mensaje_localized = malloc(sizeof(t_localized_pokemon));
+
 	uint32_t offset = 0;
 	void* contenido_a_enviar;
+
 	uint32_t posicion[un_mensaje->tamanio_lista_localized];
+
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
+
 		t_memoria_dinamica* particion_del_mensaje = un_mensaje -> payload;	
 		mensaje_localized -> id_mensaje = un_mensaje -> id_mensaje;
 		mensaje_localized -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
@@ -663,12 +681,17 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje){
 		mensaje_localized -> tamanio_lista = un_mensaje -> tamanio_lista_localized;
 		mensaje_localized -> posiciones = list_create();
 		offset+=tamanio;
-		for(int i=0;i<(un_mensaje -> tamanio_lista_localized);i++){
-			memcpy(&(posicion[i]), contenido_a_enviar + offset, sizeof(uint32_t));
-			offset += sizeof(uint32_t);
-			list_add(mensaje_localized -> posiciones, &posicion[i]);
+
+		if (mensaje_localized->posiciones->elements_count > 0){
+			for(int i=0;i<(un_mensaje -> tamanio_lista_localized);i++){
+				memcpy(&(posicion[i]), contenido_a_enviar + offset, sizeof(uint32_t));
+				offset += sizeof(uint32_t);
+				list_add(mensaje_localized -> posiciones, &posicion[i]);
+			}
 		}
+
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
+
 		t_memoria_buddy* buddy_del_mensaje = un_mensaje -> payload;
 		mensaje_localized -> id_mensaje = un_mensaje -> id_mensaje;
 		mensaje_localized -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
@@ -679,6 +702,7 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje){
 		mensaje_localized -> tamanio_lista = un_mensaje -> tamanio_lista_localized;
 		mensaje_localized -> posiciones = list_create();
 		offset+=tamanio;
+
 		for(int i=0;i<(un_mensaje -> tamanio_lista_localized);i++){
 			memcpy(&(posicion[i]), contenido_a_enviar + offset, sizeof(uint32_t));
 			offset += sizeof(uint32_t);
@@ -711,7 +735,9 @@ t_caught_pokemon* preparar_mensaje_caught(t_mensaje* un_mensaje){
 t_new_pokemon* preparar_mensaje_new(t_mensaje* un_mensaje){
 	uint32_t tamanio;
 	t_new_pokemon* mensaje_new = malloc(sizeof(t_new_pokemon));
+
 	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")){
+
 		t_memoria_dinamica* particion_del_mensaje = un_mensaje -> payload;	
 		mensaje_new -> id_mensaje = un_mensaje -> id_mensaje;
 		tamanio =  particion_del_mensaje -> tamanio - sizeof(uint32_t) * 3;
@@ -720,7 +746,9 @@ t_new_pokemon* preparar_mensaje_new(t_mensaje* un_mensaje){
 		memcpy(&(mensaje_new -> posicion[0]), (particion_del_mensaje -> contenido) + tamanio, sizeof(uint32_t));
 		memcpy(&(mensaje_new -> posicion[1]), (particion_del_mensaje -> contenido) + tamanio + sizeof(uint32_t), sizeof(uint32_t));
 		memcpy(&(mensaje_new -> cantidad), ((particion_del_mensaje -> contenido) + tamanio + sizeof(uint32_t)*2), sizeof(uint32_t));
+
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")){
+
 		t_memoria_buddy* buddy_del_mensaje = un_mensaje -> payload;
 		mensaje_new -> id_mensaje = un_mensaje -> id_mensaje;
 		tamanio =  buddy_del_mensaje  -> tamanio_mensaje - sizeof(uint32_t) * 3;
@@ -729,6 +757,7 @@ t_new_pokemon* preparar_mensaje_new(t_mensaje* un_mensaje){
 		memcpy(&(mensaje_new -> posicion[0]), (buddy_del_mensaje -> contenido) + tamanio, sizeof(uint32_t));
 		memcpy(&(mensaje_new -> posicion[1]), (buddy_del_mensaje -> contenido) + tamanio + sizeof(uint32_t), sizeof(uint32_t));
 		memcpy(&(mensaje_new -> cantidad), ((buddy_del_mensaje -> contenido) + tamanio + sizeof(uint32_t)*2), sizeof(uint32_t));
+
 	} else {
 		log_error(logger, "...No se reconoce el algoritmo de memoria para preparar el mensaje new.");
 	}
@@ -973,11 +1002,12 @@ void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){ // h
 					datos_de_mensaje -> suscriptor = un_suscriptor;
 					datos_de_mensaje -> mensaje = un_mensaje;
 					//TODO
-					uint32_t err = pthread_create(&hilo_envio_mensajes, NULL, main_hilo_mensaje, datos_de_mensaje);
-					if(err != 0) {
-						log_error(logger, "El hilo no pudo ser creado!!");
-					}
-						pthread_detach(hilo_envio_mensajes);
+//					uint32_t err = pthread_create(&hilo_envio_mensajes, NULL, main_hilo_mensaje, datos_de_mensaje);
+//					if(err != 0) {
+//						log_error(logger, "El hilo no pudo ser creado!!");
+//					}
+//						pthread_detach(hilo_envio_mensajes);
+					main_hilo_mensaje(datos_de_mensaje);
 				}
 			}
 			list_iterate(lista_suscriptores, mandar_mensaje);
@@ -993,12 +1023,12 @@ void* main_hilo_mensaje(void* unos_datos_de_mensaje) {
 	
 	mensaje_a_enviar = preparar_mensaje(datos_de_mensaje -> mensaje);
 	uint32_t tamanio_mensaje = size_mensaje(mensaje_a_enviar, datos_de_mensaje -> mensaje -> codigo_operacion);
-
+	//sem_wait(&envio_mensaje);
 	enviar_mensaje(datos_de_mensaje -> mensaje -> codigo_operacion, mensaje_a_enviar, datos_de_mensaje -> suscriptor -> socket, tamanio_mensaje);
 	actualizar_ultima_referencia(datos_de_mensaje -> mensaje);
 	agregar_suscriptor_a_enviados_sin_confirmar(datos_de_mensaje -> mensaje, datos_de_mensaje -> suscriptor -> id_proceso);
-	
-	log_error(logger, "...estoy tratando de mandar el mensaje");
+	sem_post(&envio_mensaje);
+	//log_error(logger, "...estoy tratando de mandar el mensaje");
 	log_info(logger, "Se envia un mensaje al suscriptor %d", datos_de_mensaje -> suscriptor -> id_proceso);
 
 	return NULL;
@@ -2328,6 +2358,7 @@ void iniciar_semaforos_broker() { //REVISAR INICIALIZCIONES
     sem_init(&semaforo, 0, 1);
     sem_init(&muteadito, 0, 1);
     sem_init(&mx_suscripciones, 0, 1);
+    sem_init(&envio_mensaje,0,1);
 }
 
 void terminar_hilos_broker(){

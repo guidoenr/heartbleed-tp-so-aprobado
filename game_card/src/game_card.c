@@ -27,8 +27,15 @@ int main(void) {
 	//iniciar_conexion();
 	//iniciar_hilo_broker();
 	//unlock_file(obtener_path_metafile("Guido"));
+
+
 	iniciar_conexion();
-	iniciar_hilo_broker();
+	sleep(1);
+	iniciar_hilo_new();
+
+	iniciar_hilo_get();
+
+	iniciar_hilo_catch();
 
 
 	//pruebas_get_pokemon(socket_br);
@@ -83,9 +90,9 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 	uint32_t size;
 	op_code* codigo_op = malloc(sizeof(op_code));
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
-	cod_op = (*codigo_op);
-	log_info(logger,"Codigo de operacion %d", cod_op);
-	void* msg = deserealizar_paquete(stream, *codigo_op, size);
+	//cod_op = (*codigo_op);
+
+	void* msg = deserealizar_paquete(stream, cod_op, size);
 
 	t_new_pokemon* newpoke;
 	t_get_pokemon* getpoke;
@@ -135,16 +142,7 @@ void iniciar_conexion() {
 
 
 
-void iniciar_hilo_broker(){
 
-	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
-	uint32_t err = pthread_create(&hilo_broker, NULL, conectarse_a_br, NULL);
-		if(err != 0) {
-			log_error(logger, "El hilo no pudo ser creado!!");
-		}
-	pthread_detach(hilo_broker);
-
-}
 
 void informar_al_broker(uint32_t id_mensaje, op_code codigo){
 
@@ -179,25 +177,42 @@ void iniciar_conexion_game_boy() {
 		}
 }
 
+void iniciar_hilo_new(){
 
-
-
-void conectarse_a_br(){
-
-	suscribirse_a(NEW_POKEMON);
-
-	suscribirse_a(CATCH_POKEMON);
-
-	suscribirse_a(GET_POKEMON);
+	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
+	uint32_t err = pthread_create(&hilo_new, NULL, (void*) suscribirse_a,NEW_POKEMON);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+	pthread_detach(hilo_new);
 
 }
+void iniciar_hilo_get(){
 
+	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
+	uint32_t err = pthread_create(&hilo_get, NULL, (void*) suscribirse_a,GET_POKEMON);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+	pthread_detach(hilo_get);
+
+}
+void iniciar_hilo_catch(){
+
+	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
+	uint32_t err = pthread_create(&hilo_catch, NULL, (void*) suscribirse_a,CATCH_POKEMON);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+	pthread_detach(hilo_catch);
+
+}
 
 void suscribirse_a(op_code cola) {
 
 	uint32_t socket = crear_conexion(config_gc -> ip_broker, config_gc -> puerto_broker);
 	t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
-
+	uint32_t cod_op = 0;
 	if (socket == -1 ){
 			int time = config_gc->tiempo_reintento_conexion;
 			log_info(logger,"imposible conectar con broker, reintento en: %d",time);
@@ -206,14 +221,18 @@ void suscribirse_a(op_code cola) {
 	}else {
 
 		suscripcion -> cola_a_suscribir= cola;
-		suscripcion -> id_proceso = 1; //ESTE VALOR SE SACA DE CONFIG
+		suscripcion -> id_proceso = 1;
+		log_warning(logger,"Socket antes %d",socket);
 		suscripcion -> socket = socket;
+		log_warning(logger,"Socket dsp %d",suscripcion->socket);
 		suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
 
 		uint32_t tamanio_suscripcion = size_mensaje(suscripcion, SUBSCRIPTION);
 
-		enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
+		enviar_mensaje(SUBSCRIPTION, suscripcion, suscripcion->socket, tamanio_suscripcion);
+		recv(socket, &cod_op, sizeof(op_code), MSG_WAITALL);
 
+		process_request(cod_op, socket);
 	}
 
 }
@@ -1401,7 +1420,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 
 
 	 log_info(logger,"Esperando el tiempo de reintento de operacion");
-	 sleep(config_gc->tiempo_reintento_operacion);
+	 sleep(config_gc->tiempo_retardo_operacion);
 
 	 if (estaba==1){
 		 unlock_file(meta_path);
@@ -1646,12 +1665,12 @@ char* obtener_path_dir_pokemon(char* nombre_pokemon){
 }
 
 uint32_t sizeNewPokemon(t_new_pokemon* pokemon){
-	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
+	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon);
 }
 
 
 uint32_t sizeAppearedPokemon(t_appeared_pokemon* pokemon){
-	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon) + 1;
+	return sizeof(uint32_t) * 4 + strlen(pokemon->pokemon);
 }
 
 int size_char_doble(char** array){

@@ -19,6 +19,9 @@ sem_t muteadito;
 pthread_t hilo_game_boy;
 pthread_t hilo_broker;
 pthread_t hilo_servidor;
+pthread_t hilo_new;
+pthread_t hilo_catch;
+pthread_t hilo_get;
 
 typedef struct {
     int tiempo_reintento_conexion;

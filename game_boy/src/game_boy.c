@@ -5,7 +5,7 @@ int main(int argc, char * argv[]) {
   uint32_t id_mensaje = 0;
   iniciar_programa(argc);
   uint32_t socket = seleccionar_proceso(argv);
-  //recibir_id_de_mensaje_enviado(socket, id_mensaje);
+  recibir_id_de_mensaje_enviado(socket, id_mensaje);
 
   terminar_programa(socket, logger, config_game_boy);
 
@@ -364,5 +364,5 @@ void recibir_id_de_mensaje_enviado(uint32_t socket_cliente, uint32_t id_mensaje_
   uint32_t id = 0;
   recv(socket_cliente, & id, sizeof(uint32_t), MSG_WAITALL);
   id_mensaje_enviado = id;
-  log_info(logger, "El ID de mensaje enviado es: %d", id_mensaje_enviado); // delete?
+  //log_info(logger, "El ID de mensaje enviado es: %d", id_mensaje_enviado); // delete?
 }

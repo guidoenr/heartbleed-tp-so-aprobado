@@ -28,7 +28,11 @@ void iniciar_programa() {
 
 	iniciar_conexion();
 	sleep(2);
-	conexion_inicial_broker();
+	iniciar_hilo_appeared();
+	iniciar_hilo_localized();
+	iniciar_hilo_caught();
+	//iniciar_hilo_get_pokemon();
+	enviar_get_pokemon();
 }
 
 void crear_listas_globales() {
@@ -237,7 +241,7 @@ void conectarse_a_br(){
 
 	suscribirse_a(CAUGHT_POKEMON);
 
-	enviar_get_pokemon();
+
 }
 
 
@@ -245,7 +249,7 @@ void suscribirse_a(op_code cola) {
 
 	uint32_t socket = crear_conexion(config -> ip_broker, config -> puerto_broker);
 	t_suscripcion* suscripcion = malloc(sizeof(t_suscripcion));
-
+	uint32_t cod_op = 0;
 	if (socket == -1){
 			int time = config->tiempo_reconexion;
 			log_info(logger,"Intento de reconexion con broker fallido");
@@ -262,6 +266,9 @@ void suscribirse_a(op_code cola) {
 		uint32_t tamanio_suscripcion = size_mensaje(suscripcion, SUBSCRIPTION);
 
 		enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
+		recv(socket, &cod_op, sizeof(op_code), MSG_WAITALL);
+		process_request(cod_op, socket);
+
 	}
 
 }
@@ -275,6 +282,37 @@ void conexion_inicial_broker() {
 	pthread_detach(hilo_broker);
 }
 
+
+void iniciar_hilo_appeared(){
+
+	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
+	uint32_t err = pthread_create(&hilo_appeared, NULL, (void*) suscribirse_a,APPEARED_POKEMON);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+	pthread_detach(hilo_appeared);
+
+}
+void iniciar_hilo_localized(){
+
+	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
+	uint32_t err = pthread_create(&hilo_localized, NULL, (void*) suscribirse_a,LOCALIZED_POKEMON);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+	pthread_detach(hilo_localized);
+
+}
+void iniciar_hilo_caught(){
+
+	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
+	uint32_t err = pthread_create(&hilo_caught, NULL, (void*) suscribirse_a,CAUGHT_POKEMON);
+		if(err != 0) {
+			log_error(logger, "El hilo no pudo ser creado!!");
+		}
+	pthread_detach(hilo_caught);
+
+}
 
 void iniciar_conexion() {
 
@@ -1429,9 +1467,9 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
 	sem_wait(&mx_paquete);
 
-	cod_op = (*codigo_op);
+	//cod_op = (*codigo_op);
 
-	void* mensaje_recibido = deserealizar_paquete(stream, *codigo_op, size);
+	void* mensaje_recibido = deserealizar_paquete(stream,cod_op, size);
 
 	switch (cod_op) {
 		case LOCALIZED_POKEMON:
