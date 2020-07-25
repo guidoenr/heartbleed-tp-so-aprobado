@@ -1409,10 +1409,10 @@ void limpiar_buddy(t_memoria_buddy* buddy) {
 
 	t_memoria_buddy* buddy_vacio = armar_buddy(buddy -> tamanio_exponente, buddy -> base, NULL, 0, NULL, buddy -> posicion);
 
-	uint32_t indice = remover_buddy(buddy);
-
 	t_mensaje* mensaje_a_eliminar = encontrar_mensaje_buddy(buddy -> base, buddy -> codigo_operacion);
 	eliminar_de_message_queue(mensaje_a_eliminar, buddy -> codigo_operacion);
+
+	uint32_t indice = remover_buddy(buddy);
 
 	bool es_el_hermano(void* otro_buddy) {
 		t_memoria_buddy* un_buddy = otro_buddy;
@@ -1698,7 +1698,7 @@ t_mensaje* encontrar_mensaje_buddy(uint32_t base_del_buddy_del_mensaje, op_code 
 			un_mensaje = list_find(cola_new, tiene_la_misma_base);
 		    break;
 		default:
-            log_error(logger, "...No se puede reconocer el mensaje de esta partición.");
+            log_error(logger, "...No se puede reconocer el mensaje de esta partición BS.");
             break;
     }
     return un_mensaje;
@@ -2144,35 +2144,36 @@ void eliminar_de_message_queue(t_mensaje* mensaje, op_code codigo){
 			t_memoria_dinamica* una_particion = mensaje -> payload;
 			guardar_contenido_de_mensaje(una_particion -> base, NULL, una_particion -> tamanio_part);
 	    }
+
+
+		bool es_el_mismo_mensaje(void* msj){
+			t_mensaje* el_mensaje = msj;
+			return (el_mensaje -> id_mensaje) == (mensaje -> id_mensaje);
 	}
 
-	bool es_el_mismo_mensaje(void* msj){
-		t_mensaje* el_mensaje = msj;
-		return (el_mensaje -> id_mensaje) == (mensaje -> id_mensaje);
-	}
-
-	switch(codigo){
-	case GET_POKEMON:
-		list_remove_by_condition(cola_get, es_el_mismo_mensaje);
-		break;
-	case CATCH_POKEMON:
-		list_remove_by_condition(cola_catch, es_el_mismo_mensaje);
-		break;
-	case APPEARED_POKEMON:
-		list_remove_by_condition(cola_appeared, es_el_mismo_mensaje);
-		break;
-	case LOCALIZED_POKEMON:
-		list_remove_by_condition(cola_localized, es_el_mismo_mensaje);
-		break;
-	case CAUGHT_POKEMON:
-		list_remove_by_condition(cola_caught, es_el_mismo_mensaje);
-		break;
-	case NEW_POKEMON:
-		list_remove_by_condition(cola_new, es_el_mismo_mensaje);
-		break;
-	default:
-		log_error(logger, "...No se pudo eliminar el mensaje de la message queue.");
-		break;
+		switch(codigo){
+		case GET_POKEMON:
+			list_remove_by_condition(cola_get, es_el_mismo_mensaje);
+			break;
+		case CATCH_POKEMON:
+			list_remove_by_condition(cola_catch, es_el_mismo_mensaje);
+			break;
+		case APPEARED_POKEMON:
+			list_remove_by_condition(cola_appeared, es_el_mismo_mensaje);
+			break;
+		case LOCALIZED_POKEMON:
+			list_remove_by_condition(cola_localized, es_el_mismo_mensaje);
+			break;
+		case CAUGHT_POKEMON:
+			list_remove_by_condition(cola_caught, es_el_mismo_mensaje);
+			break;
+		case NEW_POKEMON:
+			list_remove_by_condition(cola_new, es_el_mismo_mensaje);
+			break;
+		default:
+			log_error(logger, "...No se pudo eliminar el mensaje de la message queue.");
+			break;
+		}
 	}
 }
 
