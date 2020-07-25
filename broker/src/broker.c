@@ -236,6 +236,27 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
     	t_localized_pokemon* mensaje_pokemon = mensaje;
     	mensaje_a_agregar -> id_correlativo = mensaje_pokemon -> id_mensaje_correlativo;
 
+    	t_localized_pokemon* mensaje2;
+    	t_list* para_parsear;
+    	uint32_t array[100];
+
+    	para_parsear = mensaje_pokemon->posiciones;
+    	t_link_element* cabeza = para_parsear -> head;
+
+
+    	for (int i =0; i<para_parsear->elements_count;i++){
+    		array[i] = *(uint32_t*) cabeza->data;
+    		cabeza = cabeza->next;
+    	}
+
+    	para_parsear = list_create();
+
+    	for (int i=0; i< mensaje_pokemon->tamanio_lista; i++){
+    		list_add(para_parsear,&array[i]);
+    	}
+
+    	mensaje_pokemon->posiciones = para_parsear;
+
     } else if(cod_op == CAUGHT_POKEMON) {
 
     	t_caught_pokemon* mensaje_pokemon = mensaje;
@@ -530,10 +551,12 @@ void descargar_historial_mensajes(op_code tipo_mensaje, uint32_t socket_cliente,
         uint32_t size = 0;
 
     	if(id_proceso < 14000) {
+
 			void* mensaje_a_enviar = preparar_mensaje(un_mensaje);
 			size = size_mensaje(mensaje_a_enviar, tipo_mensaje);
 			enviar_mensaje(tipo_mensaje, mensaje_a_enviar, socket_cliente, size);
 			agregar_suscriptor_a_enviados_sin_confirmar(un_mensaje, id_proceso);
+
 			//free(mensaje_a_enviar);
     	}
     	actualizar_ultima_referencia(un_mensaje);
@@ -1190,7 +1213,8 @@ void* armar_contenido_localized(t_localized_pokemon* mensaje){
 	offset += sizeof(uint32_t);
 
 	void grabar_numero(void* un_numero){
-		memcpy(contenido + offset, un_numero, sizeof(uint32_t));
+		memcpy(contenido + offset,(uint32_t*) un_numero, sizeof(uint32_t));
+		log_error(logger,"ESTE NUMEROte %d y este memcpy %d",(uint32_t*) un_numero,*(uint32_t*)contenido+offset);
 		offset += sizeof(uint32_t);
 	}
 

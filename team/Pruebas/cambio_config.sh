@@ -5,4 +5,4 @@ mv team.config team1.config
 mv team2.config team.config
 mv team1.config team2.config
 
-echo -e "Configs Switched \e[32mG"
+echo -e "Configs Switched \e[32m"

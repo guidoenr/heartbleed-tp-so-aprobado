@@ -491,7 +491,7 @@ void procesar_caught(t_pedido_captura* pedido){
 		sem_post(&sem_cont_entrenadores_a_replanif);
 
 		list_add(objetivo_global, pedido -> pokemon -> nombre);
-		reagregar_especie_al_mapa_principal(pedido -> pokemon -> nombre);
+//		reagregar_especie_al_mapa_principal(pedido -> pokemon -> nombre);
 	}
 }
 
@@ -1576,6 +1576,27 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 	}
 
 	if(list_find(especies_ya_localizadas, es_el_pokemon) == NULL && list_find(especies_objetivo_global, es_el_pokemon)) {
+
+		t_list* para_parsear;
+		uint32_t array[100];
+
+		para_parsear = mensaje_recibido->posiciones;
+		t_link_element* cabeza = para_parsear -> head;
+
+
+		for (int i =0; i<para_parsear->elements_count;i++){
+			array[i] = *(uint32_t*) cabeza->data;
+			cabeza = cabeza->next;
+		}
+
+		para_parsear = list_create();
+
+		for (int i=0; i< mensaje_recibido->tamanio_lista; i++){
+			list_add(para_parsear,&array[i]);
+		}
+
+		mensaje_recibido->posiciones = para_parsear;
+
 		list_add(especies_ya_localizadas, mensaje_recibido -> pokemon);
 		list_remove_by_condition(especies_objetivo_global, es_el_pokemon);
 		agregar_localized_al_mapa(mensaje_recibido);
