@@ -1174,7 +1174,7 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 	char* meta_path = obtener_path_metafile(catch_pokemon->pokemon);
 	char* dir_path = obtener_path_dir_pokemon(catch_pokemon->pokemon);
 	char* key = get_key_from_position(catch_pokemon->posicion);
-
+	int x= 0;
 	if (el_pokemon_esta_creado(dir_path)){
 		creado=1;
 		verificar_apertura_pokemon(meta_path, catch_pokemon->pokemon);
@@ -1196,7 +1196,7 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 			}
 
 			remove(temporaryfile);
-			verificar_espacio_ocupado_por_pokemon(catch_pokemon,meta_path,creado);
+			x = verificar_espacio_ocupado_por_pokemon(catch_pokemon,meta_path,creado);
 
 	}else{
 		log_error(logger,"No se encuentra el pokemon %s creado",catch_pokemon->pokemon);
@@ -1209,9 +1209,19 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 
 	if (creado ==0 ){
 		log_warning(logger,"No se accedio al pokemon para lectura ni escritura");
+
 	}else {
-		log_warning(logger,"UNLOCK AL POKEMON");
-		unlock_file(meta_path);
+
+		if(x == 1){
+
+			log_info(logger,"El pokemon se elimino por completo del FS");
+
+		}else {
+
+			log_warning(logger,"UNLOCK AL POKEMON");
+			unlock_file(meta_path);
+		}
+
 	}
 
 	t_caught_pokemon* caught = armar_caught_pokemon(catch_pokemon, resultado);
@@ -1377,11 +1387,12 @@ verificar_espacio_ocupado_por_pokemon(t_catch_pokemon* catch_pokemon,char* meta_
 		log_warning(logger,"Este catch hizo que el pokemon no use mas clusters, por lo tanto se elimina");
 		remove(meta_path);
 		rmdir(poke_dir);
-		creado = 0;
+		return 0;
 	}
 
 	free(poke_dir);
 	free(blocks);
+	return 1;
 }
 
 t_caught_pokemon* armar_caught_pokemon(t_catch_pokemon* catch_pokemon,uint32_t resultado){

@@ -78,7 +78,7 @@ void iniciar_hilo_get();
 void iniciar_hilos_suscripcion();
 void iniciar_semaforos();
 void limpiar_blocks(char** blocks);
-verificar_espacio_ocupado_por_pokemon(t_catch_pokemon* catch_pokemon,char* meta_path,int resultado);
+int verificar_espacio_ocupado_por_pokemon(t_catch_pokemon* catch_pokemon,char* meta_path,int resultado);
 
 /* NEW POKEMON */
 void verificar_existencia_pokemon(t_new_pokemon* pokemon,int socket);
