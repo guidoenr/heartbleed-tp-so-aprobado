@@ -217,7 +217,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	}
 	sem_post(&muteadito);
 	free(codigo_op);
-	free(stream);
+	//free(stream);
 }
 
 void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t socket_cliente) {
@@ -371,33 +371,33 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion){
 
 	switch (codigo_operacion) {
 			case GET_POKEMON:
+				enviar_mensajes(mensaje, lista_suscriptores_get);
 				list_add(cola_get, mensaje);
-				enviar_mensajes(cola_get, lista_suscriptores_get);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes get.");
 				break;
 			case CATCH_POKEMON:
+				enviar_mensajes(mensaje, lista_suscriptores_catch);
 				list_add(cola_catch, mensaje);
-				enviar_mensajes(cola_catch, lista_suscriptores_catch);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes catch.");
 				break;
 			case LOCALIZED_POKEMON:
+				enviar_mensajes(mensaje, lista_suscriptores_localized);
 				list_add(cola_localized, mensaje);
-				enviar_mensajes(cola_localized, lista_suscriptores_localized);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes localized.");
 				break;
 			case CAUGHT_POKEMON:
+				enviar_mensajes(mensaje, lista_suscriptores_caught);
 				list_add(cola_caught, mensaje);
-				enviar_mensajes(cola_caught, lista_suscriptores_caught);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes caught.");
 				break;
 			case APPEARED_POKEMON:
+				enviar_mensajes(mensaje, lista_suscriptores_appeared);
 				list_add(cola_appeared, mensaje);
-				enviar_mensajes(cola_appeared, lista_suscriptores_appeared);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes appeared.");
 				break;
 			case NEW_POKEMON:
+				enviar_mensajes(mensaje, lista_suscriptores_new);
 				list_add(cola_new, mensaje);
-				enviar_mensajes(cola_new, lista_suscriptores_new);
 				log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes new.");
 				break;
 			default:
@@ -999,65 +999,41 @@ uint32_t eliminar_suscriptor_de_enviados_sin_confirmar(t_mensaje* mensaje, uint3
 
 void agregar_suscriptor_a_enviados_confirmados(t_mensaje* mensaje, uint32_t confirmacion){
 	list_add(mensaje -> suscriptor_recibido, &confirmacion);
-
-	bool es_el_mismo_suscriptor(void* un_suscripto) {
-		return confirmacion == *(uint32_t*) un_suscripto;
-	}
-
-	if(list_any_satisfy(mensaje -> suscriptor_recibido, es_el_mismo_suscriptor)){
-		log_info(logger, "...Se agregó al suscriptor a la lista de enviados que recibieron el mensaje.");
-	} else {
-		log_error(logger, "...No se agregó al suscriptor confirmado.");
-	}
 }
 
-void enviar_mensajes(t_list* cola_de_mensajes, t_list* lista_suscriptores){ // hilo
+void enviar_mensajes(t_mensaje* un_mensaje, t_list* lista_suscriptores){ // hilo
 
-	void mensajear_suscriptores(void* mensaje) {
-		t_mensaje* un_mensaje = mensaje;
-
-		void mandar_mensaje(void* suscriptor) {
-			t_suscripcion* un_suscriptor = suscriptor;
-
-			if(!tiene_el_mensaje(un_mensaje, un_suscriptor -> id_proceso)) {
-				log_warning(logger, "no tiene el mensaje el sub %d", un_suscriptor -> id_proceso);
-				t_envio_mensaje* datos_de_mensaje = malloc(sizeof(t_envio_mensaje));
-
-				datos_de_mensaje -> suscriptor = un_suscriptor;
-				datos_de_mensaje -> mensaje = un_mensaje;
-				main_hilo_mensaje(datos_de_mensaje);
-			}
-		}
-		list_iterate(lista_suscriptores, mandar_mensaje);
+	void mandar_mensaje(void* suscriptor) {
+		t_suscripcion* un_suscriptor = suscriptor;
+		main_hilo_mensaje(un_suscriptor, un_mensaje);
 	}
-	list_iterate(cola_de_mensajes, mensajear_suscriptores);
+	list_iterate(lista_suscriptores, mandar_mensaje);
 }
 
-void main_hilo_mensaje(t_envio_mensaje* datos_de_mensaje) {
+void main_hilo_mensaje(t_suscripcion* un_suscriptor, t_mensaje* un_mensaje) {
 
-	void* mensaje_a_enviar = preparar_mensaje(datos_de_mensaje -> mensaje);
-	uint32_t tamanio_mensaje = size_mensaje(mensaje_a_enviar, datos_de_mensaje -> mensaje -> codigo_operacion);
+	void* mensaje_a_enviar = preparar_mensaje(un_mensaje);
+	uint32_t tamanio_mensaje = size_mensaje(mensaje_a_enviar, un_mensaje -> codigo_operacion);
 
-	enviar_mensaje(datos_de_mensaje -> mensaje -> codigo_operacion, mensaje_a_enviar, datos_de_mensaje -> suscriptor -> socket, tamanio_mensaje);
+	enviar_mensaje(un_mensaje -> codigo_operacion, mensaje_a_enviar, un_suscriptor -> socket, tamanio_mensaje);
 
-	actualizar_ultima_referencia(datos_de_mensaje -> mensaje);
-	agregar_suscriptor_a_enviados_sin_confirmar(datos_de_mensaje -> mensaje, datos_de_mensaje -> suscriptor -> id_proceso);
+	actualizar_ultima_referencia(un_mensaje);
+	agregar_suscriptor_a_enviados_sin_confirmar(un_mensaje, un_suscriptor -> id_proceso);
 
-	log_info(logger, "Se envia un mensaje al suscriptor %d", datos_de_mensaje -> suscriptor -> id_proceso);
+	log_info(logger, "Se envia un mensaje al suscriptor %d", un_suscriptor -> id_proceso);
 }
 
-bool tiene_el_mensaje(t_mensaje* mensaje, uint32_t un_suscripto) {
+bool tiene_el_mensaje(t_list* enviados, uint32_t un_suscripto) {
 	bool mensaje_enviado;
-	bool mensaje_recibido;
 
 	bool es_el_mismo_suscripto(void* suscripto) {
 		return *(uint32_t*)suscripto == un_suscripto;
 	}
 
-	mensaje_enviado  = list_any_satisfy(mensaje -> suscriptor_enviado, es_el_mismo_suscripto);
-	mensaje_recibido = list_any_satisfy(mensaje -> suscriptor_recibido, es_el_mismo_suscripto);
+	mensaje_enviado  = list_any_satisfy(enviados, es_el_mismo_suscripto);
+	//mensaje_recibido = list_any_satisfy(mensaje -> suscriptor_recibido, es_el_mismo_suscripto);
 
-	return mensaje_enviado || mensaje_recibido;
+	return mensaje_enviado;// || mensaje_recibido;
 }
 
 void agregar_suscriptor_a_enviados_sin_confirmar(t_mensaje* mensaje_enviado, uint32_t un_suscriptor) {

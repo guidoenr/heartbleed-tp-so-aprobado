@@ -246,8 +246,8 @@ void suscribirse_a(op_code cola) {
 			suscribirse_a(cola);
 	}else {
 
-		suscripcion -> cola_a_suscribir= cola;
-		suscripcion -> id_proceso= config -> id_proceso; //ESTE VALOR SE SACA DE CONFIG
+		suscripcion -> cola_a_suscribir = cola;
+		suscripcion -> id_proceso = config -> id_proceso; //ESTE VALOR SE SACA DE CONFIG
 		suscripcion -> socket = socket;
 		suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
 
