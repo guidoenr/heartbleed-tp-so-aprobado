@@ -27,7 +27,6 @@ void iniciar_programa() {
 	iniciar_hilos_ejecucion();
 
 	iniciar_conexion();
-	sleep(2);
 	iniciar_hilo_appeared();
 	iniciar_hilo_localized();
 	iniciar_hilo_caught();
@@ -246,8 +245,8 @@ void suscribirse_a(op_code cola) {
 			suscribirse_a(cola);
 	}else {
 
-		suscripcion -> cola_a_suscribir= cola;
-		suscripcion -> id_proceso= config -> id_proceso; //ESTE VALOR SE SACA DE CONFIG
+		suscripcion -> cola_a_suscribir = cola;
+		suscripcion -> id_proceso = config -> id_proceso; //ESTE VALOR SE SACA DE CONFIG
 		suscripcion -> socket = socket;
 		suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
 
@@ -478,26 +477,28 @@ void procesar_caught(t_pedido_captura* pedido){
 				log_info(logger, "El entrenador %d completo su objetivo personal y se mueve a exit", pedido -> entrenador -> id);
 				sem_post(&mx_estados);
 			}
-
+			pedido -> entrenador -> tire_accion = 0;
+			eliminar_pedido_captura(pedido);
 			if(entrenadores_con_mochila_llena()){
 				sem_post(&sem_cont_mapa);
 				sem_post(&sem_cont_entrenadores_a_replanif);
 			}
 
 		} else {
+			pedido -> entrenador -> tire_accion = 0;
+			eliminar_pedido_captura(pedido);
 			sem_post(&sem_cont_entrenadores_a_replanif);
 		}
 
 	} else {
 		//log_info(logger, "...NO ATRAPE :(");
+		pedido -> entrenador -> tire_accion = 0;
+		eliminar_pedido_captura(pedido);
 		sem_post(&sem_cont_entrenadores_a_replanif);
 
 		list_add(objetivo_global, pedido -> pokemon -> nombre);
 		reagregar_especie_al_mapa_principal(pedido -> pokemon -> nombre);
 	}
-
-	pedido -> entrenador -> tire_accion = 0;
-	eliminar_pedido_captura(pedido);
 }
 
 
@@ -1179,7 +1180,6 @@ void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
 			list_add(mapa_pokemons_pendiente, pokemon_a_remover);
 			pokemon_a_remover = list_remove_by_condition(mapa_pokemons, eliminar_del_mapa_original);
 		}
-
 	}
 }
 
@@ -1468,7 +1468,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 					((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, ((t_appeared_pokemon*) mensaje_recibido) -> pokemon,
 					((t_appeared_pokemon*) mensaje_recibido) -> posicion[0], ((t_appeared_pokemon*) mensaje_recibido) -> posicion[1]);
 			procesar_mensaje_appeared((t_appeared_pokemon*) mensaje_recibido);
-			enviar_ack_broker(((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, APPEARED_POKEMON); // y si viene del gameboy?
+			enviar_ack_broker(((t_appeared_pokemon*) mensaje_recibido) -> id_mensaje, APPEARED_POKEMON);
 			break;
 		case 0:
 			log_error(logger,"No se encontro el tipo de mensaje");
@@ -1478,6 +1478,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 			pthread_exit(NULL);
 	}
 	sem_post(&mx_paquete);
+	free(mensaje_recibido);
 	free(codigo_op);
 	free(stream);
 }
@@ -1554,8 +1555,6 @@ void procesar_mensaje_appeared(t_appeared_pokemon* mensaje_recibido) {
 			(otro_pokemon_mapa -> cantidad)++;
 		}
 	}
-
-	free(mensaje_recibido);
 }
 
 void procesar_mensaje_caught(t_caught_pokemon* mensaje_recibido) {
@@ -1573,8 +1572,6 @@ void procesar_mensaje_caught(t_caught_pokemon* mensaje_recibido) {
 	} else {
 		log_error(logger, "NO TENGO AL ENTRENADOR DEL MENSAJE RECIBIDO EN BLOCK.");
 	}
-
-	free(mensaje_recibido);
 }
 
 void procesar_localized(t_localized_pokemon* mensaje_recibido) {
@@ -1589,10 +1586,8 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 		list_remove_by_condition(especies_objetivo_global, es_el_pokemon);
 		agregar_localized_al_mapa(mensaje_recibido);
 	}
-
-	free(mensaje_recibido);
 }
-t_localized_pokemon* asd;
+
 void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 
 	t_link_element* cabeza_lista = mensaje_recibido -> posiciones -> head;
