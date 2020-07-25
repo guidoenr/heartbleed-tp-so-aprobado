@@ -1375,7 +1375,7 @@ verificar_espacio_ocupado_por_pokemon(t_catch_pokemon* catch_pokemon,char* meta_
 	config_destroy(metaconfig);
 
 	if (size_char_doble(blocks) == 0 ){ // no tiene clusters este loquito
-		log_info(logger,"Este catch hizo que el pokemon no use mas clusters, por lo tanto se elimina");
+		log_warning(logger,"Este catch hizo que el pokemon no use mas clusters, por lo tanto se elimina");
 		remove(meta_path);
 		rmdir(poke_dir);
 		creado = 0;
