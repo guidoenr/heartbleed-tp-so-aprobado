@@ -20,15 +20,15 @@ int main(void) {
 
 	iniciar_tall_grass();
 	iniciar_semaforos();
-/*
+
 	iniciar_conexion();
 	sleep(1);
 	iniciar_hilos_suscripcion();
-*/
 
-	pruebas_new_pokemon(socket);
+
+	//pruebas_new_pokemon(socket);
 	//pruebas_catch_pokemon(socket);
-	pruebas_get_pokemon(socket);
+	//pruebas_get_pokemon(socket);
 
 	sem_wait(&terminarprograma);
 	terminar_programa(socket, config_gc);
