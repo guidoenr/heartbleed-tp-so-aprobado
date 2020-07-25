@@ -223,9 +223,7 @@ void suscribirse_a(op_code cola) {
 
 		suscripcion -> cola_a_suscribir= cola;
 		suscripcion -> id_proceso = config_gc->id_proceso;
-		log_warning(logger,"Socket antes %d",socket);
 		suscripcion -> socket = socket;
-		log_warning(logger,"Socket dsp %d",suscripcion->socket);
 		suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
 
 		uint32_t tamanio_suscripcion = size_mensaje(suscripcion, SUBSCRIPTION);

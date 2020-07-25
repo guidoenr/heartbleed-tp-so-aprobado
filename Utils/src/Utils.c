@@ -56,7 +56,6 @@ void enviar_mensaje(op_code codigo_op, void* mensaje, uint32_t socket_cliente, u
 		// log_info(logger,"...Paquete serializado con tamaño :%d", size_paquete);
 		//revisar tema hilos y semaforos
 		int a = send(socket_cliente, stream, size_paquete, 0);
-		log_warning(logger,"valor de terotno del send %d",a);
 		//log_info(logger,"...Paquete enviado");
 		free(size_serializado);
 		free(stream);
@@ -97,14 +96,14 @@ void* recibir_paquete(uint32_t socket_cliente, uint32_t* size,op_code* codigo_op
 	recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
 
 	uint32_t tamanio_mensaje = (*size) - sizeof(uint32_t) - sizeof(op_code);
-	log_warning(logger, "Tamanio de paquete recibido: %d", tamanio_mensaje);
+	//log_warning(logger, "Tamanio de paquete recibido: %d", tamanio_mensaje);
 
 	void* stream = malloc(tamanio_mensaje);
 	(*size) = tamanio_mensaje;
 	recv(socket_cliente, stream, tamanio_mensaje, MSG_WAITALL);
 
 	//sem_post(&semaforo);
-	log_warning(logger, "Mensaje recibido: %s", stream);
+	//log_warning(logger, "Mensaje recibido: %s", stream);
 	return stream;
 
 }
@@ -147,8 +146,7 @@ void* deserealizar_paquete(void* stream, op_code codigo_operacion,
 		mensaje_deserializado = deserealizar_ack(stream, tamanio_mensaje);
 		break;
 	default:
-		log_error(logger,
-				"No fue posible deserializar el mensaje correctamente.");
+		log_error(logger, "No fue posible deserializar el mensaje correctamente.");
 		break;
 	}
 	return mensaje_deserializado;
@@ -286,7 +284,7 @@ void esperar_cliente(uint32_t socket_servidor) {
 	uint32_t tam_direccion = sizeof(struct sockaddr_in);
 	uint32_t socket_cliente = accept(socket_servidor, (void*) &dir_cliente,
 			&tam_direccion);
-	log_info(logger, "Antes del hilo: %d", socket_cliente);
+	//log_info(logger, "Antes del hilo: %d", socket_cliente);
 	pthread_create(&thread, NULL, (void*) serve_client, socket_cliente);
 	pthread_detach(thread);
 	//pthread_join(thread,NULL);
@@ -297,7 +295,7 @@ void serve_client(uint32_t socket) {
 
 	recv(socket, &cod_op, sizeof(op_code), MSG_WAITALL);
 	op_code codigo = cod_op;
-	log_warning(logger, "Codigo de operacion recibido: %d", codigo);
+	//log_warning(logger, "Codigo de operacion recibido: %d", codigo);
 
 
 	log_info(logger, "Se conecto un cliente con socket: %d", socket);
