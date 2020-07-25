@@ -1170,13 +1170,15 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 	log_info(logger,"THREAD CATCH POKEMON");
 	log_info(logger,"LLEGO UN CATCH %s en la posicion %d-%d ",catch_pokemon->pokemon,catch_pokemon->posicion[0],catch_pokemon->posicion[1]);
 	uint32_t resultado = 0;
-	int creado = 0;
+	int estaba_creado = 0;
 	char* meta_path = obtener_path_metafile(catch_pokemon->pokemon);
 	char* dir_path = obtener_path_dir_pokemon(catch_pokemon->pokemon);
 	char* key = get_key_from_position(catch_pokemon->posicion);
-	int x= 0;
+	int se_elimino= 0;
+
 	if (el_pokemon_esta_creado(dir_path)){
-		creado=1;
+
+		estaba_creado=1;
 		verificar_apertura_pokemon(meta_path, catch_pokemon->pokemon);
 		log_info(logger,"Existe el pokemon en el filesystem");
 
@@ -1196,29 +1198,23 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 			}
 
 			remove(temporaryfile);
-			x = verificar_espacio_ocupado_por_pokemon(catch_pokemon,meta_path,creado);
+			se_elimino = verificar_espacio_ocupado_por_pokemon(catch_pokemon,meta_path,estaba_creado);
 
 	}else{
 		log_error(logger,"No se encuentra el pokemon %s creado",catch_pokemon->pokemon);
-		creado=0;
+		resultado = 0;
+		estaba_creado=0;
 	}
-
 
 	log_info(logger,"Esperando el tiempo de retardo de operacion");
 	sleep(config_gc->tiempo_retardo_operacion);
 
-	if (creado ==0 ){
-		log_warning(logger,"No se accedio al pokemon para lectura ni escritura");
+	if (estaba_creado){
 
-	}else {
-
-		if(x == 1){
-
-			log_info(logger,"El pokemon se elimino por completo del FS");
-
+		if (se_elimino){
+			log_info(logger,"Pokemon eliminado del filesystem");
 		}else {
-
-			log_warning(logger,"UNLOCK AL POKEMON");
+			log_info(logger,"UNLOCK Al pokemon");
 			unlock_file(meta_path);
 		}
 
@@ -1373,7 +1369,7 @@ int posicion_block_vacio(char** blocks, char* block_vacio){
 
 }
 
-verificar_espacio_ocupado_por_pokemon(t_catch_pokemon* catch_pokemon,char* meta_path,int creado){
+int verificar_espacio_ocupado_por_pokemon(t_catch_pokemon* catch_pokemon,char* meta_path,int creado){
 
 	char* poke_dir = obtener_path_dir_pokemon(catch_pokemon->pokemon);
 
@@ -1384,15 +1380,15 @@ verificar_espacio_ocupado_por_pokemon(t_catch_pokemon* catch_pokemon,char* meta_
 	config_destroy(metaconfig);
 
 	if (size_char_doble(blocks) == 0 ){ // no tiene clusters este loquito
-		log_warning(logger,"Este catch hizo que el pokemon no use mas clusters, por lo tanto se elimina");
+		log_warning(logger,"Este catch hizo que el pokemon no use mas clusters, por lo tanto se elimina del filesystem");
 		remove(meta_path);
 		rmdir(poke_dir);
-		return 0;
+		return 1;
 	}
 
 	free(poke_dir);
 	free(blocks);
-	return 1;
+	return 0;
 }
 
 t_caught_pokemon* armar_caught_pokemon(t_catch_pokemon* catch_pokemon,uint32_t resultado){
