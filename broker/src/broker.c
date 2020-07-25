@@ -688,9 +688,10 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje){
 		memcpy(mensaje_localized -> pokemon, contenido_a_enviar, tamanio);
 		char barra_cero = '\0';
 		memcpy(mensaje_localized -> pokemon + tamanio, &barra_cero, 1); //STRING APPEND FURIO3
+
 		mensaje_localized -> tamanio_lista = un_mensaje -> tamanio_lista_localized;
 		mensaje_localized -> posiciones = list_create();
-		offset+=tamanio;
+		offset+=tamanio + sizeof(uint32_t);
 
 		if (mensaje_localized->posiciones->elements_count > 0) {
 			for(int i=0;i<(un_mensaje -> tamanio_lista_localized);i++){
@@ -713,7 +714,7 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje){
 		memcpy(mensaje_localized -> pokemon + tamanio, &barra_cero, 1); //STRING APPEND FURIO3
 		mensaje_localized -> tamanio_lista = un_mensaje -> tamanio_lista_localized;
 		mensaje_localized -> posiciones = list_create();
-		offset+=tamanio;
+		offset+=tamanio + sizeof(uint32_t);
 
 		for(int i=0;i<(un_mensaje -> tamanio_lista_localized);i++){
 			memcpy(&(posicion[i]), contenido_a_enviar + offset, sizeof(uint32_t));
