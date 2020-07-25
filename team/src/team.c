@@ -32,7 +32,7 @@ void iniciar_programa() {
 	iniciar_hilo_localized();
 	iniciar_hilo_caught();
 	//iniciar_hilo_get_pokemon();
-	enviar_get_pokemon();
+	//enviar_get_pokemon();
 }
 
 void crear_listas_globales() {
