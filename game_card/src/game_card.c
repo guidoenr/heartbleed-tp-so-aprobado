@@ -403,9 +403,9 @@ void crear_bitmap(char* path){
 
 t_bitarray* obtener_bitmap(){
 
-	log_error(logger,"Eperando el uso del mutex_bitmap");
+	log_info(logger,"Eperando el uso del mutex_bitmap");
 	sem_wait(&mx_bitmap);
-	log_warning(logger,"mutex_bitmap listo");
+	log_info(logger,"mutex_bitmap listo");
 
 	char* bitmapPath = concatenar(config_gc->punto_montaje_tallgrass,"/Metadata/Bitmap.bin");
 	int size_in_bytes = bitarray_default_size_in_bytes();
@@ -1437,12 +1437,11 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 
 		 	estaba=1;
 		 	 }else{
-		 		 log_warning(logger,"El pokemon %s no existe en el filesystem, te mando la lista vacia",get_pokemon->pokemon);
+		 		 log_error(logger,"El pokemon %s no existe en el filesystem, te mando la lista vacia",get_pokemon->pokemon);
 		 		 localized_pokemon->tamanio_lista = 0;
 		 		 localized_pokemon->posiciones = list_create();
 		 	 }
 		//log_info(logger,"LOCALIZED Armado"); TODO NUNCA PONER NADA ACA AMIGUITO
-
 
 		enviar_mensaje_localized_gc(LOCALIZED_POKEMON,localized_pokemon,socket_localized, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
 		uint32_t id = recibir_id_de_mensaje_enviado(socket_localized);
@@ -1457,19 +1456,19 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 	 log_info(logger,"Esperando el tiempo de reintento de operacion");
 	 sleep(config_gc->tiempo_retardo_operacion);
 
+
 	 if (estaba==1){
 		 unlock_file(meta_path);
-		 log_info("THREAD finished, unlockeo el pokemon %s",localized_pokemon->pokemon);
+		 log_info(logger,"UNLOCK AL POKEMON");
 		 remove(temporary_file);
 	 } else {
-		 log_info(logger,"THREAD finished, el pokemon no existia en el filesystem");
+		 log_info(logger,"El pokemon no existia en el filesystem");
 	 }
-
-
-
 
 	 free(dir_path);
 	 free(meta_path);
+
+	 log_info(logger,"THREAD FINISHED");
 }
 
 t_list* obtener_posiciones_y_cantidades(char* meta_path,char* temporary_file){
