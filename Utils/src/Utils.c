@@ -872,12 +872,11 @@ void* serializar_ack(void* mensaje_ack, uint32_t size_mensaje,
 
 	op_code codigo_operacion = ACK;
 	memcpy(stream + offset, &codigo_operacion, sizeof(op_code));
-	log_info(logger, "Serializacion codigo de operacion: %d",
-			*(int*) (stream + offset));
+	//log_info(logger, "Serializacion codigo de operacion: %d", *(int*) (stream + offset));
 	offset += sizeof(op_code);
 
 	memcpy(stream + offset, size_serializado, sizeof(uint32_t));
-	log_info(logger, "Serializacion size: %d", *(int*) (stream + offset));
+	//log_info(logger, "Serializacion size: %d", *(int*) (stream + offset));
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &(mensaje_a_enviar->id_mensaje), sizeof(uint32_t));
@@ -885,12 +884,11 @@ void* serializar_ack(void* mensaje_ack, uint32_t size_mensaje,
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &(mensaje_a_enviar->tipo_mensaje), sizeof(op_code));
-	log_info(logger, "Serializacion tipomensaje confirmado: %d",
-			*(int*) (stream + offset));
+	//log_info(logger, "Serializacion tipomensaje confirmado: %d",*(int*) (stream + offset));
 	offset += sizeof(op_code);
 
 	memcpy(stream + offset, &(mensaje_a_enviar->id_proceso), sizeof(uint32_t));
-	log_info(logger, "Serializacion idproceso: %d", *(int*) (stream + offset));
+	//log_info(logger, "Serializacion idproceso: %d", *(int*) (stream + offset));
 	offset += sizeof(uint32_t);
 
 	//log_info(logger, "...Codigo de operacion a enviar: %d", ACK);
@@ -906,19 +904,17 @@ t_ack* deserealizar_ack(void* stream, uint32_t size_mensaje) {
 
 	memcpy(&(confirmacion_mensaje->id_mensaje), stream + offset,
 			sizeof(uint32_t));
-	log_info(logger, "Se deserializo un mensaje ack para el mensaje de id: %d",
-			confirmacion_mensaje->id_mensaje);
+	log_info(logger, "Se deserializo un mensaje ack para el mensaje de id: %d", confirmacion_mensaje->id_mensaje);
 	stream += sizeof(uint32_t);
 
 	memcpy(&(confirmacion_mensaje->tipo_mensaje), stream + offset,
 			sizeof(op_code));
-	log_info(logger, "deserealizado tipo mensaje: %d",
-			*(int*) (stream + offset));
+	//log_info(logger, "deserealizado tipo mensaje: %d", *(int*) (stream + offset));
 	stream += sizeof(op_code);
 
 	memcpy(&(confirmacion_mensaje->id_proceso), stream + offset,
 			sizeof(uint32_t));
-	log_info(logger, "deserealizado id proceso: %d", *(int*) (stream + offset));
+	//log_info(logger, "deserealizado id proceso: %d", *(int*) (stream + offset));
 	stream += sizeof(uint32_t);
 
 	return confirmacion_mensaje;
@@ -934,27 +930,27 @@ void* serializar_suscripcion(void* mensaje_suscripcion, uint32_t size_mensaje,ui
 
 	op_code codigo_operacion = SUBSCRIPTION;
 	memcpy(stream + offset, &codigo_operacion, sizeof(op_code));
-	log_info(logger, "Sereliazacion codigo de operacion: %d",*(int*) (stream + offset));
+	//log_info(logger, "Sereliazacion codigo de operacion: %d",*(int*) (stream + offset));
 	offset += sizeof(op_code);
 
 	memcpy(stream + offset, size_serializado, sizeof(uint32_t));
-	log_info(logger, "Sereliazacion size: %d", *(int*) (stream + offset));
+	//log_info(logger, "Sereliazacion size: %d", *(int*) (stream + offset));
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &(mensaje_a_enviar->socket), sizeof(uint32_t));
-	log_info(logger, "Sereliazacion socket: %d", *(int*) (stream + offset));
+	//log_info(logger, "Sereliazacion socket: %d", *(int*) (stream + offset));
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &(mensaje_a_enviar->tiempo_suscripcion),sizeof(uint32_t));
-	log_info(logger, "Sereliazacion tiempo suscripcion: %d",*(int*) (stream + offset));
+	//log_info(logger, "Sereliazacion tiempo suscripcion: %d",*(int*) (stream + offset));
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &(mensaje_a_enviar->cola_a_suscribir),sizeof(op_code));
-	log_info(logger, "Sereliazacion cola: %d", *(int*) (stream + offset));
+	//log_info(logger, "Sereliazacion cola: %d", *(int*) (stream + offset));
 	offset += sizeof(op_code);
 
 	memcpy(stream + offset, &(mensaje_a_enviar->id_proceso), sizeof(uint32_t));
-	log_info(logger, "Sereliazacion idproceso: %d", *(int*) (stream + offset));
+	//log_info(logger, "Sereliazacion idproceso: %d", *(int*) (stream + offset));
 	offset += sizeof(uint32_t);
 
 	//log_info(logger, "...Codigo de operacion a enviar: %d", SUBSCRIPTION);
@@ -969,25 +965,19 @@ t_suscripcion* deserealizar_suscripcion(void* stream, uint32_t size_mensaje) {
 	uint32_t offset = 0;
 
 	memcpy(&(mensaje_suscripcion->socket), stream + offset, sizeof(uint32_t));
-	log_info(logger, "deserealizado socket: %d", *(int*) (stream + offset));
+	//log_info(logger, "deserealizado socket: %d", *(int*) (stream + offset));
 	stream += sizeof(uint32_t);
 
-	memcpy(&(mensaje_suscripcion->tiempo_suscripcion), stream + offset,
-			sizeof(uint32_t));
-	log_info(logger, "deserealizado tiempo suscripcion: %d",
-			*(int*) (stream + offset));
+	memcpy(&(mensaje_suscripcion->tiempo_suscripcion), stream + offset, sizeof(uint32_t));
+	//log_info(logger, "deserealizado tiempo suscripcion: %d", *(int*) (stream + offset));
 	stream += sizeof(uint32_t);
 
-	memcpy(&(mensaje_suscripcion->cola_a_suscribir), stream + offset,
-			sizeof(op_code));
-	log_info(logger, "deserealizado cola: %d", *(int*) (stream + offset));
+	memcpy(&(mensaje_suscripcion->cola_a_suscribir), stream + offset, sizeof(op_code));
+	//log_info(logger, "deserealizado cola: %d", *(int*) (stream + offset));
 	stream += sizeof(op_code);
 
-	memcpy(&(mensaje_suscripcion->id_proceso), stream + offset,
-			sizeof(uint32_t));
-	log_info(logger,
-			"Se deserializo un mensaje de suscripcion del proceso con id: %d",
-			mensaje_suscripcion->id_proceso);
+	memcpy(&(mensaje_suscripcion->id_proceso), stream + offset, sizeof(uint32_t));
+	//log_info(logger, "Se deserializo un mensaje de suscripcion del proceso con id: %d", mensaje_suscripcion->id_proceso);
 	stream += sizeof(uint32_t);
 
 	return mensaje_suscripcion;

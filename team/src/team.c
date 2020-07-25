@@ -1236,7 +1236,7 @@ void remover_entrenadores_en_deadlock(t_list* entrenadores_para_ready){
 			return otro_entrenador == entrenador;
 		}
 
-		if(tengo_la_mochila_llena(entrenador)){
+		if(tengo_la_mochila_llena(entrenador) || entrenador -> tire_accion){
 
 			list_remove_by_condition(entrenadores_para_ready, es_el_entrenador);
 		}
