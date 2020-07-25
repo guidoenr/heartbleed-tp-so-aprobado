@@ -20,15 +20,15 @@ int main(void) {
 
 	iniciar_tall_grass();
 	iniciar_semaforos();
-
+/*
 	iniciar_conexion();
 	sleep(1);
 	iniciar_hilos_suscripcion();
+*/
 
-
-	//pruebas_new_pokemon(socket);
+	pruebas_new_pokemon(socket);
 	//pruebas_catch_pokemon(socket);
-	//pruebas_get_pokemon(socket);
+	pruebas_get_pokemon(socket);
 
 	sem_wait(&terminarprograma);
 	terminar_programa(socket, config_gc);
@@ -1448,6 +1448,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 
 		log_warning(logger,"Mensaje enviado, ID del mensaje enviado: %d",id);
 	 }else {
+
 		 log_error(logger,"El broker esta muerto");
 		 log_error(logger,"Socket: %d",socket_localized);
 
