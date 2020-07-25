@@ -751,8 +751,6 @@ void loggear_entrenadores_deadlock() {
 		log_info(logger, "El entrenador %d esta en deadlock", entrenador -> id);
 	}
 	list_iterate(estado_block, imprimir_deadlock);
-
-	deadlocks_totales ++;
 }
 
 bool entrenadores_con_mochila_llena() {
@@ -782,7 +780,8 @@ void eliminar_del_objetivo_global(t_pokemon_mapa* pokemon) {
 void planificar_deadlocks() {
 
 	while(estado_exit -> elements_count < config -> entrenadores -> elements_count) {
-
+		deadlocks_totales = 1;
+		deadlocks_resueltos = 1;
 		sem_wait(&sem_cont_entrenadores_a_replanif);
 		sem_wait(&sem_cont_entrenadores_a_replanif);
 
@@ -1720,7 +1719,6 @@ void loggear_resultados() {
 }
 
 void terminar_programa() {
-	deadlocks_resueltos ++;
 	terminar_hilos();
 	loggear_resultados();
 	free(mapa_pokemons);
