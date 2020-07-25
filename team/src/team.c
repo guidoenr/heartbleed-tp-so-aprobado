@@ -656,8 +656,9 @@ void tradear_pokemon(t_pedido_intercambio* pedido){
 	} else {
 		pedido -> entrenador_buscando -> tire_accion = 1;
 		ejecutar_trade(pedido);
-		sem_post(&(pedido -> entrenador_esperando -> sem_binario));
+		
 		sleep(config -> retardo_cpu * 4);
+		sem_post(&(pedido -> entrenador_esperando -> sem_binario));
 		pedido -> entrenador_buscando -> ciclos_cpu += 4;
 	}
 	pedido -> entrenador_buscando -> pasos_a_moverse --;
