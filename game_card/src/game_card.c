@@ -28,6 +28,8 @@ int main(void) {
 
 	//pruebas_new_pokemon(socket);
 	//pruebas_catch_pokemon(socket);
+	//pruebas_get_pokemon(socket);
+
 	sem_wait(&terminarprograma);
 	terminar_programa(socket, config_gc);
 
@@ -37,11 +39,11 @@ int main(void) {
 void pruebas_new_pokemon(int socket){
 
 	t_new_pokemon* luca = malloc(sizeof(t_new_pokemon));
-	luca->posicion[0]=129;
-	luca->posicion[1] = 547;
-	luca->cantidad=11;
+	luca->posicion[0]=1;
+	luca->posicion[1] = 2;
+	luca->cantidad=4;
 	luca->id_mensaje = 124;
-	luca->pokemon= "Luken";
+	luca->pokemon= "Adriano";
 
 	funcion_hilo_new_pokemon(luca, socket);
 
@@ -64,9 +66,9 @@ void pruebas_get_pokemon(int socket){
 
 	t_get_pokemon* get_poke = malloc(sizeof(t_get_pokemon));
 	get_poke->id_mensaje = 1;
-	get_poke->pokemon = "Kuni";
+	get_poke->pokemon = "Adriano";
 
-	unlock_file(obtener_path_metafile("Kuni"));
+	unlock_file(obtener_path_metafile("Adriano"));
 	funcion_hilo_get_pokemon(get_poke, socket);
 
 
@@ -1420,7 +1422,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 	if (socket_localized != -1 ){
 		localized_pokemon->id_mensaje = 0;
 	    localized_pokemon->id_mensaje_correlativo = get_pokemon->id_mensaje;
-		localized_pokemon->pokemon = malloc(strlen(get_pokemon -> pokemon));
+		//localized_pokemon->pokemon = malloc(strlen(get_pokemon -> pokemon));
 		localized_pokemon->pokemon = get_pokemon->pokemon;
 
 		 if (el_pokemon_esta_creado(dir_path)){
@@ -1439,9 +1441,10 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 		 		 localized_pokemon->tamanio_lista = 0;
 		 		 localized_pokemon->posiciones = list_create();
 		 	 }
-		log_info(logger,"LOCALIZED Armado");
+		//log_info(logger,"LOCALIZED Armado"); TODO NUNCA PONER NADA ACA AMIGUITO
 
-		enviar_mensaje(LOCALIZED_POKEMON,localized_pokemon,socket_localized, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
+
+		enviar_mensaje_localized_gc(LOCALIZED_POKEMON,localized_pokemon,socket_localized, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
 		uint32_t id = recibir_id_de_mensaje_enviado(socket_localized);
 
 		log_warning(logger,"Mensaje enviado, ID del mensaje enviado: %d",id);

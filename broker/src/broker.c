@@ -674,7 +674,7 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje){
 		t_memoria_dinamica* particion_del_mensaje = un_mensaje -> payload;	
 		mensaje_localized -> id_mensaje = un_mensaje -> id_mensaje;
 		mensaje_localized -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
-		tamanio = (particion_del_mensaje -> tamanio) - ((un_mensaje -> tamanio_lista_localized)*sizeof(uint32_t));
+		tamanio = (particion_del_mensaje -> tamanio) - ((un_mensaje -> tamanio_lista_localized)*sizeof(uint32_t)) - sizeof(uint32_t);
 		contenido_a_enviar = particion_del_mensaje -> contenido;
 		mensaje_localized -> pokemon = malloc(tamanio+1);
 		memcpy(mensaje_localized -> pokemon, contenido_a_enviar, tamanio);
@@ -688,6 +688,7 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje){
 		if (mensaje_localized->posiciones->elements_count > 0) {
 			for(int i=0;i<(un_mensaje -> tamanio_lista_localized);i++){
 				memcpy(&(posicion[i]), contenido_a_enviar + offset, sizeof(uint32_t));
+				log_warning(logger,"ALGO PARA MOSTRAR NUMERITO : %d",posicion[i]);
 				offset += sizeof(uint32_t);
 				list_add(mensaje_localized -> posiciones, &posicion[i]);
 			}
@@ -698,7 +699,7 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje){
 		t_memoria_buddy* buddy_del_mensaje = un_mensaje -> payload;
 		mensaje_localized -> id_mensaje = un_mensaje -> id_mensaje;
 		mensaje_localized -> id_mensaje_correlativo = un_mensaje -> id_correlativo;
-		tamanio = (buddy_del_mensaje -> tamanio_mensaje) - ((un_mensaje -> tamanio_lista_localized)*sizeof(uint32_t));
+		tamanio = (buddy_del_mensaje -> tamanio_mensaje) - ((un_mensaje -> tamanio_lista_localized)*sizeof(uint32_t))- sizeof(uint32_t);
 		contenido_a_enviar = buddy_del_mensaje -> contenido;
 		mensaje_localized -> pokemon = malloc(tamanio+1);
 		memcpy(mensaje_localized -> pokemon, contenido_a_enviar, tamanio);
@@ -710,6 +711,7 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje){
 
 		for(int i=0;i<(un_mensaje -> tamanio_lista_localized);i++){
 			memcpy(&(posicion[i]), contenido_a_enviar + offset, sizeof(uint32_t));
+			log_warning(logger,"ALGO PARA MOSTRAR NUMERITO : %d",posicion[i]);
 			offset += sizeof(uint32_t);
 			list_add(mensaje_localized -> posiciones, &posicion[i]);
 		}
@@ -931,7 +933,6 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado) {
 
 void borrar_mensajes_confirmados(op_code tipo_lista, t_list* cola_mensajes, t_list* suscriptores) {
 
-	t_list* cola_duplicada = list_duplicate(cola_mensajes);
 	t_mensaje* mensaje_a_borrar;
 	void borrar_mensaje_recibido_por_todos(void* mensaje) {
 		t_mensaje* un_mensaje = mensaje;
@@ -952,12 +953,12 @@ void borrar_mensajes_confirmados(op_code tipo_lista, t_list* cola_mensajes, t_li
 		}
 	}
 
-	list_iterate(cola_duplicada, borrar_mensaje_recibido_por_todos);
+	list_iterate(cola_mensajes, borrar_mensaje_recibido_por_todos);
 }
 
 bool mensaje_recibido_por_todos(void* mensaje, t_list* suscriptores){
 	t_mensaje* un_mensaje = mensaje;
-	t_list* lista_id_suscriptores = list_create();
+	//t_list* lista_id_suscriptores = list_create();
 
 	void* id_suscriptor(void* un_suscriptor){
 		t_suscripcion* suscripto = un_suscriptor;
@@ -965,7 +966,7 @@ bool mensaje_recibido_por_todos(void* mensaje, t_list* suscriptores){
 		return id;//Revisar si devuelve un id o un (*id)-
 	}
 
-	lista_id_suscriptores = list_map(suscriptores, id_suscriptor);
+	t_list* lista_id_suscriptores = list_map(suscriptores, id_suscriptor);
 
 	bool suscriptor_recibio_mensaje(void* suscripto){
 		uint32_t* un_suscripto = suscripto;
@@ -2002,13 +2003,14 @@ bool ambas_estan_vacias(uint32_t una_posicion, uint32_t posicion_siguiente){
 
 void consolidar_particiones(uint32_t primer_elemento, uint32_t elemento_siguiente){
     t_memoria_dinamica* una_particion = list_get(memoria_con_particiones, primer_elemento);
-    t_memoria_dinamica* particion_siguiente = list_remove(memoria_con_particiones, elemento_siguiente);
+    t_memoria_dinamica* particion_siguiente = list_get(memoria_con_particiones, elemento_siguiente);
 
     uint32_t tamanio_particion_consolidada    = (una_particion -> tamanio_part) + (particion_siguiente -> tamanio_part);
     t_memoria_dinamica* particion_consolidada = armar_particion(tamanio_particion_consolidada, (una_particion -> base), NULL, 0, NULL);
 
     ubicar_particion(primer_elemento, particion_consolidada);
     log_info(logger, "Se consolidan las particiones de base %d y base %d en una particion de tamanio %d", una_particion -> base, particion_siguiente -> base, tamanio_particion_consolidada);
+    list_remove(memoria_con_particiones, elemento_siguiente);
 }
 
 void compactar_particiones_dinamicas(t_list* memoria){

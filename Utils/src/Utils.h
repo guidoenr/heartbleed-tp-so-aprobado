@@ -147,7 +147,7 @@ t_caught_pokemon* deserealizar_caught_pokemon(void* stream, uint32_t size_mensaj
 t_appeared_pokemon* deserealizar_appeared_pokemon(void* stream, uint32_t size_mensaje);
 t_new_pokemon* deserealizar_new_pokemon(void* stream, uint32_t size_mensaje);
 t_localized_pokemon* deserealizar_localized_pokemon(void*,uint32_t);
-
+void enviar_mensaje_localized_gc(op_code codigo_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje);
 
 
 // terminar
