@@ -990,11 +990,11 @@ uint32_t eliminar_suscriptor_de_enviados_sin_confirmar(t_mensaje* mensaje, uint3
 
 	list_remove_by_condition(mensaje -> suscriptor_enviado, es_el_mismo_suscriptor);
 
-	if(!list_any_satisfy(mensaje -> suscriptor_enviado, es_el_mismo_suscriptor)){
+	/*if(!list_any_satisfy(mensaje -> suscriptor_enviado, es_el_mismo_suscriptor)){
 		log_info(logger, "...Se eliminó al suscriptor de la lista de enviados sin confirmar.");
 	} else {
 		log_error(logger, "...No se eliminó al suscriptor confirmado.");
-	}
+	}*/
 	return suscriptor;
 }
 
@@ -1190,8 +1190,7 @@ void* armar_contenido_localized(t_localized_pokemon* mensaje){
 	offset += sizeof(uint32_t);
 
 	void grabar_numero(void* un_numero){
-		uint32_t* numero = un_numero;
-		memcpy(contenido + offset, numero, sizeof(uint32_t));
+		memcpy(contenido + offset, un_numero, sizeof(uint32_t));
 		offset += sizeof(uint32_t);
 	}
 
@@ -1232,21 +1231,21 @@ void* armar_contenido_new(t_new_pokemon* mensaje){
     uint32_t tamanio = tamanio_pokemon + (sizeof(uint32_t) * 3);
     void* contenido = malloc(tamanio);
     uint32_t offset = 0;
-    log_info(logger, "ENTRE A ARMAR NEW:");
-    log_info(logger, "%s", mensaje -> pokemon);
+    //log_info(logger, "ENTRE A ARMAR NEW:");
+    //log_info(logger, "%s", mensaje -> pokemon);
     memcpy(contenido + offset, (mensaje -> pokemon), tamanio_pokemon);
     offset += tamanio_pokemon;
-    log_info(logger, "%d", mensaje -> posicion[0]);
+    //log_info(logger, "%d", mensaje -> posicion[0]);
     memcpy(contenido + offset, &(mensaje -> posicion[0]), sizeof(uint32_t));
-    log_info(logger, "%d", *(int*)(contenido + offset));
+    //log_info(logger, "%d", *(int*)(contenido + offset));
     offset += sizeof(uint32_t);
-    log_info(logger, "%d", mensaje -> posicion[1]);
+    //log_info(logger, "%d", mensaje -> posicion[1]);
     memcpy(contenido + offset, &(mensaje -> posicion[1]), sizeof(uint32_t));
-    log_info(logger, "%d", *(int*)(contenido + offset));
+    //log_info(logger, "%d", *(int*)(contenido + offset));
     offset += sizeof(uint32_t);
-    log_info(logger, "%d", mensaje -> cantidad);
+    //log_info(logger, "%d", mensaje -> cantidad);
     memcpy(contenido + offset, &(mensaje -> cantidad), sizeof(uint32_t));
-    log_info(logger, "%d", *(int*)(contenido + offset));
+    //log_info(logger, "%d", *(int*)(contenido + offset));
     offset += sizeof(uint32_t);
     return contenido;
 }
@@ -1314,7 +1313,7 @@ void guardar_buddy(t_memoria_buddy* buddy, t_mensaje* mensaje, void* contenido) 
 		guardar_contenido_de_mensaje(buddy_a_ubicar -> base, contenido, buddy_a_ubicar -> tamanio_exponente);
 
 	} else { // caso de reemplazo
-		log_error(logger, "SE REEMPLAZA");
+		//log_error(logger, "SE REEMPLAZA");
 		reemplazar_buddy(mensaje, contenido);
 	}
 }
@@ -1325,19 +1324,18 @@ void reemplazar_buddy(t_mensaje* mensaje, void* contenido) {
 	t_memoria_buddy* buddy_a_eliminar;
 
 	if(string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "FIFO")){
-		log_info(logger, "...El algoritmo elegido es FIFO");
+		//log_info(logger, "...El algoritmo elegido es FIFO");
 		buddy_a_eliminar = seleccionar_victima_fifo();
 
 	} else if (string_equals_ignore_case(config_broker -> algoritmo_reemplazo, "LRU")){
-		log_info(logger, "...El algoritmo elegido es LRU");
-
+		//log_info(logger, "...El algoritmo elegido es LRU");
 		buddy_a_eliminar = seleccionar_victima_lru();
 	}
 
 	limpiar_buddy(buddy_a_eliminar);
 
 	uint32_t exponente = determinar_exponente(mensaje);
-	log_error(logger, "exponente: %d", exponente);
+	//log_error(logger, "exponente: %d", exponente);
 	recorrer_segun_algoritmo(exponente, mensaje, contenido);
 }
 
@@ -1361,7 +1359,7 @@ t_memoria_buddy* seleccionar_victima_fifo() {
 	t_list* memoria_cache_ordenada = list_sorted(memoria_cache_duplicada, fue_cargada_antes);
 	t_memoria_buddy* buddy_victima = list_get(memoria_cache_ordenada, 0);
 
-	log_info(logger, "...Se eligio como victima el buddy de base %d", buddy_victima -> base);
+	//log_info(logger, "...Se eligio como victima el buddy de base %d", buddy_victima -> base);
 
 	return buddy_victima;
 }
@@ -1385,7 +1383,7 @@ t_memoria_buddy* seleccionar_victima_lru() {
 	t_list* memoria_cache_ordenada = list_sorted(memoria_cache_duplicada, fue_referenciada_antes);
 	t_memoria_buddy* buddy_victima = list_get(memoria_cache_ordenada, 0);
 
-	log_info(logger, "...Se eligio como victima el buddy de base %d", buddy_victima -> base);
+	//log_info(logger, "...Se eligio como victima el buddy de base %d", buddy_victima -> base);
 
 	return buddy_victima;
 }
@@ -1446,7 +1444,7 @@ void consolidar_buddy(uint32_t indice, t_memoria_buddy* buddy) {
 
 		indice = remover_buddy(buddy_hermano);
 
-		log_error(logger, "Se remueve el buddy de base %d", buddy -> base);
+		log_info(logger, "Se remueve el buddy de base %d", buddy -> base);
 
 		uint32_t posicion_padre;
 		if(base_padre % (buddy -> tamanio_exponente * 4)) {
@@ -1457,7 +1455,7 @@ void consolidar_buddy(uint32_t indice, t_memoria_buddy* buddy) {
 		t_memoria_buddy* buddy_padre = armar_buddy(buddy -> tamanio_exponente * 2, base_padre, NULL, 0, NULL, posicion_padre);
 
 		list_add_in_index(memoria_cache, indice, buddy_padre);
-		log_error(logger, "Se consolidaron los buddies de bases %d y %d", base_padre, base_padre + buddy -> tamanio_exponente);
+		log_info(logger, "Se consolidaron los buddies de bases %d y %d", base_padre, base_padre + buddy -> tamanio_exponente);
 		limpiar_buddy(buddy_padre);
 	} else {
 		list_add_in_index(memoria_cache, indice, armar_buddy(buddy -> tamanio_exponente, buddy -> base, NULL, 0, NULL, buddy -> posicion));
@@ -1553,7 +1551,7 @@ void dividir_buddy(t_memoria_buddy* buddy_a_dividir) {
 		//log_info(logger, "Se dividio el buddy %d, en dos con base %d y %d", buddy_a_dividir -> tamanio_exponente, buddy_izquierdo -> base, buddy_derecho -> base);
 	} else {
 
-		log_error(logger, "No puedo dividirme mas, mi tamanio es %d", buddy_a_dividir -> tamanio_exponente);
+		log_info(logger, "No puedo dividirme mas, mi tamanio es %d", buddy_a_dividir -> tamanio_exponente);
 	}
 }
 
@@ -1611,8 +1609,8 @@ t_memoria_dinamica* seleccionar_particion_victima_de_reemplazo(){
 		memoria_ordenada = list_sorted(memoria_duplicada, fue_referenciada_antes);
 		particion_victima = list_get(memoria_ordenada, 0);
 	}
-    log_error(logger,"Tamanio: %d", particion_victima -> tamanio_part);
-    log_error(logger,"Base: %d", particion_victima -> base);
+    //log_error(logger,"Tamanio: %d", particion_victima -> tamanio_part);
+    //log_error(logger,"Base: %d", particion_victima -> base);
 
     return particion_victima;
 }
@@ -1728,7 +1726,7 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
         posicion_a_ubicar = encontrar_primer_ajuste(tamanio_a_buscar);
 
         if(posicion_a_ubicar == -1){
-            log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
+           //log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
             reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
         } else {
 			
@@ -1742,7 +1740,7 @@ void guardar_particion(t_mensaje* un_mensaje, void* contenido_mensaje){
         posicion_a_ubicar = encontrar_mejor_ajuste(tamanio_a_buscar);
 
         if(posicion_a_ubicar == -1){
-            log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
+            //log_error(logger, "...No hay suficiente tamaño para ubicar el mensaje en memoria.");
             reemplazar_particion_de_memoria(un_mensaje, contenido_mensaje);
 
         } else {
@@ -2132,7 +2130,7 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 
 void eliminar_de_message_queue(t_mensaje* mensaje, op_code codigo){
 	if(mensaje == NULL) {
-		log_error(logger, "...Se intento remover un mensaje nulo de la message queue");
+		log_info(logger, "Se intento remover un mensaje nulo de la message queue");
 		return;
 	} else {
 
