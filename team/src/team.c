@@ -1601,7 +1601,7 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 
 		pokemon_mapa -> posicion[1] = *(int*)cabeza_lista -> data;
 		pokemon_mapa -> cantidad = 1;
-
+		log_error(logger,"(%d,%d)",pokemon_mapa->posicion[0],pokemon_mapa->posicion[1]);
 		list_add(mapa_pokemons, pokemon_mapa);
 		sem_post(&sem_cont_mapa);
 

@@ -1443,7 +1443,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 		 	 }
 		//log_info(logger,"LOCALIZED Armado"); TODO NUNCA PONER NADA ACA AMIGUITO
 
-		enviar_mensaje_localized_gc(LOCALIZED_POKEMON,localized_pokemon,socket_localized, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
+		enviar_mensaje(LOCALIZED_POKEMON,localized_pokemon,socket_localized, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
 		uint32_t id = recibir_id_de_mensaje_enviado(socket_localized);
 
 		log_warning(logger,"Mensaje enviado, ID del mensaje enviado: %d",id);
@@ -1516,19 +1516,20 @@ void llenar_lista(t_list* lista_de_todo, char* temporary_file){
 
 char* leer_linea(FILE* archivo){
 
-	int i = 0;
-
 	char* linea = string_new();
-	char a;
+	char* a = malloc(2);
+	a[1] = '\0';
 
-	fread(&a,1,1,archivo);
+	fread(a,1,1,archivo);
 
-	while (a!= '\n'){
-		appendy(linea,a);
-		fread(&a,1,1,archivo);
-		i++;
+	while (*a!= '\n'){
+		char* nueva_linea = concatenar(linea,a);
+		free(linea);
+		linea=nueva_linea;
+		fread(a,1,1,archivo);
 	}
-	//free(a);
+
+	free(a);
 
 	return linea;
 }
@@ -1538,6 +1539,7 @@ void appendy(char* s, char c) {
         s[len] = c;
         s[len+1] = '\0';
 }
+
 
 char* get_value_from_linea(char* linea){
 	char** lista = string_split(linea,"=");
