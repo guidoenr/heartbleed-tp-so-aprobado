@@ -1,11 +1,10 @@
 #include "team.h"
 
 int main(void) {
-
 	iniciar_programa();
-
-	sem_wait(&fin_programa);
+	
 	terminar_programa();
+	
 	return 0;
 }
 
@@ -72,7 +71,6 @@ void inicializar_semaforos() {
 	sem_init(&sem_cont_entrenadores_a_replanif, 0, 0);
 	sem_init(&mx_contexto, 0, 1);
 	sem_init(&mx_paquete, 0, 1);
-	sem_init(&fin_programa, 0, 0);
 	sem_init(&semaforo, 0, 1);
 }
 
@@ -390,10 +388,6 @@ void asignar_estado_luego_de_trade(t_entrenador* entrenador) {
 		cambiar_a_estado(estado_exit, entrenador);
 		log_info(logger, "Luego de ejecutar el trade, el entrenador %d cumplio su objetivo personal y se mueve a exit", entrenador -> id);
 		sem_post(&mx_estados);
-
-		if(config -> entrenadores -> elements_count == estado_exit -> elements_count) {
-			sem_post(&fin_programa);
-		}
 
 	} else {
 		if(!esta_en_estado(estado_block, entrenador)) {
@@ -1673,7 +1667,6 @@ void liberar_semaforos() {
 	sem_destroy(&sem_cont_entrenadores_a_replanif);
 	sem_destroy(&mx_contexto);
 	sem_destroy(&mx_paquete);
-	sem_destroy(&fin_programa);
 	sem_destroy(&semaforo);
 }
 
