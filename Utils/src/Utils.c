@@ -792,7 +792,7 @@ void* serializar_localized_pokemon(void* mensaje_localized,uint32_t size_mensaje
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, mensaje_a_enviar->pokemon, tamanio_pokemon);
-	log_info(logger, "Serialiazacion pokemon %s:", (char*) stream + offset);
+	log_info(logger, "Serialiazacion pokemon: %s", (char*) stream + offset);
 	offset += tamanio_pokemon;
 
 	memcpy(stream + offset, &(mensaje_a_enviar->tamanio_lista),sizeof(uint32_t));

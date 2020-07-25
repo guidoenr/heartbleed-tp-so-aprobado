@@ -254,11 +254,11 @@ void suscribirse_a(op_code cola) {
 		uint32_t tamanio_suscripcion = size_mensaje(suscripcion, SUBSCRIPTION);
 
 		enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
-		recv(socket, &cod_op, sizeof(op_code), MSG_WAITALL);
-		process_request(cod_op, socket);
-
+		while(1) {
+			recv(socket, &cod_op, sizeof(op_code), MSG_WAITALL);
+			process_request(cod_op, socket);
+		}
 	}
-
 }
 
 void iniciar_hilo_appeared(){
@@ -1498,7 +1498,6 @@ void enviar_ack_broker(uint32_t id_mensaje, op_code codigo) {
 		enviar_mensaje(ACK, ack, socket, size_mensaje);
 		close(socket);
 	}
-
 }
 
 void procesar_mensaje_appeared(t_appeared_pokemon* mensaje_recibido) {
@@ -1563,7 +1562,7 @@ void procesar_mensaje_caught(t_caught_pokemon* mensaje_recibido) {
 
 	bool tiene_el_id_recibido(void* un_entrenador) {
 		t_entrenador* entrenador = un_entrenador;
-		return entrenador -> id_espera_catch == mensaje_recibido -> id_mensaje;
+		return entrenador -> id_espera_catch == mensaje_recibido -> id_mensaje_correlativo;
 	}
 
 	t_entrenador* entrenador = list_find(estado_block, tiene_el_id_recibido);
@@ -1593,12 +1592,12 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 
 	free(mensaje_recibido);
 }
-
+t_localized_pokemon* asd;
 void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 
 	t_link_element* cabeza_lista = mensaje_recibido -> posiciones -> head;
 
-	cabeza_lista = cabeza_lista -> next;
+	//cabeza_lista = cabeza_lista -> next;
 
 	while(cabeza_lista) {
 		t_pokemon_mapa* pokemon_mapa = malloc(sizeof(t_pokemon_mapa));

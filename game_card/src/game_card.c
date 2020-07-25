@@ -16,8 +16,6 @@ int main(void) {
 	iniciar_logger("gameCard.log","gamercard");
 	punto_montaje = config_gc->punto_montaje_tallgrass;
 
-	sem_init(&terminarprograma,0,0);
-
 	int socket;
 
 	iniciar_tall_grass();
@@ -80,10 +78,10 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd){
 	uint32_t size;
 	op_code* codigo_op = malloc(sizeof(op_code));
 
-
+	sem_wait(&muteadito);
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
 	//cod_op = (*codigo_op);
-	sem_wait(&muteadito);
+
 	void* msg = deserealizar_paquete(stream, cod_op, size);
 
 	t_new_pokemon* newpoke;
@@ -119,6 +117,7 @@ void iniciar_semaforos(){
 	sem_init(&semaforo,0,1);
 	sem_init(&muteadito,0,1);
 	sem_init(&mx_bitmap,0,1);
+	sem_init(&terminarprograma,0,0);
 
 }
 void* iniciar_server_gamecard(){
@@ -230,13 +229,13 @@ void suscribirse_a(op_code cola) {
 		suscripcion -> tiempo_suscripcion = 0; //ESTE VALOR SIEMPRE ES 0
 
 		uint32_t tamanio_suscripcion = size_mensaje(suscripcion, SUBSCRIPTION);
-
 		enviar_mensaje(SUBSCRIPTION, suscripcion, suscripcion->socket, tamanio_suscripcion);
-		recv(socket, &cod_op, sizeof(op_code), MSG_WAITALL);
 
-		process_request(cod_op, socket);
+		while(1) {
+			recv(socket, &cod_op, sizeof(op_code), MSG_WAITALL);
+			process_request(cod_op, socket);
+		}
 	}
-
 }
 
 t_config_game_card* leer_config() {
