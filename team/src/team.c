@@ -27,7 +27,6 @@ void iniciar_programa() {
 	iniciar_hilos_ejecucion();
 
 	iniciar_conexion();
-	sleep(2);
 	iniciar_hilo_appeared();
 	iniciar_hilo_localized();
 	iniciar_hilo_caught();
