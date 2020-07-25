@@ -1443,7 +1443,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 		 	 }
 		//log_info(logger,"LOCALIZED Armado"); TODO NUNCA PONER NADA ACA AMIGUITO
 
-		enviar_mensaje(LOCALIZED_POKEMON,localized_pokemon,socket_localized, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
+		enviar_mensaje_localized_gc(LOCALIZED_POKEMON,localized_pokemon,socket_localized, size_mensaje(localized_pokemon, LOCALIZED_POKEMON));
 		uint32_t id = recibir_id_de_mensaje_enviado(socket_localized);
 
 		log_warning(logger,"Mensaje enviado, ID del mensaje enviado: %d",id);

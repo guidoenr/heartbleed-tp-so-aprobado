@@ -40,20 +40,22 @@ uint32_t crear_conexion(char *ip, char* puerto) {
 }
 
 void enviar_mensaje(op_code codigo_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje){
-
+		t_localized_pokemon* mensaje2;
+		t_list* para_parsear;
+		uint32_t array[100];
 		uint32_t* size_serializado = malloc(sizeof(uint32_t));
 		(*size_serializado) = size_mensaje + (sizeof(uint32_t) * 2) + sizeof(op_code);
-		if (codigo_op == ACK || codigo_op == SUBSCRIPTION || codigo_op == CAUGHT_POKEMON) {
-			*size_serializado -= 4;
-		}
 
+		if (codigo_op == ACK || codigo_op == SUBSCRIPTION || codigo_op == CAUGHT_POKEMON) {
+			(*size_serializado) -= 4;
+		}
 		void* stream = malloc((*size_serializado));
+
 		stream = serializar_paquete(mensaje, size_mensaje, codigo_op, size_serializado);
 		uint32_t size_paquete = (*size_serializado);
-		// log_info(logger,"...Paquete serializado con tamaño :%d", size_paquete);
-		//revisar tema hilos y semaforos
+
 		int a = send(socket_cliente, stream, size_paquete, 0);
-		//log_info(logger,"...Paquete enviado");
+
 		free(size_serializado);
 		free(stream);
 
@@ -61,16 +63,38 @@ void enviar_mensaje(op_code codigo_op, void* mensaje, uint32_t socket_cliente, u
 
 void enviar_mensaje_localized_gc(op_code codigo_op, void* mensaje, uint32_t socket_cliente, uint32_t size_mensaje){
 
-	uint32_t size_serializado;
+	t_localized_pokemon* mensaje2;
+	t_list* para_parsear;
+	uint32_t array[100];
 
-	size_serializado = size_mensaje + (sizeof(uint32_t) * 2) + sizeof(op_code);
+	uint32_t size_serializado = size_mensaje + (sizeof(uint32_t) * 2) + sizeof(op_code);
 
-	void* stream = serializar_paquete(mensaje, size_mensaje, codigo_op,&size_serializado);
 
+	para_parsear = ((t_localized_pokemon*) mensaje)->posiciones;
+	t_link_element* cabeza = para_parsear -> head;
+
+
+	for (int i =0; i<para_parsear->elements_count;i++){
+		array[i] = *(uint32_t*) cabeza->data;
+		cabeza = cabeza->next;
+	}
+
+	void* stream = malloc((size_serializado));
+
+	para_parsear = list_create();
+
+	for (int i=0; i< ((t_localized_pokemon*) mensaje)->tamanio_lista;i++){
+		list_add(para_parsear,&array[i]);
+	}
+
+	((t_localized_pokemon*) mensaje)->posiciones = para_parsear;
+
+	stream = serializar_paquete(mensaje, size_mensaje, codigo_op, &size_serializado);
 	uint32_t size_paquete = size_serializado;
 
-	send(socket_cliente, stream, size_paquete, 0);
+	int a = send(socket_cliente, stream, size_paquete, 0);
 
+	free(stream);
 
 }
 void* recibir_paquete(uint32_t socket_cliente, uint32_t* size,op_code* codigo_operacion) {
