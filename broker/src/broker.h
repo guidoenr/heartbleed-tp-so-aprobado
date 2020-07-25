@@ -155,7 +155,7 @@ void* armar_contenido_new(t_new_pokemon*);
 void* armar_contenido_de_mensaje(void*, uint32_t);
 t_mensaje* encontrar_mensaje(uint32_t, op_code);
 bool puede_guardarse_mensaje(t_mensaje*);
-void eliminar_de_message_queue(t_mensaje*, op_code);
+t_mensaje* eliminar_de_message_queue(t_mensaje*, op_code);
 uint32_t obtener_tamanio_contenido_mensaje(void*, uint32_t);
 t_get_pokemon* preparar_mensaje_get(t_mensaje*);
 t_catch_pokemon* preparar_mensaje_catch(t_mensaje*);
