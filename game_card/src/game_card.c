@@ -1426,6 +1426,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 		localized_pokemon->pokemon = get_pokemon->pokemon;
 
 		 if (el_pokemon_esta_creado(dir_path)){
+			 log_info(logger,"El pokemon %s existe en el filesystem",get_pokemon->pokemon);
 
 		 	verificar_apertura_pokemon(meta_path, get_pokemon->pokemon);
 
@@ -1436,7 +1437,7 @@ void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 
 		 	estaba=1;
 		 	 }else{
-		 		 log_info(logger,"El pokemon %s no existe en el filesystem, te mando la lista vacia",get_pokemon->pokemon);
+		 		 log_warning(logger,"El pokemon %s no existe en el filesystem, te mando la lista vacia",get_pokemon->pokemon);
 		 		 localized_pokemon->tamanio_lista = 0;
 		 		 localized_pokemon->posiciones = list_create();
 		 	 }
