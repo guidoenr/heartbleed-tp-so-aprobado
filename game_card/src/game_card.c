@@ -25,11 +25,9 @@ int main(void) {
 	sleep(1);
 	iniciar_hilos_suscripcion();
 
-
-	//pruebas_new_pokemon(socket);
 	//pruebas_catch_pokemon(socket);
 	//pruebas_get_pokemon(socket);
-
+	//pruebas_new_pokemon(socket);
 	sem_wait(&terminarprograma);
 	terminar_programa(socket, config_gc);
 
@@ -360,7 +358,7 @@ void crear_metadata_fs(char* path){
 
 	config_set_value(metadata_config,"MAGIC_NUMBER","TALL_GRASS");
 	config_set_value(metadata_config,"BLOCKS_SIZE","64");
-	config_set_value(metadata_config,"BLOCKS","1024");
+	config_set_value(metadata_config,"BLOCKS","1");
 
 	int result = config_save(metadata_config);
 
@@ -458,7 +456,22 @@ char* buscar_block_libre(){
 	int block_libre;
 	int blocks = (bitarray_default_size_in_bytes()*8);
 
-	for(int i=0; i< blocks; i++){
+	if (blocks == 0){
+		if (bitarray_test_bit(bitarray,0)!= true){
+			log_info(logger,"El block 0 esta libre, usalo tranka nomas");
+			bitarray_set_bit(bitarray,0);
+			actualizar_bitmap(bitarray);
+			log_warning(logger,"El block 0 ahora esta en uso y el filesystem ahora esta lleno");
+			return 0;
+		}else{
+			log_error(logger,"El filesystem esta lleno");
+			return -1;
+		}
+
+	}
+
+	int i = 0;
+	while(i < blocks){
 
 		if (bitarray_test_bit(bitarray,i) != true){
 
@@ -471,11 +484,16 @@ char* buscar_block_libre(){
 
 		} else {
 				log_info(logger,"El block %d esta ocupado, sigo buscando",i);
-		}
+				}
+		 i++;
+	}
+
+	if (i == blocks){
+		log_error(logger,"El filesystem esta lleno");
+		return -1;
 	}
 
 	return block_libre;
-
 }
 
 t_list* asignar_block_inicial(){
@@ -633,7 +651,7 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,uint32_t socket){
 
 	char* path_metafile = obtener_path_metafile(new_pokemon->pokemon);
 	char* dir_path_newpoke = obtener_path_dir_pokemon(new_pokemon->pokemon);
-
+	bool se_creo = true;
 	if (el_pokemon_esta_creado(dir_path_newpoke)){
 
 		log_info(logger,"El pokemon %s ya existe",new_pokemon->pokemon);
@@ -653,11 +671,9 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,uint32_t socket){
 			} else{
 				log_info(logger,"No existia la posicion %s del pokemon %s , se agrega",key,new_pokemon->pokemon);
 				agregar_nueva_posicion(new_pokemon,path_metafile, key, value);
-
-			}
+				}
 
 		remove(temporary_file);
-
 		free(key);
 		free(value);
 		free(temporary_file);
@@ -666,40 +682,53 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,uint32_t socket){
 
 		log_info(logger,"No existia el pokemon %s",new_pokemon->pokemon);
 
-		mkdir(dir_path_newpoke, 0777);
-		log_info(logger,"Se creo el directorio %s en %s",new_pokemon->pokemon,dir_path_newpoke);
+		if (el_file_system_esta_lleno()){
+			log_error(logger,"El Pokemon %s no se puede crear",new_pokemon->pokemon);
+			se_creo=false;
 
-		FILE* f = fopen(path_metafile,"wb");
-		fclose(f);
-		log_info(logger,"Se creo el archivo metafile del pokemon %s vacio",new_pokemon->pokemon);
+		} else {
+			mkdir(dir_path_newpoke, 0777);
+			log_info(logger,"Se creo el directorio %s en %s",new_pokemon->pokemon,dir_path_newpoke);
 
-		crear_pokemon(new_pokemon, path_metafile);
-		log_warning(logger,"Se creo por completo el pokemon %s",new_pokemon->pokemon);
+			FILE* f = fopen(path_metafile,"wb");
+			fclose(f);
+			log_info(logger,"Se creo el archivo metafile del pokemon %s vacio",new_pokemon->pokemon);
+
+			crear_pokemon(new_pokemon, path_metafile);
+			log_warning(logger,"Se creo por completo el pokemon %s",new_pokemon->pokemon);
+		}
+
 
 		}
 
-	log_info(logger,"Esperando el tiempo de retardo de operacion");
+	if (se_creo){
 
-	sleep(config_gc->tiempo_retardo_operacion);
+		log_info(logger,"Esperando el tiempo de retardo de operacion");
+		sleep(config_gc->tiempo_retardo_operacion);
+		unlock_file(path_metafile);
+		log_warning(logger,"UNLOCK al pokemon");
+		t_appeared_pokemon* appeared = armar_appeared(new_pokemon);
+		log_info(logger,"APPEARED Armado");
 
-	log_warning(logger,"UNLOCK al pokemon");
+		uint32_t socket_appeared = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
 
-	unlock_file(path_metafile);
+		if (socket_appeared == -1){
 
-	t_appeared_pokemon* appeared = armar_appeared(new_pokemon);
-	log_info(logger,"APPEARED Armado");
+			log_error(logger,"El broker esta muerto");
+			log_error(logger,"socket: %d",socket_appeared);
 
-	uint32_t socket_appeared = crear_conexion(config_gc->ip_broker,config_gc->puerto_broker);
+			}else {
+			enviar_mensaje(APPEARED_POKEMON,appeared,socket_appeared, size_mensaje(appeared, APPEARED_POKEMON));
+			log_info(logger,"Mensaje enviado");
+			uint32_t id = recibir_id_de_mensaje_enviado(socket_appeared);
+			log_warning(logger,"Recibo ID del mensaje enviado: %d",id);
+			}
+		} else {
+		log_error(logger,"No se creo el pokemon %s , no te envio ningun appeared",new_pokemon->pokemon);
+		}
 
-	if (socket_appeared == -1){
-		log_error(logger,"El broker esta muerto");
-		log_error(logger,"socket: %d",socket_appeared);
-	}else {
-		enviar_mensaje(APPEARED_POKEMON,appeared,socket_appeared, size_mensaje(appeared, APPEARED_POKEMON));
-		log_info(logger,"Mensaje enviado");
-		uint32_t id = recibir_id_de_mensaje_enviado(socket_appeared);
-		log_warning(logger,"Recibo ID del mensaje enviado: %d",id);
-	}
+
+
 
 
 	free(path_metafile);
@@ -1352,6 +1381,27 @@ void liberar_block_de_la_indextable(char* metapath,char* block_vacio,t_config* m
 
 }
 
+bool el_file_system_esta_lleno(){
+
+	t_bitarray* bitmap = obtener_bitmap();
+
+	int blocks = (bitarray_default_size_in_bytes()*8);
+	bool lleno = true;
+
+	int i = 0;
+	while(i <= blocks){
+
+	if(bitarray_test_bit(bitmap,i) != true){
+
+		lleno = false;
+		} else {
+		}
+		i++;
+	}
+	actualizar_bitmap(bitmap);
+
+	return lleno;
+}
 
 int posicion_block_vacio(char** blocks, char* block_vacio){
 
@@ -1363,7 +1413,6 @@ int posicion_block_vacio(char** blocks, char* block_vacio){
 			return i;
 			break;
 		}
-
 	}
 	return -1;
 

@@ -126,6 +126,7 @@ void liberar_block_de_la_indextable(char* metapath,char* block_vacio,t_config* m
 void liberar_block_del_bitmap(char* numero_block);
 int block_default_size();
 void crear_directorios(char* path);
+bool el_file_system_esta_lleno();
 void crear_bitmap(char* path);
 void crear_blocks(char* path);
 void create_file_with_size(char* path,int size);
