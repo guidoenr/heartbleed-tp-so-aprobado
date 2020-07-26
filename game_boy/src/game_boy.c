@@ -305,9 +305,7 @@ t_new_pokemon* armar_mensaje_new_pokemon(char * parametros[]) {
   uint32_t tamanio = strlen(parametros[3]);
   t_new_pokemon* a_enviar = malloc(sizeof(t_new_pokemon));
   a_enviar -> pokemon = malloc(tamanio);
-  log_info(logger,"en armar tengo el pokemon por param: %s", parametros[3] );
   a_enviar -> pokemon = parametros[3];
-  log_info(logger, "en armar en la variable tengo : %s", a_enviar->pokemon);
 
   a_enviar -> posicion[0] = atof(parametros[4]);
   a_enviar -> posicion[1] = atof(parametros[5]);

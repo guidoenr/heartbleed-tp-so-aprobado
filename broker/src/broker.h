@@ -237,5 +237,6 @@ t_mensaje* encontrar_mensaje_buddy(uint32_t, op_code);
 void dump_info_buddy(void*);
 uint32_t obtener_id_buddy(t_memoria_buddy*);
 char* obtener_cola_del_mensaje_buddy(t_memoria_buddy*);
+bool ya_fue_consolidado(t_memoria_buddy*);
 
 
