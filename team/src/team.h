@@ -21,7 +21,6 @@ typedef struct {
 	sem_t esperar_caught;
 	uint32_t estimacion;
 	uint32_t ciclos_cpu;
-	uint32_t socket_mensaje_catch; // depende de donde hagamos el recv
 	uint32_t id_espera_catch;
 } t_entrenador;
 
@@ -71,7 +70,6 @@ uint32_t cambios_de_contexto;
 void iniciar_hilo_caught();
 void iniciar_hilo_localized();
 void iniciar_hilo_appeared();
-
 
 
 // utils
@@ -151,7 +149,7 @@ pthread_t hilo_caught;
 void crear_hilo_segun_algoritmo();
 void crear_hilo_planificar_entrenadores();
 void terminar_hilos();
-void terminar_hilos_entrenadores();
+void esperar_hilos_entrenadores();
 void iniciar_conexion();
 void* iniciar_server_gamecard();
 void levantar_server_broker();
@@ -179,6 +177,7 @@ sem_t mx_estados;
 sem_t mx_estado_exec;
 sem_t mx_desalojo_exec;
 sem_t entrenadores_ready;
+sem_t mx_mapas;
 sem_t sem_cont_mapa;
 sem_t sem_cont_entrenadores_a_replanif;
 sem_t mx_contexto;
