@@ -299,6 +299,11 @@ bool puede_guardarse_mensaje(t_mensaje* un_mensaje) {
 		break;
 	}
 
+	if(config_broker -> size_memoria < un_mensaje -> tamanio_mensaje){
+		log_error(logger, "No se puede guardar el mensaje pues su tamanio es mayor al de la memoria.");
+		no_se_repite_correlativo = 0;
+	}
+
 	return no_se_repite_correlativo;
 }
 
@@ -1045,8 +1050,8 @@ void dump_de_memoria(){
 	} else {
 		log_error(logger_memoria, "...No se reconoce el algoritmo de memoria a implementar en dump de memoria.");
 	}
-
 	sem_post(&muteadito);
+	numero_particion = 0;
 }
 
 void iniciar_logger_broker(char* file, char* program_name) {
@@ -1074,7 +1079,6 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original) {
 
 		if(string_equals_ignore_case(config_broker -> algoritmo_memoria,"BS")) {
 			uint32_t exponente = determinar_exponente(mensaje);
-
 			recorrer_segun_algoritmo(exponente, mensaje, contenido);
 
 		} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")) {
@@ -1082,9 +1086,7 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original) {
 		}
 	}
 
-
-	//free(contenido);
-
+	free(contenido);
 }
 
 void recorrer_segun_algoritmo(uint32_t exponente, t_mensaje* mensaje, void* contenido) {
@@ -1330,7 +1332,7 @@ t_memoria_buddy* seleccionar_victima_fifo() {
 	t_memoria_buddy* buddy_victima = list_get(memoria_cache_ordenada, 0);
 
 	if(buddy_victima == NULL) {
-		log_error(logger, "soy nuloooooo");
+		log_error(logger, "No hay buddy victima obtenido por fifo.");
 	}
 	return buddy_victima;
 }
@@ -1353,6 +1355,9 @@ t_memoria_buddy* seleccionar_victima_lru() {
 
 	t_list* memoria_cache_ordenada = list_sorted(memoria_cache_duplicada, fue_referenciada_antes);
 	t_memoria_buddy* buddy_victima = list_get(memoria_cache_ordenada, 0);
+	if(buddy_victima == NULL) {
+		log_error(logger, "No hay buddy victima obtenido por lru.");
+	}
 	return buddy_victima;
 }
 
@@ -1377,7 +1382,7 @@ void limpiar_buddy(t_memoria_buddy* buddy) {
 	uint32_t indice;
 	t_mensaje* mensaje_a_eliminar;
 
-	if(buddy->ocupado == 1 ){
+	if(buddy->ocupado == 1){
 		mensaje_a_eliminar = encontrar_mensaje_buddy(buddy -> base, buddy -> codigo_operacion);
 		eliminar_de_message_queue(mensaje_a_eliminar, buddy -> codigo_operacion);
 	}
@@ -1430,7 +1435,7 @@ void consolidar_buddy(uint32_t indice, t_memoria_buddy* buddy) {
 
 		indice = remover_buddy(buddy_hermano);
 
-		log_info(logger, "Se remueve el buddy de base %d", buddy -> base);
+		//log_info(logger, "Se remueve el buddy de base %d", buddy -> base);
 
 		uint32_t posicion_padre;
 		if(base_padre % (buddy -> tamanio_exponente * 4)) {
@@ -1443,7 +1448,6 @@ void consolidar_buddy(uint32_t indice, t_memoria_buddy* buddy) {
 		list_add_in_index(memoria_cache, indice, buddy_padre);
 		log_info(logger, "Se consolidaron los buddies de bases %d y %d", base_padre, base_padre + buddy -> tamanio_exponente);
 		limpiar_buddy(buddy_padre);
-		//consolidar_buddy(indice, buddy_vacio);
 	} else {
 		list_add_in_index(memoria_cache, indice, armar_buddy(buddy -> tamanio_exponente, buddy -> base, NULL, 0, NULL, buddy -> posicion));
 	}
@@ -1480,14 +1484,6 @@ uint32_t remover_buddy(t_memoria_buddy* buddy_a_remover) {
 
 	uint32_t indice = encontrar_indice(buddy_a_remover);
 
-	/*bool es_el_buddy(void* un_buddy) {
-
-		t_memoria_buddy* otro_buddy = un_buddy;
-
-		return otro_buddy == buddy_a_remover;
-	}
-
-	list_remove_by_condition(memoria_cache, es_el_buddy);*/
 	list_remove(memoria_cache, indice);
 
 	return indice;
@@ -1796,10 +1792,6 @@ t_memoria_dinamica* armar_particion(uint32_t tamanio, uint32_t base, t_mensaje* 
 }
 
 
-uint32_t generar_id_bloque() {
-	return id_bloque ++;
-}
-
 uint32_t encontrar_primer_ajuste(uint32_t tamanio){
 	uint32_t indice_seleccionado = 0;
 
@@ -1854,12 +1846,8 @@ uint32_t encontrar_mejor_ajuste(uint32_t tamanio){
 	}
 
 	list_destroy(particiones_en_orden_creciente);
+	list_destroy(particiones_ordenadas);
 	return indice_seleccionado;
-}
-
-void destruir_particion(void* una_particion){
-	t_memoria_dinamica* particion = una_particion;
-	free(particion);
 }
 
 uint32_t encontrar_indice(void* memory){
@@ -1940,8 +1928,7 @@ uint32_t encontrar_indice(void* memory){
 //--------------------------------CONSOLIDACION_P--------------------------------//
 
 void consolidar_particiones_dinamicas(t_list* memoria){
-	t_list* memoria_duplicada = list_create();
-	memoria_duplicada = list_duplicate(memoria);
+	t_list* memoria_duplicada = list_duplicate(memoria);
 	
 	uint32_t contador = 0;
 	void consolidar_particiones_contiguas(void* particion){
@@ -1955,6 +1942,8 @@ void consolidar_particiones_dinamicas(t_list* memoria){
 	}
 
 	list_iterate(memoria_duplicada, consolidar_particiones_contiguas);
+
+	list_destroy(memoria_duplicada);
 }
 
 bool tiene_siguiente(uint32_t posicion){
@@ -2048,7 +2037,7 @@ uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion, uint32_t indice_t
 	} else {
 		nueva_base = 0;
 	}
-
+	list_destroy(memoria_duplicada);
 	return nueva_base;
 }
 
@@ -2176,14 +2165,14 @@ void dump_info_particion(void* particion){
 		char* cola_del_mensaje = obtener_cola_del_mensaje(una_particion);
 		uint32_t id_del_mensaje = obtener_id(una_particion);
 
-		//free(cola_del_mensaje);
+		free(cola_del_mensaje);
 
 		log_info(logger_memoria, "Particion %d: %p.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, ocupado, tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
 	} else {
 
 		log_info(logger_memoria, "Particion %d: %p.  [%s] Size: %d", numero_particion, base, ocupado, tamanio);
 	}
-
+	free(ocupado);
 	numero_particion++;
 }
 
@@ -2206,14 +2195,13 @@ void dump_info_buddy(void* buddy){
 
 		log_info(logger_memoria, "Buddy %d: %p.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, ocupado, tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
 
-		//free(cola_del_mensaje);
+		free(cola_del_mensaje);
 	} else {
 
 		log_info(logger_memoria, "Buddy %d: %p.  [%s] Size: %d", numero_particion, base, ocupado, tamanio);
 	}
 	numero_particion++;
-
-    //free(ocupado);
+	free(ocupado);
 }
 
 char* obtener_cola_del_mensaje(t_memoria_dinamica* una_particion){
@@ -2291,13 +2279,11 @@ char* obtener_cola_del_mensaje_buddy(t_memoria_buddy* un_buddy){
 uint64_t timestamp(void) {
 	struct timeval valor;
 	gettimeofday(&valor, NULL);
-	uint64_t result = ((unsigned long long )valor.tv_sec) * 1000 + ((unsigned long) valor.tv_usec) / 1000;
-	return result;
+	unsigned long long result = ((unsigned long long )valor.tv_sec) * 1000 + ((unsigned long) valor.tv_usec) / 1000;
+	uint64_t tiempo = result;
+	return tiempo;
 }
 
-uint32_t crear_id_nodo() { //mutex?
-	return nodo_id ++;
-}
 
 t_memoria_buddy* recorrer_first_fit(uint32_t exponente) {
 
