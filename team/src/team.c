@@ -20,8 +20,8 @@ void iniciar_programa() {
 	leer_config();
 	inicializar_estados();
 	inicializar_semaforos();
-	determinar_objetivo_global();
 	crear_listas_globales();
+	determinar_objetivo_global();
 	iniciar_entrenadores();
 	iniciar_hilos_ejecucion();
 
@@ -33,12 +33,13 @@ void iniciar_programa() {
 }
 
 void crear_listas_globales() {
+	objetivo_global = list_create();
+	objetivo_global_pendiente = list_create();
+	especies_objetivo_global = list_create();
 	mapa_pokemons = list_create();
+	mapa_pokemons_pendiente = list_create();
 	pedidos_captura = list_create();
 	pedidos_intercambio = list_create();
-	especies_objetivo_global = list_create();
-	objetivo_global_pendiente = list_create();
-	mapa_pokemons_pendiente = list_create();
 }
 
 void iniciar_hilos_ejecucion() {
@@ -179,7 +180,6 @@ void cargar_pokemons_a_entrenador(t_list* aux, t_link_element* cabeza, t_list* d
 }
 
 void determinar_objetivo_global() {
-	objetivo_global = list_create();
 
 	void obtener_entrenadores(void* entrenador) {
 
@@ -267,7 +267,7 @@ void suscribirse_a(op_code cola) {
 void iniciar_hilo_appeared() {
 
 	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
-	uint32_t err = pthread_create(&hilo_appeared, NULL, (void*) suscribirse_a,APPEARED_POKEMON);
+	uint32_t err = pthread_create(&hilo_appeared, NULL, (void*) suscribirse_a, APPEARED_POKEMON);
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
 		}
@@ -277,7 +277,7 @@ void iniciar_hilo_appeared() {
 void iniciar_hilo_localized() {
 
 	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
-	uint32_t err = pthread_create(&hilo_localized, NULL, (void*) suscribirse_a,LOCALIZED_POKEMON);
+	uint32_t err = pthread_create(&hilo_localized, NULL, (void*) suscribirse_a, LOCALIZED_POKEMON);
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
 		}
@@ -287,7 +287,7 @@ void iniciar_hilo_localized() {
 void iniciar_hilo_caught() {
 
 	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
-	uint32_t err = pthread_create(&hilo_caught, NULL, (void*) suscribirse_a,CAUGHT_POKEMON);
+	uint32_t err = pthread_create(&hilo_caught, NULL, (void*) suscribirse_a, CAUGHT_POKEMON);
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
 		}
