@@ -205,7 +205,7 @@ void determinar_objetivo_global() {
 			return string_equals_ignore_case(pokemon, un_pokemon);
 		}
 
-		if(list_find(especies_objetivo_global, es_el_pokemon) == NULL) {
+		if(!list_find(especies_objetivo_global, es_el_pokemon)) {
 			list_add(especies_objetivo_global, pokemon);
 		}
 	}
