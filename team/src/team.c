@@ -1626,10 +1626,10 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 			t_pokemon_mapa* pokemon_a_agregar = list_find(mapa_pokemons, pokemon_a_eliminar);
 			if(pokemon_a_agregar) {
 				(pokemon_a_agregar -> cantidad)++;
-				log_error(logger,"ya estaba el %s en [%d,%d], le sumo 1", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
+				log_warning(logger,"ya estaba el %s en [%d,%d], le sumo 1", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 				free(pokemon_mapa);
 			} else {
-				list_add(mapa_pokemons, pokemon_mapa);
+				log_warning(mapa_pokemons, pokemon_mapa);
 				log_error(logger,"no estaba el %s en [%d,%d], lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 			}
 			sem_post(&sem_cont_mapa);
@@ -1637,11 +1637,11 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 			t_pokemon_mapa* pokemon_a_agregar = list_find(mapa_pokemons_pendiente, pokemon_a_eliminar);
 			if(pokemon_a_agregar) {
 				(pokemon_a_agregar -> cantidad)++;
-				log_error(logger,"ya estaba el %s en [%d,%d] en el secundario, le sumo 1", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
+				log_warning(logger,"ya estaba el %s en [%d,%d] en el secundario, le sumo 1", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 				free(pokemon_mapa);
 			} else {
 				list_add(mapa_pokemons_pendiente, pokemon_mapa);
-				log_error(logger,"no estaba el %s en [%d,%d] en el secundario, lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
+				log_warning(logger,"no estaba el %s en [%d,%d] en el secundario, lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 			}
 		} else {
 			log_warning(logger,"me llego un localized %s pero no se encuentra en ninguno de mis objetivos actuales, lo ignoro.", pokemon_mapa -> nombre);
