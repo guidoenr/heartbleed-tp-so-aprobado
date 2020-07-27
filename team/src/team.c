@@ -377,7 +377,11 @@ void* operar_entrenador(void* un_entrenador) {
 					sem_post(&mx_estados);
 					entrenador -> pasos_a_moverse = ((config -> quantum < pedido_intercambio -> distancia) ? config -> quantum : pedido_intercambio -> distancia);
 					sem_post(&entrenadores_ready);
-				} else {
+				} else { // Tradeó.
+					sem_post(&(pedido -> entrenador_esperando -> sem_binario));
+					sem_wait(&mx_mapas_objetivos_pedidos);
+					eliminar_pedido_intercambio(pedido);
+					sem_post(&mx_mapas_objetivos_pedidos);
 					asignar_estado_luego_de_trade(entrenador);
 				}
 				sem_post(&mx_estado_exec);
@@ -686,7 +690,6 @@ void tradear_pokemon(t_pedido_intercambio* pedido){
 		ejecutar_trade(pedido);
 		
 		sleep(config -> retardo_cpu * 4);
-		sem_post(&(pedido -> entrenador_esperando -> sem_binario));
 		pedido -> entrenador_buscando -> ciclos_cpu += 4;
 	}
 	pedido -> entrenador_buscando -> pasos_a_moverse --;
@@ -720,8 +723,6 @@ void ejecutar_trade(t_pedido_intercambio* pedido) {
 	log_info(logger, "Intercambio entre el entrenador %d (%s) con el %d (%s)",
 			pedido -> entrenador_buscando -> id, pedido -> pokemon_a_dar,
 			pedido -> entrenador_esperando -> id, pedido -> pokemon_a_recibir);
-
-	eliminar_pedido_intercambio(pedido);
 }
 
 t_pedido_intercambio* buscar_pedido_intercambio(t_entrenador* entrenador){
@@ -826,16 +827,18 @@ void planificar_deadlocks() {
 		if(estado_block -> elements_count < 2) {
 			log_error(logger, "Me mandaste a planificar deadlock y no tengo 2 pibes en block!!");
 		}
-
+		sem_wait(&mx_mapas_objetivos_pedidos);
 		t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
+		sem_post(&mx_mapas_objetivos_pedidos);
 		if(!pedido) {
 			sleep(1);
 			sem_post(&sem_cont_entrenadores_a_replanif);
 			sem_post(&sem_cont_entrenadores_a_replanif);
 			continue;
 		}
+		sem_wait(&mx_mapas_objetivos_pedidos);
 		list_add(pedidos_intercambio, pedido);
-
+		sem_post(&mx_mapas_objetivos_pedidos);
 		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_ready, pedido -> entrenador_buscando);
 		log_info(logger, "El entrenador %d se mueve a ready para realizar el intercambio con el %d", pedido -> entrenador_buscando -> id, pedido -> entrenador_esperando -> id);
