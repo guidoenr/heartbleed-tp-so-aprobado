@@ -177,7 +177,7 @@ sem_t mx_estados;
 sem_t mx_estado_exec;
 sem_t mx_desalojo_exec;
 sem_t entrenadores_ready;
-sem_t mx_mapas;
+sem_t mx_mapas_objetivos_pedidos;
 sem_t sem_cont_mapa;
 sem_t sem_cont_entrenadores_a_replanif;
 sem_t mx_contexto;
@@ -208,14 +208,14 @@ t_list* mapa_pokemons;
 t_list* mapa_pokemons_pendiente;
 
 void determinar_objetivo_global();
-bool no_esta_en_objetivo(void*);
 void eliminar_los_que_ya_tengo();
 bool cumplio_objetivo_personal(t_entrenador*);
 bool comparar_pokemon(void*, void*);
 void eliminar_del_objetivo_global(t_pokemon_mapa*);
 
 // mapa
-void reagregar_especie_al_mapa_principal(char*);
+void mover_especie_de_mapa(t_list*, t_list*, char*);
+void vaciar_especie_de_mapa(t_list*, char*);
 
 
 // terminar
