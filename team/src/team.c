@@ -537,12 +537,13 @@ void vaciar_especie_de_mapa(t_list* mapa, char* especie) {
 		return string_equals_ignore_case(especie, otro_pokemon -> nombre);
 	}
 
-	t_pokemon_mapa* pokemon_a_remover = list_remove_and_destroy_by_condition(mapa, pokemon_a_eliminar, free);
+	t_pokemon_mapa* pokemon_a_remover = list_remove_by_condition(mapa, pokemon_a_eliminar);
 	while(pokemon_a_remover) {
+		free(pokemon_a_remover);
 		if(mapa == mapa_pokemons) {
 			sem_wait(&sem_cont_mapa);
 		}
-		pokemon_a_remover = list_remove_and_destroy_by_condition(mapa, pokemon_a_eliminar, free);
+		pokemon_a_remover = list_remove_by_condition(mapa, pokemon_a_eliminar);
 	}
 }
 
@@ -1632,7 +1633,7 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 				log_error(logger,"no estaba el %s en [%d,%d], lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 			}
 			sem_post(&sem_cont_mapa);
-		} else if(list_find(objetivo_global,_pendiente es_el_pokemon)) {
+		} else if(list_find(objetivo_global, es_el_pokemon)) {
 			t_pokemon_mapa* pokemon_a_agregar = list_find(mapa_pokemons_pendiente, pokemon_a_eliminar);
 			if(pokemon_a_agregar) {
 				(pokemon_a_agregar -> cantidad)++;
