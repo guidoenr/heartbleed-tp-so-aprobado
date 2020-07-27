@@ -1629,8 +1629,8 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 				log_warning(logger,"ya estaba el %s en [%d,%d], le sumo 1", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 				free(pokemon_mapa);
 			} else {
-				log_warning(mapa_pokemons, pokemon_mapa);
-				log_error(logger,"no estaba el %s en [%d,%d], lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
+				list_add(mapa_pokemons, pokemon_mapa);
+				log_warning(logger,"no estaba el %s en [%d,%d], lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 			}
 			sem_post(&sem_cont_mapa);
 		} else if(list_find(objetivo_global, es_el_pokemon)) {
