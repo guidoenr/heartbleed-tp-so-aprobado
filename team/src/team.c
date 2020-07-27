@@ -1633,7 +1633,7 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 				log_warning(logger,"no estaba el %s en [%d,%d], lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 			}
 			sem_post(&sem_cont_mapa);
-		} else if(list_find(objetivo_global, es_el_pokemon)) {
+		} else if(list_find(objetivo_global_pendiente, es_el_pokemon)) {
 			t_pokemon_mapa* pokemon_a_agregar = list_find(mapa_pokemons_pendiente, pokemon_a_eliminar);
 			if(pokemon_a_agregar) {
 				(pokemon_a_agregar -> cantidad)++;
