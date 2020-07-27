@@ -378,9 +378,9 @@ void* operar_entrenador(void* un_entrenador) {
 					entrenador -> pasos_a_moverse = ((config -> quantum < pedido_intercambio -> distancia) ? config -> quantum : pedido_intercambio -> distancia);
 					sem_post(&entrenadores_ready);
 				} else { // Tradeó.
-					sem_post(&(pedido -> entrenador_esperando -> sem_binario));
+					sem_post(&(pedido_intercambio -> entrenador_esperando -> sem_binario));
 					sem_wait(&mx_mapas_objetivos_pedidos);
-					eliminar_pedido_intercambio(pedido);
+					eliminar_pedido_intercambio(pedido_intercambio);
 					sem_post(&mx_mapas_objetivos_pedidos);
 					asignar_estado_luego_de_trade(entrenador);
 				}
