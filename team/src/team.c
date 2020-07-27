@@ -1199,7 +1199,7 @@ void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
 	}
 	
 	if(!list_find(objetivo_global, es_el_pokemon)) {
-		mover_especie_de_mapa(mapa_pokemons, mapa_pokemons_pendiente, pokemon -> nombre)
+		mover_especie_de_mapa(mapa_pokemons, mapa_pokemons_pendiente, pokemon -> nombre);
 	}
 }
 
