@@ -500,7 +500,7 @@ void procesar_caught(t_pedido_captura* pedido) {
 		pedido -> entrenador -> tire_accion = 0;
 
 		list_add(objetivo_global, pedido -> pokemon -> nombre);
-		mover_especie_de_mapa(mapa_pokemons_pendiente, mapa_pokemons, pedido -> pokemon -> nombre)
+		mover_especie_de_mapa(mapa_pokemons_pendiente, mapa_pokemons, pedido -> pokemon -> nombre);
 		eliminar_pedido_captura(pedido);
 		sem_post(&sem_cont_entrenadores_a_replanif);
 	}
