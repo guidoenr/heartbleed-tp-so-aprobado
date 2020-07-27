@@ -63,11 +63,6 @@ typedef struct{
 	uint32_t posicion; // 0 = izquierda y 1 = derecha
 } t_memoria_buddy;
 
-typedef struct {
-	t_suscripcion* suscriptor;
-	t_mensaje* mensaje;
-} t_envio_mensaje;
-
 
 //--------- listas ---------//
 t_list* cola_catch;
