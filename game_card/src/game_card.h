@@ -137,10 +137,10 @@ t_caught_pokemon* armar_caught_pokemon(t_catch_pokemon* catch_pokemon,uint32_t r
 /* FS */
 void agregar_nueva_posicion(t_new_pokemon* newpoke,char* pathmeta_poke,char* key,char* value);
 void escribir_data_en_block(char* path_last_block,char* key,char* value);
-void iniciar_tall_grass();
+void iniciar_tall_grass(int cantidad_clusters,int tam_clusters);
 t_metadata leer_fs_metadata();
 void escribirMetadata();
-void crear_metadata_fs();
+void crear_metadata_fs(char* path,int cantidad_clusters,int tam_cluster);
 void escribir_block_inicial(t_file_metadata metadata,t_new_pokemon* newPoke);
 int tamanio_de_metadata(t_metadata metadata);
 int tamanio_file_metadata(t_file_metadata fileMeta);
