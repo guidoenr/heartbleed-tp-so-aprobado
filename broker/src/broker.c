@@ -150,10 +150,11 @@ void liberar_listas() {
 /*EL SERVICE DEL BROKER*/
 void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	uint32_t size;
-	op_code* codigo_op = malloc(sizeof(op_code));
 	sem_wait(&muteadito);
-	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
+	void* stream = recibir_paquete(cliente_fd, &size, &cod_op);
 	void* mensaje_e_agregar = deserealizar_paquete(stream, cod_op, size);
+	free(stream);
+	
 	switch (cod_op) {
 		case GET_POKEMON:
 		agregar_mensaje(GET_POKEMON, size, mensaje_e_agregar, cliente_fd);
@@ -186,8 +187,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 		pthread_exit(NULL);
 	}
 	sem_post(&muteadito);
-	free(codigo_op);
-	//free(stream);
+	
 }
 
 void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t socket_cliente) {
@@ -511,124 +511,135 @@ void informar_mensajes_previos(t_suscripcion* una_suscripcion, op_code cola_a_su
 		}
 
 		log_info(logger, "El suscriptor %d recibe los mensajes del historial de la cola %s", una_suscripcion -> id_proceso, cola);
+}
+
+void descargar_historial_mensajes(op_code tipo_mensaje, uint32_t socket_cliente, uint32_t id_proceso) {
+
+	void mandar_mensajes_viejos(void* mensaje) {
+		t_mensaje* un_mensaje = mensaje;
+		uint32_t size = 0;
+
+		if(id_proceso < 14000) {
+
+			void* mensaje_a_enviar = preparar_mensaje(un_mensaje);
+			size = size_mensaje(mensaje_a_enviar, tipo_mensaje);
+			enviar_mensaje(tipo_mensaje, mensaje_a_enviar, socket_cliente, size);
+			agregar_suscriptor_a_enviados_sin_confirmar(un_mensaje, id_proceso);
+
+		}
+		actualizar_ultima_referencia(un_mensaje);
 	}
 
-	void descargar_historial_mensajes(op_code tipo_mensaje, uint32_t socket_cliente, uint32_t id_proceso) {
-
-		void mandar_mensajes_viejos(void* mensaje) {
-			t_mensaje* un_mensaje = mensaje;
-			uint32_t size = 0;
-
-			if(id_proceso < 14000) {
-
-				void* mensaje_a_enviar = preparar_mensaje(un_mensaje);
-				size = size_mensaje(mensaje_a_enviar, tipo_mensaje);
-				enviar_mensaje(tipo_mensaje, mensaje_a_enviar, socket_cliente, size);
-				agregar_suscriptor_a_enviados_sin_confirmar(un_mensaje, id_proceso);
-
-			//free(mensaje_a_enviar);
-			}
-			actualizar_ultima_referencia(un_mensaje);
-		}
-
-		switch(tipo_mensaje) {
-			case GET_POKEMON:
+	switch(tipo_mensaje) {
+		case GET_POKEMON:
+		if(!list_is_empty(cola_get)){
 			list_iterate(cola_get, mandar_mensajes_viejos);
-			break;
-			case CATCH_POKEMON:
+		}
+		break;
+		case CATCH_POKEMON:
+		if(!list_is_empty(cola_get)){
 			list_iterate(cola_catch, mandar_mensajes_viejos);
-			break;
-			case LOCALIZED_POKEMON:
+		}
+		break;
+		case LOCALIZED_POKEMON:
+		if(!list_is_empty(cola_get)){
 			list_iterate(cola_localized, mandar_mensajes_viejos);
-			break;
-			case CAUGHT_POKEMON:
+		}
+		break;
+		case CAUGHT_POKEMON:
+		if(!list_is_empty(cola_get)){
 			list_iterate(cola_caught, mandar_mensajes_viejos);
-			break;
-			case APPEARED_POKEMON:
+		}
+		break;
+		case APPEARED_POKEMON:
+		if(!list_is_empty(cola_get)){
 			list_iterate(cola_appeared, mandar_mensajes_viejos);
-			break;
-			case NEW_POKEMON:
+		}
+		break;
+		case NEW_POKEMON:
+		if(!list_is_empty(cola_get)){
 			list_iterate(cola_new, mandar_mensajes_viejos);
-			break;
-			default:
-			log_info(logger, "...No se puede enviar el mensaje pedido en descargar historial mensajes.");
-			break;
-		}
+		}	
+		break;
+		default:
+		log_info(logger, "...No se puede enviar el mensaje pedido en descargar historial mensajes.");
+		break;
+	}
+}
+
+void* preparar_mensaje(t_mensaje* un_mensaje) {
+	void* mensaje_armado;
+
+	switch(un_mensaje -> codigo_operacion) {
+		case GET_POKEMON:
+		mensaje_armado = preparar_mensaje_get(un_mensaje);
+		break;
+		case CATCH_POKEMON:
+		mensaje_armado = preparar_mensaje_catch(un_mensaje);
+		break;
+		case LOCALIZED_POKEMON:
+		mensaje_armado = preparar_mensaje_localized(un_mensaje);
+		break;
+		case CAUGHT_POKEMON:
+		mensaje_armado = preparar_mensaje_caught(un_mensaje);
+		break;
+		case APPEARED_POKEMON:
+		mensaje_armado = preparar_mensaje_appeared(un_mensaje);
+		break;
+		case NEW_POKEMON:
+		mensaje_armado = preparar_mensaje_new(un_mensaje);
+		break;
+		default:
+		log_error(logger, "... El broker no puede preparar el mensaje para enviarlo a otro modulo.");
+		break;
 	}
 
-	void* preparar_mensaje(t_mensaje* un_mensaje) {
-		void* mensaje_armado;
+	return mensaje_armado;
+}
 
-		switch(un_mensaje -> codigo_operacion) {
-			case GET_POKEMON:
-			mensaje_armado = preparar_mensaje_get(un_mensaje);
-			break;
-			case CATCH_POKEMON:
-			mensaje_armado = preparar_mensaje_catch(un_mensaje);
-			break;
-			case LOCALIZED_POKEMON:
-			mensaje_armado = preparar_mensaje_localized(un_mensaje);
-			break;
-			case CAUGHT_POKEMON:
-			mensaje_armado = preparar_mensaje_caught(un_mensaje);
-			break;
-			case APPEARED_POKEMON:
-			mensaje_armado = preparar_mensaje_appeared(un_mensaje);
-			break;
-			case NEW_POKEMON:
-			mensaje_armado = preparar_mensaje_new(un_mensaje);
-			break;
-			default:
-			log_error(logger, "... El broker no puede preparar el mensaje para enviarlo a otro modulo.");
-			break;
-		}
+t_get_pokemon* preparar_mensaje_get(t_mensaje* mensaje) {
+	uint32_t tamanio;
+	t_get_pokemon* mensaje_get = malloc(sizeof(t_get_pokemon));
 
-		return mensaje_armado;
+	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")) {
+
+		t_memoria_dinamica* particion_del_mensaje = mensaje -> payload;	
+		mensaje_get -> id_mensaje = mensaje -> id_mensaje;
+		tamanio = particion_del_mensaje -> tamanio;
+		mensaje_get -> pokemon = malloc(tamanio+1);
+		memcpy(mensaje_get -> pokemon, particion_del_mensaje -> contenido, tamanio);
+		char barra_cero = '\0';
+		memcpy(mensaje_get -> pokemon + tamanio, &barra_cero, 1); //STRING APPEND FURIO3
+
+	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")) {
+
+		t_memoria_buddy* buddy_del_mensaje = mensaje -> payload;
+		mensaje_get -> id_mensaje = mensaje -> id_mensaje;
+		tamanio = buddy_del_mensaje -> tamanio_mensaje;
+		mensaje_get -> pokemon = malloc(tamanio+1);
+		memcpy(mensaje_get -> pokemon, buddy_del_mensaje -> contenido, tamanio);
+		char barra_cero = '\0';
+		memcpy(mensaje_get -> pokemon + tamanio, &barra_cero, 1); //STRING APPEND FURIO3
+	} else {
+		log_error(logger, "...No se reconoce el algoritmo de memoria para preparar el mensaje get.");
 	}
 
-	t_get_pokemon* preparar_mensaje_get(t_mensaje* mensaje) {
-		uint32_t tamanio;
-		t_get_pokemon* mensaje_get = malloc(sizeof(t_get_pokemon));
+	return mensaje_get;
+}
 
-		if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")) {
+t_catch_pokemon* preparar_mensaje_catch(t_mensaje* un_mensaje) {
+	uint32_t tamanio;
+	t_catch_pokemon* mensaje_catch = malloc(sizeof(t_catch_pokemon));
+	void* contenido_a_enviar;
 
-			t_memoria_dinamica* particion_del_mensaje = mensaje -> payload;	
-			mensaje_get -> id_mensaje = mensaje -> id_mensaje;
-			tamanio = particion_del_mensaje -> tamanio;
-			mensaje_get -> pokemon = malloc(tamanio+1);
-			memcpy(mensaje_get -> pokemon, particion_del_mensaje -> contenido, tamanio);
-			char barra_cero = '\0';
-			memcpy(mensaje_get -> pokemon + tamanio, &barra_cero, 1); //STRING APPEND FURIO3
-
-		} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")) {
-
-			t_memoria_buddy* buddy_del_mensaje = mensaje -> payload;
-			mensaje_get -> id_mensaje = mensaje -> id_mensaje;
-			tamanio = buddy_del_mensaje -> tamanio_mensaje;
-			mensaje_get -> pokemon = malloc(tamanio+1);
-			memcpy(mensaje_get -> pokemon, buddy_del_mensaje -> contenido, tamanio);
-			char barra_cero = '\0';
-			memcpy(mensaje_get -> pokemon + tamanio, &barra_cero, 1); //STRING APPEND FURIO3
-		} else {
-			log_error(logger, "...No se reconoce el algoritmo de memoria para preparar el mensaje get.");
-		}
-
-		return mensaje_get;
-	}
-
-	t_catch_pokemon* preparar_mensaje_catch(t_mensaje* un_mensaje) {
-		uint32_t tamanio;
-		t_catch_pokemon* mensaje_catch = malloc(sizeof(t_catch_pokemon));
-		void* contenido_a_enviar;
-
-		if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")) {
-			t_memoria_dinamica* particion_del_mensaje = un_mensaje -> payload;	
-			mensaje_catch -> id_mensaje = un_mensaje -> id_mensaje;
-			tamanio =  particion_del_mensaje -> tamanio - sizeof(uint32_t) * 2;
-			contenido_a_enviar = particion_del_mensaje -> contenido;
-			mensaje_catch -> pokemon = malloc(tamanio+1);
-			memcpy(mensaje_catch -> pokemon, contenido_a_enviar, tamanio);
-			char barra_cero = '\0';
+	if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")) {
+		t_memoria_dinamica* particion_del_mensaje = un_mensaje -> payload;	
+		mensaje_catch -> id_mensaje = un_mensaje -> id_mensaje;
+		tamanio =  particion_del_mensaje -> tamanio - sizeof(uint32_t) * 2;
+		contenido_a_enviar = particion_del_mensaje -> contenido;
+		mensaje_catch -> pokemon = malloc(tamanio+1);
+		memcpy(mensaje_catch -> pokemon, contenido_a_enviar, tamanio);
+		char barra_cero = '\0';
 		memcpy(mensaje_catch -> pokemon + tamanio, &barra_cero, 1); //STRING APPEND FURIO3
 		memcpy(&(mensaje_catch -> posicion[0]), contenido_a_enviar + tamanio , sizeof(uint32_t));
 		memcpy(&(mensaje_catch -> posicion[1]), contenido_a_enviar + tamanio + sizeof(uint32_t), sizeof(uint32_t));
@@ -1017,7 +1028,7 @@ bool tiene_el_mensaje(t_list* enviados, uint32_t un_suscripto) {
 
 	mensaje_enviado  = list_any_satisfy(enviados, es_el_mismo_suscripto);
 
-	return mensaje_enviado;// || mensaje_recibido;
+	return mensaje_enviado;
 }
 
 void agregar_suscriptor_a_enviados_sin_confirmar(t_mensaje* mensaje_enviado, uint32_t un_suscriptor) {
@@ -1434,8 +1445,6 @@ void consolidar_buddy(uint32_t indice, t_memoria_buddy* buddy) {
 		}
 
 		indice = remover_buddy(buddy_hermano);
-
-		//log_info(logger, "Se remueve el buddy de base %d", buddy -> base);
 
 		uint32_t posicion_padre;
 		if(base_padre % (buddy -> tamanio_exponente * 4)) {
