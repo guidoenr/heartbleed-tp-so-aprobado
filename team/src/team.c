@@ -756,12 +756,12 @@ void* planificar_entrenadores() {
 		if(!entrenadores_con_mochila_llena()) {
 
 			t_pedido_captura* pedido = malloc(sizeof(t_pedido_captura));
-			sem_post(&mx_mapas_objetivos_pedidos);
+			sem_wait(&mx_mapas_objetivos_pedidos);
 			armar_pedido_captura(pedido);
 			eliminar_del_objetivo_global(pedido -> pokemon); // elimina un nombre de la lista (pedido) y lo pasa al objetivo pendiente.
 			eliminar_pokemon_de_mapa(pedido -> pokemon); // elimina 1 (pedido) y pasa la especie al mapa pendiente en caso de hacer falta.
 			planificar_segun_algoritmo(pedido);
-			sem_wait(&mx_mapas_objetivos_pedidos);
+			sem_post(&mx_mapas_objetivos_pedidos);
 
 		} else {
 			log_info(logger, "Inicio del algoritmo de deteccion de deadlocks");
