@@ -1194,7 +1194,8 @@ void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
 	if(pokemon_a_remover -> cantidad > 1) {
 		pokemon_a_remover -> cantidad --;
 	} else {
-		list_remove_by_condition(mapa_pokemons, pokemon_a_eliminar);
+		t_pokemon_mapa* pokemon_eliminado = list_remove_by_condition(mapa_pokemons, pokemon_a_eliminar);
+		free(pokemon_eliminado);
 	}
 	
 	bool es_el_pokemon(void* otro_pokemon) {
