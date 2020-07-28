@@ -111,7 +111,7 @@ bool estoy_esperando_trade(t_entrenador*);
 bool entrenadores_con_mochila_llena();
 
 // mensajes
-uint32_t recibir_id_de_mensaje_enviado(uint32_t);
+void recibir_id_de_mensaje_enviado(uint32_t);
 void enviar_mensaje_catch(t_pedido_captura*);
 void procesar_caught(t_pedido_captura*);
 void enviar_get_pokemon();

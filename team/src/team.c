@@ -654,13 +654,13 @@ void capturar_pokemon(t_pedido_captura* pedido) {
 }
 
 uint32_t recibir_id_de_mensaje_enviado(uint32_t socket_cliente) {
-  uint32_t id = 0;
+	uint32_t id = 0;
 
-  recv(socket_cliente, &id, sizeof(uint32_t), MSG_WAITALL);
-  log_info(logger, "El ID de mensaje enviado es: %d", id);
+	recv(socket_cliente, &id, sizeof(uint32_t), MSG_WAITALL);
+	log_info(logger, "El ID de mensaje enviado es: %d", id);
 
-  close(socket_cliente);
-  return id;
+	close(socket_cliente);
+	return id;
 }
 
 void tradear_pokemon(t_pedido_intercambio* pedido){
@@ -1185,12 +1185,12 @@ void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
 	if(!pokemon_a_remover) {
 		log_error(logger, "NO ENCONTRE EL POKEMON PARA REMOVER EN EL MAPA");
 	}
-	
+	int remover = 0;
 	if(pokemon_a_remover -> cantidad > 1) {
 		pokemon_a_remover -> cantidad --;
 	} else {
 		list_remove_by_condition(mapa_pokemons, pokemon_a_eliminar);
-		free(pokemon_a_remover);
+		remover = 1;
 	}
 	
 	bool es_el_pokemon(void* otro_pokemon) {
@@ -1200,6 +1200,9 @@ void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
 	
 	if(!list_find(objetivo_global, es_el_pokemon)) {
 		mover_especie_de_mapa(mapa_pokemons, mapa_pokemons_pendiente, pokemon -> nombre);
+	}
+	if(remover) {
+		free(pokemon_a_remover);
 	}
 }
 
@@ -1398,7 +1401,7 @@ void enviar_mensaje_get(char* pokemon) {
 
 		enviar_mensaje(GET_POKEMON, mensaje, socket, tamanio_mensaje);
 
-		int id = recibir_id_de_mensaje_enviado(socket);
+		recibir_id_de_mensaje_enviado(socket);
 
 	} else {
 		log_info(logger, "No se pudo establecer la conexion con broker, se realiza el comportamiento default del get");
