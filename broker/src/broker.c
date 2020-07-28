@@ -2170,7 +2170,7 @@ void dump_info_particion(void* particion){
 	tamanio = una_particion -> tamanio_part;
 
 	if(una_particion -> ocupado != 0) {
-		uint32_t valor_lru = una_particion -> ultima_referencia;
+		uint64_t valor_lru = una_particion -> ultima_referencia;
 		char* cola_del_mensaje = obtener_cola_del_mensaje(una_particion);
 		uint32_t id_del_mensaje = obtener_id(una_particion);
 
@@ -2198,7 +2198,7 @@ void dump_info_buddy(void* buddy){
 	uint32_t tamanio = un_buddy -> tamanio_exponente;
 
 	if(un_buddy -> ocupado != 0) {
-		uint32_t valor_lru = un_buddy -> ultima_referencia;
+		uint64_t valor_lru = un_buddy -> ultima_referencia;
 		char* cola_del_mensaje = obtener_cola_del_mensaje_buddy(un_buddy);
 		uint32_t id_del_mensaje = obtener_id_buddy(un_buddy);
 
