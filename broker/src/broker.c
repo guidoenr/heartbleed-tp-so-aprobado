@@ -1095,9 +1095,10 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original) {
 		} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")) {
 			guardar_particion(mensaje, contenido);
 		}
+		free(contenido);
 	}
 
-	free(contenido);
+	//free(contenido);
 }
 
 void recorrer_segun_algoritmo(uint32_t exponente, t_mensaje* mensaje, void* contenido) {
@@ -2170,18 +2171,18 @@ void dump_info_particion(void* particion){
 	tamanio = una_particion -> tamanio_part;
 
 	if(una_particion -> ocupado != 0) {
-		uint64_t valor_lru = una_particion -> ultima_referencia;
+		uint32_t valor_lru = (uint32_t)una_particion -> ultima_referencia;
 		char* cola_del_mensaje = obtener_cola_del_mensaje(una_particion);
 		uint32_t id_del_mensaje = obtener_id(una_particion);
 
-		free(cola_del_mensaje);
+//		free(cola_del_mensaje);
 
-		log_info(logger_memoria, "Particion %d: %p.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, ocupado, tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
+		log_info(logger_memoria, "Particion %d: %p.  [%s] Size: %d b LRU:%u Cola:%s ID:%d", numero_particion, base, ocupado, tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
 	} else {
 
 		log_info(logger_memoria, "Particion %d: %p.  [%s] Size: %d", numero_particion, base, ocupado, tamanio);
 	}
-	free(ocupado);
+//	free(ocupado);
 	numero_particion++;
 }
 
@@ -2196,21 +2197,22 @@ void dump_info_buddy(void* buddy){
 
 	uint32_t* base = memoria + (un_buddy -> base);
 	uint32_t tamanio = un_buddy -> tamanio_exponente;
-
+	
+	
 	if(un_buddy -> ocupado != 0) {
-		uint64_t valor_lru = un_buddy -> ultima_referencia;
+		uint32_t valor_lru = (uint32_t)un_buddy -> ultima_referencia;
 		char* cola_del_mensaje = obtener_cola_del_mensaje_buddy(un_buddy);
 		uint32_t id_del_mensaje = obtener_id_buddy(un_buddy);
 
-		log_info(logger_memoria, "Buddy %d: %p.  [%s] Size: %d b LRU:%d Cola:%s ID:%d", numero_particion, base, ocupado, tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
+		log_info(logger_memoria, "Buddy %d: %p.  [%s] Size: %d b LRU:%u Cola:%s ID:%d", numero_particion, base, ocupado, tamanio, valor_lru, cola_del_mensaje, id_del_mensaje);
 
-		free(cola_del_mensaje);
+		//free(cola_del_mensaje);
 	} else {
 
 		log_info(logger_memoria, "Buddy %d: %p.  [%s] Size: %d", numero_particion, base, ocupado, tamanio);
 	}
 	numero_particion++;
-	free(ocupado);
+	//free(ocupado);
 }
 
 char* obtener_cola_del_mensaje(t_memoria_dinamica* una_particion){
@@ -2288,7 +2290,7 @@ char* obtener_cola_del_mensaje_buddy(t_memoria_buddy* un_buddy){
 uint64_t timestamp(void) {
 	struct timeval valor;
 	gettimeofday(&valor, NULL);
-	unsigned long long result = ((unsigned long long )valor.tv_sec) * 1000 + ((unsigned long) valor.tv_usec) / 1000;
+	unsigned long long result = ((unsigned long long )valor.tv_sec) * 1000 + ((unsigned long long) valor.tv_usec) / 1000;
 	uint64_t tiempo = result;
 	return tiempo;
 }
