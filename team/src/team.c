@@ -26,6 +26,7 @@ void iniciar_programa() {
 	iniciar_hilos_ejecucion();
 
 	iniciar_conexion();
+	sleep(1);
 	iniciar_hilo_appeared();
 	iniciar_hilo_localized();
 	iniciar_hilo_caught();
@@ -600,8 +601,7 @@ void eliminar_pedido_captura(t_pedido_captura* pedido) {
 
 void destruir_pedido_captura(void* one_pedido) {
 	t_pedido_captura* another_pedido = one_pedido;
-	destruir_pokemon(another_pedido -> pokemon);
-	free((t_pedido_captura*) one_pedido); // aca capaz flasheamo
+	free(another_pedido); // aca capaz flasheamo
 }
 
 void eliminar_pedido_intercambio(t_pedido_intercambio* pedido) {
@@ -614,11 +614,6 @@ void eliminar_pedido_intercambio(t_pedido_intercambio* pedido) {
 	}
 
 	list_remove_by_condition(pedidos_intercambio, es_el_pedido);
-}
-
-void destruir_pokemon(t_pokemon_mapa* pokemon) {
-	//free(pokemon -> nombre); FALTA MALLOC AL AGREGAR
-	free(pokemon);
 }
 
 void capturar_pokemon(t_pedido_captura* pedido) {

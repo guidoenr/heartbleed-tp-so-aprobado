@@ -191,7 +191,6 @@ void eliminar_pedido_captura(t_pedido_captura*);
 void destruir_pedido_captura(void*);
 void eliminar_pedido_intercambio(t_pedido_intercambio*);
 void armar_pedido_captura(t_pedido_captura*);
-void destruir_pokemon(t_pokemon_mapa*);
 
 t_pedido_captura* buscar_pedido_captura(t_entrenador*);
 t_pedido_intercambio* buscar_pedido_intercambio(t_entrenador*);

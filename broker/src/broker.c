@@ -153,7 +153,6 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	sem_wait(&muteadito);
 	void* stream = recibir_paquete(cliente_fd, &size, &cod_op);
 	void* mensaje_e_agregar = deserealizar_paquete(stream, cod_op, size);
-	free(stream);
 	
 	switch (cod_op) {
 		case GET_POKEMON:
@@ -188,6 +187,8 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	}
 	sem_post(&muteadito);
 	
+	//free(stream);
+
 }
 
 void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t socket_cliente) {
@@ -532,34 +533,26 @@ void descargar_historial_mensajes(op_code tipo_mensaje, uint32_t socket_cliente,
 
 	switch(tipo_mensaje) {
 		case GET_POKEMON:
-		if(!list_is_empty(cola_get)){
 			list_iterate(cola_get, mandar_mensajes_viejos);
-		}
+
 		break;
 		case CATCH_POKEMON:
-		if(!list_is_empty(cola_get)){
 			list_iterate(cola_catch, mandar_mensajes_viejos);
-		}
+
 		break;
 		case LOCALIZED_POKEMON:
-		if(!list_is_empty(cola_get)){
 			list_iterate(cola_localized, mandar_mensajes_viejos);
-		}
+
 		break;
 		case CAUGHT_POKEMON:
-		if(!list_is_empty(cola_get)){
 			list_iterate(cola_caught, mandar_mensajes_viejos);
-		}
 		break;
 		case APPEARED_POKEMON:
-		if(!list_is_empty(cola_get)){
 			list_iterate(cola_appeared, mandar_mensajes_viejos);
-		}
+
 		break;
 		case NEW_POKEMON:
-		if(!list_is_empty(cola_get)){
 			list_iterate(cola_new, mandar_mensajes_viejos);
-		}	
 		break;
 		default:
 		log_info(logger, "...No se puede enviar el mensaje pedido en descargar historial mensajes.");
@@ -1095,10 +1088,8 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original) {
 		} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "PARTICIONES")) {
 			guardar_particion(mensaje, contenido);
 		}
-		free(contenido);
+		//free(contenido);
 	}
-
-	//free(contenido);
 }
 
 void recorrer_segun_algoritmo(uint32_t exponente, t_mensaje* mensaje, void* contenido) {
@@ -1187,7 +1178,6 @@ void* armar_contenido_localized(t_localized_pokemon* mensaje){
 
 	void grabar_numero(void* un_numero){
 		memcpy(contenido + offset,(uint32_t*) un_numero, sizeof(uint32_t));
-		log_error(logger,"ESTE NUMEROte %d y este memcpy %d",(uint32_t*) un_numero,*(uint32_t*)contenido+offset);
 		offset += sizeof(uint32_t);
 	}
 
@@ -1856,7 +1846,7 @@ uint32_t encontrar_mejor_ajuste(uint32_t tamanio){
 	}
 
 	list_destroy(particiones_en_orden_creciente);
-	list_destroy(particiones_ordenadas);
+	//list_destroy(particiones_ordenadas);
 	return indice_seleccionado;
 }
 
@@ -1953,7 +1943,7 @@ void consolidar_particiones_dinamicas(t_list* memoria){
 
 	list_iterate(memoria_duplicada, consolidar_particiones_contiguas);
 
-	list_destroy(memoria_duplicada);
+	//list_destroy(memoria_duplicada);
 }
 
 bool tiene_siguiente(uint32_t posicion){
@@ -2047,7 +2037,7 @@ uint32_t obtener_nueva_base(t_memoria_dinamica* una_particion, uint32_t indice_t
 	} else {
 		nueva_base = 0;
 	}
-	list_destroy(memoria_duplicada);
+	//list_destroy(memoria_duplicada);
 	return nueva_base;
 }
 
