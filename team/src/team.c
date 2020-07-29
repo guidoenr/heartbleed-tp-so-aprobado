@@ -1384,6 +1384,7 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 		sem_post(&(pedido -> entrenador -> esperar_caught));
 	}
 
+	free(mensaje -> pokemon);
 	free(mensaje);
 
 }
@@ -1409,6 +1410,7 @@ void enviar_mensaje_get(char* pokemon) {
 		log_info(logger, "No se pudo establecer la conexion con broker, se realiza el comportamiento default del get");
 	}
 
+	free(mensaje -> pokemon);
 	free(mensaje);
 }
 
@@ -1690,7 +1692,8 @@ void liberar_entrenadores() {
 
 		list_destroy(entrenador -> pokemons);
 		list_destroy(entrenador -> objetivos);
-
+		sem_destroy(&(entrenador -> esperar_caught));
+		sem_destroy(&(entrenador -> sem_binario));
 		free(entrenador);
 	}
 
@@ -1737,6 +1740,9 @@ void terminar_hilos() {
 	pthread_cancel(hilo_planificar);
 	pthread_cancel(hilo_game_boy);
 	pthread_cancel(hilo_broker);
+	//pthread_cancel(hilo_caught);
+	//pthread_cancel(hilo_localized);
+	//pthread_cancel(hilo_appeared);
 }
 
 void esperar_hilos_entrenadores() {
