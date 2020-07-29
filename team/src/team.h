@@ -53,8 +53,8 @@ typedef struct {
 	float alpha;
 	char* ip_broker;
 	char* puerto_broker;
-	char* ip_gameboy;
-	char* puerto_gameboy;
+	char* ip_team;
+	char* puerto_team;
 	uint32_t estimacion_inicial;
 	char* log_file;
 	uint32_t id_proceso;
