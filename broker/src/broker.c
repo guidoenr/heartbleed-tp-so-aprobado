@@ -260,8 +260,8 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 	send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
 
 	if(puede_guardarse_mensaje(mensaje_a_agregar)) {
-		guardar_en_memoria(mensaje_a_agregar, mensaje);
 		encolar_mensaje(mensaje_a_agregar, cod_op);
+		guardar_en_memoria(mensaje_a_agregar, mensaje);
 	}
 }
 
