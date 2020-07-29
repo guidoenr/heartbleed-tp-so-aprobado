@@ -356,7 +356,6 @@ void* operar_entrenador(void* un_entrenador) {
 		if(pedido_captura) {
 
 			while(!(entrenador -> tire_accion) && entrenador -> pasos_a_moverse > 0 && buscar_en_estados(estados, entrenador) == estado_exec) {
-
 				capturar_pokemon(pedido_captura);
 			}
 
@@ -761,8 +760,8 @@ void* planificar_entrenadores() {
 			armar_pedido_captura(pedido);
 			eliminar_del_objetivo_global(pedido -> pokemon); // elimina un nombre de la lista (pedido) y lo pasa al objetivo pendiente.
 			eliminar_pokemon_de_mapa(pedido -> pokemon); // elimina 1 (pedido) y pasa la especie al mapa pendiente en caso de hacer falta.
-			planificar_segun_algoritmo(pedido);
 			sem_post(&mx_mapas_objetivos_pedidos);
+			planificar_segun_algoritmo(pedido);
 
 		} else {
 			log_info(logger, "Inicio del algoritmo de deteccion de deadlocks");
@@ -845,8 +844,8 @@ void planificar_deadlocks() {
 		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_ready, pedido -> entrenador_buscando);
 		log_info(logger, "El entrenador %d se mueve a ready para realizar el intercambio con el %d", pedido -> entrenador_buscando -> id, pedido -> entrenador_esperando -> id);
-		sem_post(&entrenadores_ready);
 		sem_post(&mx_estados);
+		sem_post(&entrenadores_ready);
 	}
 }
 
@@ -1065,12 +1064,15 @@ void planificar_sjf_cd(t_pedido_captura* pedido) {
 	sem_wait(&mx_estados);
 	cambiar_a_estado(estado_ready, pedido -> entrenador);
 	log_info(logger, "El entrenador %d fue cambiado a estado ready con su pedido de captura", pedido -> entrenador -> id);
+	sem_post(&mx_estados);
 
 	desalojar_ejecucion();
+
+	sem_wait(&mx_estados);
 	calcular_estimaciones_ready();
 	ordenar_ready_segun_estimacion();
-
 	sem_post(&mx_estados);
+
 	sem_post(&entrenadores_ready);
 }
 
@@ -1106,9 +1108,11 @@ void ordenar_ready_segun_estimacion() {
 void desalojar_ejecucion() {
 
 	if(estado_exec -> elements_count > 0) {
+		sem_wait(&mx_estados);
 		cambiar_a_estado(estado_ready, estado_exec -> head -> data);
-		sem_wait(&mx_desalojo_exec);
+		sem_post(&mx_estados);
 		sem_post(&entrenadores_ready);
+		sem_wait(&mx_desalojo_exec);
 	}
 }
 
