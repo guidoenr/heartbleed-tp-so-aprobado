@@ -1384,7 +1384,7 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 		sem_post(&(pedido -> entrenador -> esperar_caught));
 	}
 
-	free(mensaje -> pokemon);
+	//free(mensaje -> pokemon);
 	free(mensaje);
 
 }
@@ -1410,7 +1410,7 @@ void enviar_mensaje_get(char* pokemon) {
 		log_info(logger, "No se pudo establecer la conexion con broker, se realiza el comportamiento default del get");
 	}
 
-	free(mensaje -> pokemon);
+	//free(mensaje -> pokemon);
 	free(mensaje);
 }
 
