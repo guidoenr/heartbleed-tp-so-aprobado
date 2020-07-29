@@ -864,7 +864,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado) {
 			log_info(logger, "El ACK recibido es de un mensaje que no se encuentra en memoria.");
 		} else {
 			list_iterate(cola_get, actualizar_suscripto);
-				//borrar_mensajes_confirmados(GET_POKEMON, cola_get, lista_suscriptores_get);
+				borrar_mensajes_confirmados(GET_POKEMON, cola_get, lista_suscriptores_get);
 		}
 		break;
 
@@ -874,7 +874,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado) {
 			log_info(logger, "El ACK recibido es de un mensaje que no se encuentra en memoria.");
 		} else {
 			list_iterate(cola_catch, actualizar_suscripto);
-				//borrar_mensajes_confirmados(CATCH_POKEMON, cola_catch, lista_suscriptores_catch);
+				borrar_mensajes_confirmados(CATCH_POKEMON, cola_catch, lista_suscriptores_catch);
 		}			
 		break;
 
@@ -883,7 +883,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado) {
 			log_info(logger, "El ACK recibido es de un mensaje que no se encuentra en memoria.");
 		} else {
 			list_iterate(cola_localized, actualizar_suscripto);
-				//borrar_mensajes_confirmados(LOCALIZED_POKEMON, cola_localized, lista_suscriptores_localized);;
+				borrar_mensajes_confirmados(LOCALIZED_POKEMON, cola_localized, lista_suscriptores_localized);;
 		}			
 		break;
 
@@ -892,7 +892,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado) {
 			log_info(logger, "El ACK recibido es de un mensaje que no se encuentra en memoria.");
 		} else {
 			list_iterate(cola_caught, actualizar_suscripto);
-				//borrar_mensajes_confirmados(CAUGHT_POKEMON, cola_caught, lista_suscriptores_caught);
+				borrar_mensajes_confirmados(CAUGHT_POKEMON, cola_caught, lista_suscriptores_caught);
 		}
 		break;
 
@@ -901,7 +901,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado) {
 			log_info(logger, "El ACK recibido es de un mensaje que no se encuentra en memoria.");
 		} else {
 			list_iterate(cola_appeared, actualizar_suscripto);
-				//borrar_mensajes_confirmados(APPEARED_POKEMON, cola_appeared, lista_suscriptores_appeared);
+				borrar_mensajes_confirmados(APPEARED_POKEMON, cola_appeared, lista_suscriptores_appeared);
 		}			
 		break;
 
@@ -910,7 +910,7 @@ void actualizar_mensajes_confirmados(t_ack* mensaje_confirmado) {
 			log_info(logger, "El ACK recibido es de un mensaje que no se encuentra en memoria.");
 		} else {
 			list_iterate(cola_new, actualizar_suscripto);
-				//borrar_mensajes_confirmados(NEW_POKEMON, cola_new, lista_suscriptores_new);
+				borrar_mensajes_confirmados(NEW_POKEMON, cola_new, lista_suscriptores_new);
 		}
 		break;
 
