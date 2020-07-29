@@ -260,9 +260,8 @@ void agregar_mensaje(uint32_t cod_op, uint32_t size, void* mensaje, uint32_t soc
 	send(socket_cliente, &(nuevo_id) , sizeof(uint32_t), 0); //Avisamos,che te asiganmos un id al mensaje
 
 	if(puede_guardarse_mensaje(mensaje_a_agregar)) {
-
-		encolar_mensaje(mensaje_a_agregar, cod_op);
 		guardar_en_memoria(mensaje_a_agregar, mensaje);
+		encolar_mensaje(mensaje_a_agregar, cod_op);
 	}
 }
 
@@ -359,6 +358,8 @@ uint32_t generar_id_univoco() {
 }
 
 void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion) {
+
+	establecer_tiempo_de_carga(mensaje);
 
 	switch (codigo_operacion) {
 		case GET_POKEMON:
@@ -1089,7 +1090,6 @@ void guardar_en_memoria(t_mensaje* mensaje, void* mensaje_original) {
 		}
 		//free(contenido);
 	}
-	establecer_tiempo_de_carga(mensaje);
 }
 
 void recorrer_segun_algoritmo(uint32_t exponente, t_mensaje* mensaje, void* contenido) {
