@@ -93,8 +93,8 @@ void leer_config(void) {
 	config -> algoritmo_planificacion = strdup(config_get_string_value(config_team, "ALGORITMO_PLANIFICACION"));
 	config -> ip_broker = strdup(config_get_string_value(config_team, "IP_BROKER"));
 	config -> puerto_broker = strdup(config_get_string_value(config_team, "PUERTO_BROKER"));
-	config -> ip_gameboy = strdup(config_get_string_value(config_team, "IP_GAMEBOY"));
-	config -> puerto_gameboy = strdup(config_get_string_value(config_team, "PUERTO_GAMEBOY"));
+	config -> ip_team = strdup(config_get_string_value(config_team, "IP_TEAM"));
+	config -> puerto_team = strdup(config_get_string_value(config_team, "PUERTO_TEAM"));
 	config -> quantum = config_get_int_value(config_team, "QUANTUM");
 	config -> alpha = atof(config_get_string_value(config_team, "ALPHA"));
 	config -> estimacion_inicial = config_get_int_value(config_team, "ESTIMACION_INICIAL");
@@ -309,8 +309,7 @@ void iniciar_conexion() {
 
 void* iniciar_server_gamecard() {
 
-	iniciar_servidor(config -> ip_gameboy, config -> puerto_gameboy); // puerto robado de la config de gameboy
-
+	iniciar_servidor(config -> ip_team, config -> puerto_team);
 	return NULL;
 }
 
@@ -1669,8 +1668,8 @@ void liberar_config() {
 	free(config -> log_file);
 	free(config -> ip_broker);
 	free(config -> puerto_broker);
-	free(config -> ip_gameboy);
-	free(config -> puerto_gameboy);
+	free(config -> ip_team);
+	free(config -> puerto_team);
 	free(config);
 }
 
