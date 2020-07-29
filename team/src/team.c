@@ -247,6 +247,7 @@ void suscribirse_a(op_code cola) {
 			log_info(logger,"Intento de reconexion con broker fallido");
 			sleep(time);
 			log_info(logger,"Inicio de proceso de reintento de comunicacion con el broker");
+			free(suscripcion);
 			suscribirse_a(cola);
 	} else {
 
@@ -258,6 +259,9 @@ void suscribirse_a(op_code cola) {
 		uint32_t tamanio_suscripcion = size_mensaje(suscripcion, SUBSCRIPTION);
 
 		enviar_mensaje(SUBSCRIPTION, suscripcion, socket, tamanio_suscripcion);
+
+		free(suscripcion);
+
 		while(1) {
 			recv(socket, &cod_op, sizeof(op_code), MSG_WAITALL);
 			process_request(cod_op, socket);
@@ -267,7 +271,7 @@ void suscribirse_a(op_code cola) {
 
 void iniciar_hilo_appeared() {
 
-	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
+	log_warning(logger,"Iniciando servidor de escucha con broker");
 	uint32_t err = pthread_create(&hilo_appeared, NULL, (void*) suscribirse_a, APPEARED_POKEMON);
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
@@ -277,7 +281,6 @@ void iniciar_hilo_appeared() {
 }
 void iniciar_hilo_localized() {
 
-	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
 	uint32_t err = pthread_create(&hilo_localized, NULL, (void*) suscribirse_a, LOCALIZED_POKEMON);
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
@@ -287,7 +290,6 @@ void iniciar_hilo_localized() {
 }
 void iniciar_hilo_caught() {
 
-	log_warning(logger,"Iniciando servidor de escucha con broker[THREAD]");
 	uint32_t err = pthread_create(&hilo_caught, NULL, (void*) suscribirse_a, CAUGHT_POKEMON);
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
@@ -601,7 +603,8 @@ void eliminar_pedido_captura(t_pedido_captura* pedido) {
 
 void destruir_pedido_captura(void* one_pedido) {
 	t_pedido_captura* another_pedido = one_pedido;
-	free(another_pedido); // aca capaz flasheamo
+	//free(another_pedido -> pokemon);
+	free(another_pedido);
 }
 
 void eliminar_pedido_intercambio(t_pedido_intercambio* pedido) {
@@ -609,11 +612,15 @@ void eliminar_pedido_intercambio(t_pedido_intercambio* pedido) {
 	bool es_el_pedido(void* otro_pedido) {
 
 		t_pedido_intercambio* un_pedido = otro_pedido;
-
 		return pedido == un_pedido;
 	}
 
-	list_remove_by_condition(pedidos_intercambio, es_el_pedido);
+	list_remove_and_destroy_by_condition(pedidos_intercambio, es_el_pedido, destruir_pedido_intercambio);
+}
+
+void destruir_pedido_intercambio(void* one_pedido) {
+	t_pedido_intercambio* another_pedido = one_pedido;
+	free(another_pedido);
 }
 
 void capturar_pokemon(t_pedido_captura* pedido) {
@@ -822,10 +829,12 @@ void planificar_deadlocks() {
 		if(estado_block -> elements_count < 2) {
 			log_error(logger, "Me mandaste a planificar deadlock y no tengo 2 pibes en block!!");
 		}
+		t_pedido_intercambio* pedido = malloc(sizeof(t_pedido_intercambio));
 		sem_wait(&mx_mapas_objetivos_pedidos);
-		t_pedido_intercambio* pedido = armar_pedido_intercambio_segun_algoritmo();
+		armar_pedido_intercambio_segun_algoritmo(pedido);
 		sem_post(&mx_mapas_objetivos_pedidos);
-		if(!pedido) {
+		if(!(pedido -> entrenador_esperando)) {
+			free(pedido);
 			sleep(1);
 			sem_post(&sem_cont_entrenadores_a_replanif);
 			sem_post(&sem_cont_entrenadores_a_replanif);
@@ -842,9 +851,7 @@ void planificar_deadlocks() {
 	}
 }
 
-t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo() {
-
-	t_pedido_intercambio* pedido = malloc(sizeof(t_pedido_intercambio));
+void armar_pedido_intercambio_segun_algoritmo(t_pedido_intercambio* pedido) {
 
 	t_link_element* cabeza_block = estado_block -> head;
 
@@ -871,7 +878,7 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo() {
 	pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon_y_esta_libre);
 
 	if(!(pedido -> entrenador_esperando)) {
-		return NULL;
+		return;
 		bool entrenador_que_le_sobra_pokemon(void* un_entrenador) {
 			t_entrenador* entrenador = un_entrenador;
 
@@ -880,11 +887,11 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo() {
 		pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon);
 
 		if(!(pedido -> entrenador_esperando)) {
-			log_warning(logger, "A nadie le sobra mi pokemon!! (lo debe tener alguien que se este moviendo)"); // si se llega a este log handlear el case para perseguir.
-			return NULL;
+			//log_warning(logger, "A nadie le sobra mi pokemon!! (lo debe tener alguien que se este moviendo)"); // si se llega a este log handlear el case para perseguir.
+			return;
 		} else {
-			log_warning(logger, "En este caso el pokemon que busco lo tiene alguien esperando a ser tradeado.");
-			return NULL;
+			//log_warning(logger, "En este caso el pokemon que busco lo tiene alguien esperando a ser tradeado.");
+			return;
 		}
 		
 	}
@@ -899,8 +906,6 @@ t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo() {
 	} else {
 		pedido -> entrenador_buscando -> pasos_a_moverse = pedido -> distancia;
 	}
-
-	return pedido;
 }
 
 bool estoy_esperando_trade(t_entrenador* entrenador) {
@@ -1185,12 +1190,10 @@ void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
 	if(!pokemon_a_remover) {
 		log_error(logger, "NO ENCONTRE EL POKEMON PARA REMOVER EN EL MAPA");
 	}
-	int remover = 0;
 	if(pokemon_a_remover -> cantidad > 1) {
 		pokemon_a_remover -> cantidad --;
 	} else {
 		list_remove_by_condition(mapa_pokemons, pokemon_a_eliminar);
-		remover = 1;
 	}
 	
 	bool es_el_pokemon(void* otro_pokemon) {
@@ -1200,9 +1203,6 @@ void eliminar_pokemon_de_mapa(t_pokemon_mapa* pokemon) {
 	
 	if(!list_find(objetivo_global, es_el_pokemon)) {
 		mover_especie_de_mapa(mapa_pokemons, mapa_pokemons_pendiente, pokemon -> nombre);
-	}
-	if(remover) {
-		free(pokemon_a_remover);
 	}
 }
 
@@ -1384,6 +1384,8 @@ void enviar_mensaje_catch(t_pedido_captura* pedido) {
 		sem_post(&(pedido -> entrenador -> esperar_caught));
 	}
 
+	free(mensaje);
+
 }
 
 void enviar_mensaje_get(char* pokemon) {
@@ -1406,6 +1408,8 @@ void enviar_mensaje_get(char* pokemon) {
 	} else {
 		log_info(logger, "No se pudo establecer la conexion con broker, se realiza el comportamiento default del get");
 	}
+
+	free(mensaje);
 }
 
 void enviar_get_pokemon() {
@@ -1487,6 +1491,8 @@ void enviar_ack_broker(uint32_t id_mensaje, op_code codigo) {
 		enviar_mensaje(ACK, ack, socket, size_mensaje);
 		close(socket);
 	}
+
+	free(ack);
 }
 
 void procesar_mensaje_appeared(t_appeared_pokemon* mensaje_recibido) {
@@ -1535,7 +1541,7 @@ void procesar_mensaje_appeared(t_appeared_pokemon* mensaje_recibido) {
 			free(pokemon_mapa);
 		}
 	} else {
-		log_warning(logger, "me llego un appeared de %s pero no esta en mis objetivos actuales, lo ignoro.", pokemon_mapa -> nombre);
+		//log_warning(logger, "me llego un appeared de %s pero no esta en mis objetivos actuales, lo ignoro.", pokemon_mapa -> nombre);
 		free(pokemon_mapa);
 	}
 	sem_post(&mx_mapas_objetivos_pedidos);
@@ -1554,7 +1560,7 @@ void procesar_mensaje_caught(t_caught_pokemon* mensaje_recibido) {
 		entrenador -> resultado_caught = mensaje_recibido -> resultado;
 		sem_post(&(entrenador -> esperar_caught));
 	} else {
-		log_warning(logger, "me llego un caught que no esperaba, lo ignoro.");
+		//log_warning(logger, "me llego un caught que no esperaba, lo ignoro.");
 	}
 }
 
@@ -1628,25 +1634,25 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 			t_pokemon_mapa* pokemon_a_agregar = list_find(mapa_pokemons, pokemon_a_eliminar);
 			if(pokemon_a_agregar) {
 				(pokemon_a_agregar -> cantidad)++;
-				log_warning(logger,"ya estaba el %s en [%d,%d], le sumo 1", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
+				//log_warning(logger,"ya estaba el %s en [%d,%d], le sumo 1", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 				free(pokemon_mapa);
 			} else {
 				list_add(mapa_pokemons, pokemon_mapa);
-				log_warning(logger,"no estaba el %s en [%d,%d], lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
+				//log_warning(logger,"no estaba el %s en [%d,%d], lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 			}
 			sem_post(&sem_cont_mapa);
 		} else if(list_find(objetivo_global_pendiente, es_el_pokemon)) {
 			t_pokemon_mapa* pokemon_a_agregar = list_find(mapa_pokemons_pendiente, pokemon_a_eliminar);
 			if(pokemon_a_agregar) {
 				(pokemon_a_agregar -> cantidad)++;
-				log_warning(logger,"ya estaba el %s en [%d,%d] en el secundario, le sumo 1", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
+				//log_warning(logger,"ya estaba el %s en [%d,%d] en el secundario, le sumo 1", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 				free(pokemon_mapa);
 			} else {
 				list_add(mapa_pokemons_pendiente, pokemon_mapa);
-				log_warning(logger,"no estaba el %s en [%d,%d] en el secundario, lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
+				//log_warning(logger,"no estaba el %s en [%d,%d] en el secundario, lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 			}
 		} else {
-			log_warning(logger,"me llego un localized %s pero no se encuentra en ninguno de mis objetivos actuales, lo ignoro.", pokemon_mapa -> nombre);
+			//log_warning(logger,"me llego un localized %s pero no se encuentra en ninguno de mis objetivos actuales, lo ignoro.", pokemon_mapa -> nombre);
 			free(pokemon_mapa);
 		}
 		cabeza_lista = cabeza_lista -> next;

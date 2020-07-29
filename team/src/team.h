@@ -111,7 +111,7 @@ bool estoy_esperando_trade(t_entrenador*);
 bool entrenadores_con_mochila_llena();
 
 // mensajes
-void recibir_id_de_mensaje_enviado(uint32_t);
+uint32_t recibir_id_de_mensaje_enviado(uint32_t);
 void enviar_mensaje_catch(t_pedido_captura*);
 void procesar_caught(t_pedido_captura*);
 void enviar_get_pokemon();
@@ -126,6 +126,8 @@ void enviar_ack_broker(uint32_t, op_code);
 int distancia_segun_algoritmo(t_pedido_captura*);
 void planificar_segun_algoritmo(t_pedido_captura* pedido);
 void conectarse_a_br();
+
+
 // planificacion
 void* planificar_entrenadores();
 void planificar_fifo_o_rr(t_pedido_captura*);
@@ -196,7 +198,8 @@ t_pedido_captura* buscar_pedido_captura(t_entrenador*);
 t_pedido_intercambio* buscar_pedido_intercambio(t_entrenador*);
 void matchear_pokemon_con_entrenador(t_pedido_captura*);
 void eliminar_pokemon_de_mapa(t_pokemon_mapa*);
-t_pedido_intercambio* armar_pedido_intercambio_segun_algoritmo();
+void armar_pedido_intercambio_segun_algoritmo(t_pedido_intercambio*);
+void destruir_pedido_intercambio(void*);
 
 // objetivo
 t_list* objetivo_global;
