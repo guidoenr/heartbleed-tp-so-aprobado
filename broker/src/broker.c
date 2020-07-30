@@ -374,6 +374,7 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion) {
 		break;
 		case LOCALIZED_POKEMON:
 		enviar_mensajes(mensaje, lista_suscriptores_localized);
+		log_warning(logger, "SE ENVIO UN MENSAJE LOCALIZED A TEAM.");
 		list_add(cola_localized, mensaje);
 		log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes localized.");
 		break;
