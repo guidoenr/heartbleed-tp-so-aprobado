@@ -1600,7 +1600,7 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 		mensaje_recibido -> posiciones = para_parsear;
 		*/
 		void printeameLaPos(void* data) {
-			log_warning(logger, "team: %d", *(int32_t*) data);
+			log_warning(logger, "team: %d", *data);
 		}
 		list_iterate(mensaje_recibido -> posiciones, printeameLaPos);
 
