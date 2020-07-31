@@ -115,7 +115,7 @@ void iniciar_semaforos_broker();
 void reservar_memoria();
 void leer_config();
 void terminar_programa(t_log*);
-void liberar_config(t_config_broker*);
+void liberar_config();
 void crear_colas_de_mensajes();
 void crear_listas_de_suscriptores();
 void liberar_listas();
