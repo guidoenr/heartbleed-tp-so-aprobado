@@ -119,48 +119,30 @@ void* recibir_paquete(uint32_t socket_cliente, uint32_t* size,op_code* codigo_op
 
 }
 
-void* deserealizar_paquete(void* stream, op_code codigo_operacion,
-		uint32_t tamanio_mensaje) {
-
-	void* mensaje_deserializado = malloc(tamanio_mensaje);
+void* deserealizar_paquete(void* stream, op_code codigo_operacion, uint32_t tamanio_mensaje) {
 
 	switch (codigo_operacion) {
 	case GET_POKEMON:
-		mensaje_deserializado = deserealizar_get_pokemon(stream,
-				tamanio_mensaje);
-		break;
+		return deserealizar_get_pokemon(stream, tamanio_mensaje);
 	case CATCH_POKEMON:
-		mensaje_deserializado = deserealizar_catch_pokemon(stream,
-				tamanio_mensaje);
-		break;
+		return deserealizar_catch_pokemon(stream, tamanio_mensaje);
 	case LOCALIZED_POKEMON:
-		mensaje_deserializado = deserealizar_localized_pokemon(stream,
-				tamanio_mensaje);
-		break;
+		return deserealizar_localized_pokemon(stream, tamanio_mensaje);
 	case CAUGHT_POKEMON:
-		mensaje_deserializado = deserealizar_caught_pokemon(stream,
-				tamanio_mensaje);
-		break;
+		return deserealizar_caught_pokemon(stream, tamanio_mensaje);
 	case APPEARED_POKEMON:
-		mensaje_deserializado = deserealizar_appeared_pokemon(stream,
-				tamanio_mensaje);
-		break;
+		return deserealizar_appeared_pokemon(stream, tamanio_mensaje);
 	case NEW_POKEMON:
-		mensaje_deserializado = deserealizar_new_pokemon(stream,
-				tamanio_mensaje);
-		break;
+		return deserealizar_new_pokemon(stream, tamanio_mensaje);
 	case SUBSCRIPTION:
-		mensaje_deserializado = deserealizar_suscripcion(stream,
-				tamanio_mensaje);
-		break;
+		return deserealizar_suscripcion(stream, tamanio_mensaje);
 	case ACK:
-		mensaje_deserializado = deserealizar_ack(stream, tamanio_mensaje);
-		break;
+		return deserealizar_ack(stream, tamanio_mensaje);
 	default:
 		log_error(logger, "No fue posible deserializar el mensaje correctamente.");
 		break;
 	}
-	return mensaje_deserializado;
+	retun NULL;
 }
 
 uint32_t size_new_pokemon(t_new_pokemon* pokemon) {
