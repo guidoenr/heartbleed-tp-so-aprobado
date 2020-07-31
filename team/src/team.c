@@ -1577,7 +1577,7 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 	}
 
 	if(list_find(especies_objetivo_global, es_el_pokemon)) {
-
+		/*
 		t_list* para_parsear;
 		uint32_t array[100];
 
@@ -1598,6 +1598,11 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 		}
 
 		mensaje_recibido -> posiciones = para_parsear;
+		*/
+		void printeameLaPos(void* data) {
+			log_warning(logger, "team: %u", *(uint32_t*) data);
+		}
+		list_iterate(mensaje_recibido -> posiciones, printeameLaPos);
 
 		sem_wait(&mx_mapas_objetivos_pedidos);
 		list_remove_by_condition(especies_objetivo_global, es_el_pokemon);
@@ -1616,14 +1621,14 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 		t_pokemon_mapa* pokemon_mapa = malloc(sizeof(t_pokemon_mapa));
 
 		pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
-		pokemon_mapa -> posicion[0] = *(int*)cabeza_lista -> data;
+		pokemon_mapa -> posicion[0] = *(uint32_t*)cabeza_lista -> data;
 		cabeza_lista = cabeza_lista -> next;
 
 		if(!cabeza_lista) {
 			log_error(logger, "el LOCALIZED tiene cantidad de posiciones impar, gil.");
 		}
 
-		pokemon_mapa -> posicion[1] = *(int*)cabeza_lista -> data;
+		pokemon_mapa -> posicion[1] = *(uint32_t*)cabeza_lista -> data;
 		pokemon_mapa -> cantidad = 1;
 
 		bool pokemon_a_eliminar(void* un_pokemon) {
