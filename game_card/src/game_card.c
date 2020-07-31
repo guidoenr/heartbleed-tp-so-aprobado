@@ -250,7 +250,7 @@ t_config_game_card* leer_config() {
 	config_game_card -> ip_broker = strdup(config_get_string_value(config, "IP_BROKER"));
 	config_game_card -> puerto_broker = strdup(config_get_string_value(config, "PUERTO_BROKER"));
 	config_game_card -> ip_gameBoy= strdup(config_get_string_value(config, "IP_GAMEBOY"));
-	config_game_card -> puerto_gameBoy= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
+	config_game_card -> puerto_gameBoy= strdup(config_get_string_value(config, "PUERTO_GAMEBOY"));
 	config_game_card -> ip_gameCard= strdup(config_get_string_value(config, "IP_GAMECARD"));
 	config_game_card -> puerto_gameCard= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
 	config_game_card -> tiempo_retardo_operacion = config_get_int_value(config,"TIEMPO_RETARDO_OPERACION");
