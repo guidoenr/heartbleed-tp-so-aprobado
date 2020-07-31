@@ -1600,7 +1600,8 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 		mensaje_recibido -> posiciones = para_parsear;
 		*/
 		void printeameLaPos(void* data) {
-			log_warning(logger, "team: %d", *data);
+			uint32_t* num = data;
+			log_warning(logger, "team: %d", *num);
 		}
 		list_iterate(mensaje_recibido -> posiciones, printeameLaPos);
 
@@ -1621,14 +1622,14 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 		t_pokemon_mapa* pokemon_mapa = malloc(sizeof(t_pokemon_mapa));
 
 		pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
-		pokemon_mapa -> posicion[0] = *(int32_t*)cabeza_lista -> data;
+		pokemon_mapa -> posicion[0] = *(uint32_t*)cabeza_lista -> data;
 		cabeza_lista = cabeza_lista -> next;
 
 		if(!cabeza_lista) {
 			log_error(logger, "el LOCALIZED tiene cantidad de posiciones impar, gil.");
 		}
 
-		pokemon_mapa -> posicion[1] = *(int32_t*)cabeza_lista -> data;
+		pokemon_mapa -> posicion[1] = *(uint32_t*)cabeza_lista -> data;
 		pokemon_mapa -> cantidad = 1;
 
 		bool pokemon_a_eliminar(void* un_pokemon) {
