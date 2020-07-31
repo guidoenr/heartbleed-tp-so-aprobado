@@ -83,13 +83,10 @@ void crear_listas_de_suscriptores() {
 
 void leer_config() {
 
-	t_config* config;
-
 	config_broker = malloc(sizeof(t_config_broker));
+	t_config* config = config_create("Debug/broker.config");
 
-	config = config_create("Debug/broker.config");
-
-	if(config == NULL){
+	if(config == NULL) {
 		printf("No se pudo encontrar el path del config.");
 		exit(-2);
 	}
@@ -103,26 +100,26 @@ void leer_config() {
 	config_broker -> frecuencia_compactacion = config_get_int_value(config, "FRECUENCIA_COMPACTACION");
 	config_broker -> log_file = strdup(config_get_string_value(config, "LOG_FILE"));
 	config_broker -> memory_log = strdup(config_get_string_value(config, "DUMP_CACHE"));
+	config_destroy(config);
 }
 
-void liberar_config(t_config_broker* config) {
-	free(config -> algoritmo_memoria);
-	free(config -> algoritmo_reemplazo);
-	free(config -> algoritmo_particion_libre);
-	free(config -> ip_broker);
-	free(config -> puerto);
-	free(config -> log_file);
-	free(config -> memory_log);
-	free(config);
+void liberar_config() {
+	free(config_broker -> algoritmo_memoria);
+	free(config_broker -> algoritmo_reemplazo);
+	free(config_broker -> algoritmo_particion_libre);
+	free(config_broker -> ip_broker);
+	free(config_broker -> puerto);
+	free(config_broker -> log_file);
+	free(config_broker -> memory_log);
+	free(config_broker);
 }
 
 void terminar_programa(t_log* logger) {
 	liberar_listas();
-	liberar_config(config_broker);
+	liberar_config();
 	liberar_logger(logger);
 	liberar_memoria_cache();
 	liberar_semaforos_broker();
-	config_destroy(config);
 }
 
 void liberar_memoria_cache() {

@@ -84,7 +84,6 @@ t_list* memoria_con_particiones;
 sem_t muteadito;
 sem_t muteadin;
 sem_t envio_mensaje;
-t_config* config;
 t_config_broker* config_broker;
 t_log* logger;
 t_log* logger_memoria;
