@@ -1445,7 +1445,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	sem_wait(&mx_paquete);
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
 
-	void* mensaje_recibido = deserealizar_paquete(stream,cod_op, size);
+	void* mensaje_recibido = deserealizar_paquete(stream, cod_op, size);
 
 	switch (cod_op) {
 		case LOCALIZED_POKEMON:
@@ -1594,7 +1594,7 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 
 		for (int i=0; i< mensaje_recibido->tamanio_lista; i++) {
 			list_add(para_parsear, &array[i]);
-			log_warning(logger, "team: %u", array[i]);
+			log_warning(logger, "team: %d", array[i]);
 		}
 
 		mensaje_recibido -> posiciones = para_parsear;
