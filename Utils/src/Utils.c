@@ -295,7 +295,7 @@ void esperar_cliente(uint32_t socket_servidor) {
 	uint32_t tam_direccion = sizeof(struct sockaddr_in);
 	uint32_t socket_cliente = accept(socket_servidor, (void*) &dir_cliente,
 			&tam_direccion);
-	//log_info(logger, "Antes del hilo: %d", socket_cliente);
+
 	pthread_create(&thread, NULL, (void*) serve_client, socket_cliente);
 	pthread_detach(thread);
 	//pthread_join(thread,NULL);
@@ -306,7 +306,6 @@ void serve_client(uint32_t socket) {
 
 	recv(socket, &cod_op, sizeof(op_code), MSG_WAITALL);
 	op_code codigo = cod_op;
-	//log_warning(logger, "Codigo de operacion recibido: %d", codigo);
 
 
 	log_info(logger, "Se conecto un cliente con socket: %d", socket);

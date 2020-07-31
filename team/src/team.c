@@ -1594,6 +1594,7 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 
 		for (int i=0; i< mensaje_recibido->tamanio_lista; i++) {
 			list_add(para_parsear, &array[i]);
+			log_warning(logger, "team: %u", array[i]);
 		}
 
 		mensaje_recibido -> posiciones = para_parsear;
