@@ -142,7 +142,7 @@ void* deserealizar_paquete(void* stream, op_code codigo_operacion, uint32_t tama
 		log_error(logger, "No fue posible deserializar el mensaje correctamente.");
 		break;
 	}
-	retun NULL;
+	return NULL;
 }
 
 uint32_t size_new_pokemon(t_new_pokemon* pokemon) {
