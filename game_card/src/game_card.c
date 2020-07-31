@@ -165,16 +165,8 @@ void informar_al_broker(uint32_t id_mensaje, op_code codigo){
 	}
 }
 
-
-//void* conexion_con_game_boy() {
-//	log_info(logger,"Iniciando conexion con gameboy");
-//	iniciar_servidor("127.0.0.2", "5662");
-//	log_info(logger,"Conexion con gameboy establecida exitosamente");
-//	return NULL;
-//}
-
-void iniciar_conexion_game_boy() {
-	uint32_t err = pthread_create(&hilo_game_boy, NULL, iniciar_server_gamecard, NULL);
+void iniciar_conexion_game_card() {
+	uint32_t err = pthread_create(&hilo_game_card, NULL, iniciar_server_gamecard, NULL);
 		if(err != 0) {
 			log_error(logger, "El hilo no pudo ser creado!!");
 		}
@@ -249,8 +241,6 @@ t_config_game_card* leer_config() {
 	config_game_card -> punto_montaje_tallgrass = strdup(config_get_string_value(config, "PUNTO_MONTAJE_TALLGRASS"));
 	config_game_card -> ip_broker = strdup(config_get_string_value(config, "IP_BROKER"));
 	config_game_card -> puerto_broker = strdup(config_get_string_value(config, "PUERTO_BROKER"));
-	config_game_card -> ip_gameBoy= strdup(config_get_string_value(config, "IP_GAMEBOY"));
-	config_game_card -> puerto_gameBoy= strdup(config_get_string_value(config, "PUERTO_GAMEBOY"));
 	config_game_card -> ip_gameCard= strdup(config_get_string_value(config, "IP_GAMECARD"));
 	config_game_card -> puerto_gameCard= strdup(config_get_string_value(config, "PUERTO_GAMECARD"));
 	config_game_card -> tiempo_retardo_operacion = config_get_int_value(config,"TIEMPO_RETARDO_OPERACION");
@@ -261,10 +251,8 @@ t_config_game_card* leer_config() {
 
 void liberar_config_gc(t_config_game_card* config) {
 	free(config->ip_broker);
-	free(config->ip_gameBoy);
 	free(config->ip_gameCard);
 	free(config->puerto_broker);
-	free(config->puerto_gameBoy);
 	free(config->puerto_gameCard);
 	free(config->punto_montaje_tallgrass);
 	free(config);

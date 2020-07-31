@@ -16,7 +16,7 @@ char* punto_montaje;
 sem_t mx_bitmap;
 sem_t terminarprograma;
 sem_t muteadito;
-pthread_t hilo_game_boy;
+pthread_t hilo_game_card;
 pthread_t hilo_broker;
 pthread_t hilo_servidor;
 pthread_t hilo_new;
@@ -31,8 +31,6 @@ typedef struct {
 	char* punto_montaje_tallgrass;
 	char* ip_broker;
 	char* puerto_broker;
-	char* ip_gameBoy;
-	char* puerto_gameBoy;
 	char* ip_gameCard;
 	char* puerto_gameCard;
 } t_config_game_card;
