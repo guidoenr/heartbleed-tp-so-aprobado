@@ -1590,16 +1590,15 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 
 		for (int i=0; i< mensaje_recibido->tamanio_lista; i++) {
 			list_add(para_parsear, &array[i]);
-			log_warning(logger, "teamParser: %u", array[i]);
 		}
 
 		mensaje_recibido -> posiciones = para_parsear;
-		
+		/*
 		void printeameLaPos(void* data) {
 			log_warning(logger, "team: %u", *(uint32_t*)data);
 		}
 		list_iterate(mensaje_recibido -> posiciones, printeameLaPos);
-
+		*/
 		sem_wait(&mx_mapas_objetivos_pedidos);
 		agregar_localized_al_mapa(mensaje_recibido);
 		list_remove_by_condition(especies_objetivo_global, es_el_pokemon);
@@ -1617,11 +1616,11 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 
 		uint32_t listita[2];
 		listita[0] = *(uint32_t*)cabeza_lista -> data;
-		log_warning(logger, "team2: %u", listita[0]);
+		log_warning(logger, "team: %u", listita[0]);
 		cabeza_lista = cabeza_lista -> next;
 
 		listita[1] = *(uint32_t*)cabeza_lista -> data;
-		log_warning(logger, "team2: %u", listita[1]);
+		log_warning(logger, "team: %u", listita[1]);
 
 		t_pokemon_mapa* pokemon_mapa = malloc(sizeof(t_pokemon_mapa));
 		
