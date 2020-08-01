@@ -1623,7 +1623,7 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 
 		pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
 		pokemon_mapa -> posicion[0] = *(uint32_t*)cabeza_lista -> data;
-		log_warning(logger, "team2: %u", pokemon_mapa -> posicion[0]);
+		log_warning(logger, "team2: %u", *(pokemon_mapa -> posicion[0]));
 		cabeza_lista = cabeza_lista -> next;
 
 		if(!cabeza_lista) {
@@ -1631,7 +1631,7 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 		}
 
 		pokemon_mapa -> posicion[1] = *(uint32_t*)cabeza_lista -> data;
-		log_warning(logger, "team2: %u", pokemon_mapa -> posicion[1]);
+		log_warning(logger, "team2: %u", *(pokemon_mapa -> posicion[1]));
 		pokemon_mapa -> cantidad = 1;
 
 		bool pokemon_a_eliminar(void* un_pokemon) {
