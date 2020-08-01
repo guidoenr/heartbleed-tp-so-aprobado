@@ -678,15 +678,14 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje) {
 		mensaje_localized -> tamanio_lista = un_mensaje -> tamanio_lista_localized;
 		mensaje_localized -> posiciones = list_create();
 		offset+=tamanio + sizeof(uint32_t);
-
-		if (mensaje_localized->posiciones->elements_count > 0) {
-			for(int i=0;i<(un_mensaje -> tamanio_lista_localized);i++) {
-				memcpy(&(posicion[i]), contenido_a_enviar + offset, sizeof(uint32_t));
-				log_warning(logger,"ALGO PARA MOSTRAR NUMERITO : %d",posicion[i]);
-				offset += sizeof(uint32_t);
-				list_add(mensaje_localized -> posiciones, &posicion[i]);
-			}
+		
+		for(int i=0;i<(un_mensaje -> tamanio_lista_localized);i++) {
+			memcpy(&(posicion[i]), contenido_a_enviar + offset, sizeof(uint32_t));
+			log_warning(logger,"ALGO PARA MOSTRAR NUMERITO : %d",posicion[i]);
+			offset += sizeof(uint32_t);
+			list_add(mensaje_localized -> posiciones, &posicion[i]);
 		}
+		
 
 	} else if(string_equals_ignore_case(config_broker -> algoritmo_memoria, "BS")) {
 
