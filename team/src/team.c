@@ -1449,8 +1449,8 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	switch (cod_op) {
 		case LOCALIZED_POKEMON:
 			t_localized_pokemon* mensaje_recibido = deserealizar_localized_pokemon(stream, size);
-			log_info(logger, "Se recibio un mensaje LOCALIZED con id %d y pokemon %s", mensaje_recibido -> id_mensaje, mensaje_recibido -> pokemon);
 			procesar_localized(mensaje_recibido);
+			log_info(logger, "Se recibio un mensaje LOCALIZED con id %d y pokemon %s", mensaje_recibido -> id_mensaje, mensaje_recibido -> pokemon);
 			enviar_ack_broker(mensaje_recibido -> id_mensaje, LOCALIZED_POKEMON);
 			break;
 		case CAUGHT_POKEMON:
