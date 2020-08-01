@@ -1465,7 +1465,7 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 		procesar_mensaje_appeared(appeared_recibido);
 		enviar_ack_broker(appeared_recibido -> id_mensaje, APPEARED_POKEMON);
 		free(appeared_recibido);
-		
+
 	} else {
 		log_error(logger,"No se encontro el tipo de mensaje");
 		pthread_exit(NULL);
@@ -1602,8 +1602,8 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 		list_iterate(mensaje_recibido -> posiciones, printeameLaPos);
 
 		sem_wait(&mx_mapas_objetivos_pedidos);
-		list_remove_by_condition(especies_objetivo_global, es_el_pokemon);
 		agregar_localized_al_mapa(mensaje_recibido);
+		list_remove_by_condition(especies_objetivo_global, es_el_pokemon);
 		sem_post(&mx_mapas_objetivos_pedidos);
 	}
 }
@@ -1615,19 +1615,24 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 	//cabeza_lista = cabeza_lista -> next; // *esto era pq tenia un numero mas al principio*
 
 	while(cabeza_lista) {
-		t_pokemon_mapa* pokemon_mapa = malloc(sizeof(t_pokemon_mapa));
 
-		pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
-		pokemon_mapa -> posicion[0] = *(uint32_t*)cabeza_lista -> data;
-		log_warning(logger, "team2: %u", pokemon_mapa -> posicion[0]);
+		uint32_t listita[2];
+		listita[0] = *(uint32_t*)cabeza_lista -> data;
+		log_warning(logger, "team2: %u", listita[0]);
 		cabeza_lista = cabeza_lista -> next;
-
 		if(!cabeza_lista) {
 			log_error(logger, "el LOCALIZED tiene cantidad de posiciones impar, gil.");
 		}
+		listita[1] = *(uint32_t*)cabeza_lista -> data;
+		log_warning(logger, "team2: %u", listita[1]);
 
-		pokemon_mapa -> posicion[1] = *(uint32_t*)cabeza_lista -> data;
-		log_warning(logger, "team2: %u", pokemon_mapa -> posicion[1]);
+		t_pokemon_mapa* pokemon_mapa = malloc(sizeof(t_pokemon_mapa));
+		
+		pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
+		pokemon_mapa -> posicion[0] = listita[0];
+
+
+		pokemon_mapa -> posicion[1] = listita[1];
 		pokemon_mapa -> cantidad = 1;
 
 		bool pokemon_a_eliminar(void* un_pokemon) {
