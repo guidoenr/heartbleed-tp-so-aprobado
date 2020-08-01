@@ -1445,35 +1445,32 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 	sem_wait(&mx_paquete);
 	void* stream = recibir_paquete(cliente_fd, &size, codigo_op);
 
-	switch (cod_op) {
-		case LOCALIZED_POKEMON:
-			t_localized_pokemon* localized_recibido = deserealizar_localized_pokemon(stream, size);
-			procesar_localized(localized_recibido);
-			log_info(logger, "Se recibio un mensaje LOCALIZED con id %d y pokemon %s", localized_recibido -> id_mensaje, localized_recibido -> pokemon);
-			enviar_ack_broker(localized_recibido -> id_mensaje, LOCALIZED_POKEMON);
-			free(localized_recibido);
-			break;
-		case CAUGHT_POKEMON:
-			t_caught_pokemon* caught_recibido = deserealizar_caught_pokemon(stream, size);
-			log_info(logger, "Se recibio un mensaje CAUGHT con id %d y resultado %d", caught_recibido -> id_mensaje, caught_recibido -> resultado);
-			procesar_mensaje_caught(caught_recibido);
-			enviar_ack_broker(caught_recibido -> id_mensaje, CAUGHT_POKEMON);
-			free(caught_recibido);
-			break;
-		case APPEARED_POKEMON:
-			t_appeared_pokemon* appeared_recibido = deserealizar_appeared_pokemon(stream, size);
-			log_info(logger, "Se recibio un mensaje APPEARED con id %d, pokemon %s y posicion [%d,%d]", appeared_recibido -> id_mensaje, appeared_recibido -> pokemon, appeared_recibido -> posicion[0], appeared_recibido -> posicion[1]);
-			procesar_mensaje_appeared(appeared_recibido);
-			enviar_ack_broker(appeared_recibido -> id_mensaje, APPEARED_POKEMON);
-			free(appeared_recibido);
-			break;
-		case 0:
-			log_error(logger,"No se encontro el tipo de mensaje");
-			pthread_exit(NULL);
+	if(cod_op == LOCALIZED_POKEMON) {
+		t_localized_pokemon* localized_recibido = deserealizar_localized_pokemon(stream, size);
+		procesar_localized(localized_recibido);
+		log_info(logger, "Se recibio un mensaje LOCALIZED con id %d y pokemon %s", localized_recibido -> id_mensaje, localized_recibido -> pokemon);
+		enviar_ack_broker(localized_recibido -> id_mensaje, LOCALIZED_POKEMON);
+		free(localized_recibido);
 
-		case -1:
-			pthread_exit(NULL);
+	} else if(cod_op == CAUGHT_POKEMON) {
+		t_caught_pokemon* caught_recibido = deserealizar_caught_pokemon(stream, size);
+		log_info(logger, "Se recibio un mensaje CAUGHT con id %d y resultado %d", caught_recibido -> id_mensaje, caught_recibido -> resultado);
+		procesar_mensaje_caught(caught_recibido);
+		enviar_ack_broker(caught_recibido -> id_mensaje, CAUGHT_POKEMON);
+		free(caught_recibido);
+
+	} else if(cod_op == APPEARED_POKEMON) {
+		t_appeared_pokemon* appeared_recibido = deserealizar_appeared_pokemon(stream, size);
+		log_info(logger, "Se recibio un mensaje APPEARED con id %d, pokemon %s y posicion [%d,%d]", appeared_recibido -> id_mensaje, appeared_recibido -> pokemon, appeared_recibido -> posicion[0], appeared_recibido -> posicion[1]);
+		procesar_mensaje_appeared(appeared_recibido);
+		enviar_ack_broker(appeared_recibido -> id_mensaje, APPEARED_POKEMON);
+		free(appeared_recibido);
+		
+	} else {
+		log_error(logger,"No se encontro el tipo de mensaje");
+		pthread_exit(NULL);
 	}
+
 	sem_post(&mx_paquete);
 	free(codigo_op);
 	free(stream);
