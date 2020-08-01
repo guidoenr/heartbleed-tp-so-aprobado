@@ -1573,7 +1573,7 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 	}
 
 	if(list_find(especies_objetivo_global, es_el_pokemon)) {
-		/*
+		
 		t_list* para_parsear;
 		uint32_t array[100];
 
@@ -1590,11 +1590,11 @@ void procesar_localized(t_localized_pokemon* mensaje_recibido) {
 
 		for (int i=0; i< mensaje_recibido->tamanio_lista; i++) {
 			list_add(para_parsear, &array[i]);
-			log_warning(logger, "team: %u", array[i]);
+			log_warning(logger, "teamParser: %u", array[i]);
 		}
 
 		mensaje_recibido -> posiciones = para_parsear;
-		*/
+		
 		void printeameLaPos(void* data) {
 			log_warning(logger, "team: %u", *(uint32_t*)data);
 		}
@@ -1619,9 +1619,7 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 		listita[0] = *(uint32_t*)cabeza_lista -> data;
 		log_warning(logger, "team2: %u", listita[0]);
 		cabeza_lista = cabeza_lista -> next;
-		if(!cabeza_lista) {
-			log_error(logger, "el LOCALIZED tiene cantidad de posiciones impar, gil.");
-		}
+
 		listita[1] = *(uint32_t*)cabeza_lista -> data;
 		log_warning(logger, "team2: %u", listita[1]);
 
@@ -1629,7 +1627,6 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 		
 		pokemon_mapa -> nombre = mensaje_recibido -> pokemon;
 		pokemon_mapa -> posicion[0] = listita[0];
-
 
 		pokemon_mapa -> posicion[1] = listita[1];
 		pokemon_mapa -> cantidad = 1;
@@ -1648,25 +1645,20 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 			t_pokemon_mapa* pokemon_a_agregar = list_find(mapa_pokemons, pokemon_a_eliminar);
 			if(pokemon_a_agregar) {
 				(pokemon_a_agregar -> cantidad)++;
-				//log_warning(logger,"ya estaba el %s en [%d,%d], le sumo 1", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 				free(pokemon_mapa);
 			} else {
 				list_add(mapa_pokemons, pokemon_mapa);
-				//log_warning(logger,"no estaba el %s en [%d,%d], lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 			}
 			sem_post(&sem_cont_mapa);
 		} else if(list_find(objetivo_global_pendiente, es_el_pokemon)) {
 			t_pokemon_mapa* pokemon_a_agregar = list_find(mapa_pokemons_pendiente, pokemon_a_eliminar);
 			if(pokemon_a_agregar) {
-				(pokemon_a_agregar -> cantidad)++;
-				//log_warning(logger,"ya estaba el %s en [%d,%d] en el secundario, le sumo 1", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
+				(pokemon_a_agregar -> cantidad)++;//log_warning(logger,"ya estaba el %s en [%d,%d] en el secundario, le sumo 1", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 				free(pokemon_mapa);
 			} else {
-				list_add(mapa_pokemons_pendiente, pokemon_mapa);
-				//log_warning(logger,"no estaba el %s en [%d,%d] en el secundario, lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
+				list_add(mapa_pokemons_pendiente, pokemon_mapa);//log_warning(logger,"no estaba el %s en [%d,%d] en el secundario, lo creo", pokemon_mapa -> nombre, pokemon_mapa -> posicion[0], pokemon_mapa -> posicion[1]);
 			}
 		} else {
-			//log_warning(logger,"me llego un localized %s pero no se encuentra en ninguno de mis objetivos actuales, lo ignoro.", pokemon_mapa -> nombre);
 			free(pokemon_mapa);
 		}
 		cabeza_lista = cabeza_lista -> next;
