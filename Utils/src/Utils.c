@@ -810,7 +810,7 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_
 
 	uint32_t offset = 0;
 
-	memcpy(&(mensaje_localized_pokemon->id_mensaje), stream + offset,sizeof(uint32_t));
+	memcpy(&(mensaje_localized_pokemon->id_mensaje), stream + offset, sizeof(uint32_t));
 	log_info(logger, "Deserealizado idmensaje: %d", *(int*) (stream + offset));
 	offset += sizeof(uint32_t);
 
@@ -824,7 +824,7 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_
 	//log_info(logger, "Se deserializo un mensaje localized del pokemon: %s",(char*) (stream + offset));
 	offset += tamanio_pokemon;
 
-	memcpy(&(mensaje_localized_pokemon->tamanio_lista), stream + offset,sizeof(uint32_t));
+	memcpy(&(mensaje_localized_pokemon->tamanio_lista), stream + offset, sizeof(uint32_t));
 
 	//log_info(logger, "Deserealizado tamanio_lista: %d",*(int*) (stream + offset));
 	offset += sizeof(uint32_t);
@@ -834,7 +834,7 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_
 	uint32_t posicion[mensaje_localized_pokemon->tamanio_lista];
 	uint32_t i = 0;
 
-	if(mensaje_localized_pokemon->tamanio_lista > 0){
+	if(mensaje_localized_pokemon->tamanio_lista > 0) {
 		for (i = 0; i < mensaje_localized_pokemon->tamanio_lista; i++) {
 			memcpy(&(posicion[i]), stream + offset, sizeof(uint32_t));
 
@@ -843,7 +843,7 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_
 			log_warning(logger,"Utils: %u", posicion[i]);
 			log_warning(logger,"Utils 2: %u", *(uint32_t*)(list_get(mensaje_localized_pokemon->posiciones, (mensaje_localized_pokemon->posiciones->elements_count) - 1)));			
 		}
-	} else{
+	} else {
 		log_info(logger,"no me vino ninguna posicion");
 	}
 
