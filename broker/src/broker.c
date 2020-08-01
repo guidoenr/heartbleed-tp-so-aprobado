@@ -2073,8 +2073,6 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 		t_memoria_dinamica* particion_vacia = armar_particion(particion_a_liberar -> tamanio, particion_a_liberar -> base, NULL, 0, NULL);
 		particion_a_liberar = list_replace(memoria_con_particiones, indice, particion_vacia);
 
-		guardar_contenido_de_mensaje(particion_a_liberar -> base, NULL, particion_a_liberar -> tamanio);
-
 		eliminar_de_message_queue(mensaje, mensaje -> codigo_operacion);
 
 		particiones_liberadas++;
