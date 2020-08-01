@@ -840,7 +840,8 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_
 
 			offset += sizeof(uint32_t);
 			list_add(mensaje_localized_pokemon->posiciones, &posicion[i]);
-			log_warning(logger,"Utils: %u",posicion[i]);
+			log_warning(logger,"Utils: %u", posicion[i]);
+			log_warning(logger,"Utils 2: %u", *(uint32_t*)(list_get(mensaje_localized_pokemon->posiciones, (mensaje_localized_pokemon->posiciones->elements_count) - 1)));			
 		}
 	} else{
 		log_info(logger,"no me vino ninguna posicion");
