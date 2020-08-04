@@ -458,19 +458,31 @@ void suscribir_a_cola(t_list* lista_suscriptores, t_suscripcion* suscripcion, op
 		log_error(logger, "...Se desconoce la cola a suscribir.");
 		break;
 	}
+	uint32_t indice_sus = 0;
+	
+	bool es_la_misma_suscripcion(void* sus){
+		t_suscripcion* suscrip = sus;
+		indice_sus++;
+		return (suscrip -> id_proceso) == (suscripcion -> id_proceso);
+	}
+	
+	if(list_find(lista_suscriptores, es_la_misma_suscripcion)){
+		list_replace(lista_suscriptores, (indice_sus-1), suscripcion);
+	} else {
+		list_add(lista_suscriptores, suscripcion);
+	}
 
-	list_add(lista_suscriptores, suscripcion);
 	log_info(logger, "El cliente fue suscripto a la cola de mensajes %s.", cola);
 	
 	informar_mensajes_previos(suscripcion, cola_a_suscribir);
 
-	bool es_la_misma_suscripcion(void* una_suscripcion) {
+	bool es_la_suscripcion(void* una_suscripcion) {
 		t_suscripcion* otra_suscripcion = una_suscripcion;
 		return otra_suscripcion -> id_proceso == suscripcion -> id_proceso;
 	}
 
 	if(suscripcion -> tiempo_suscripcion != 0) {
-		list_remove_by_condition(lista_suscriptores, es_la_misma_suscripcion);
+		list_remove_by_condition(lista_suscriptores, es_la_suscripcion);
 		log_info(logger, "La suscripcion temporal fue anulada correctamente.");
 	}
 
