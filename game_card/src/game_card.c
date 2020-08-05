@@ -18,7 +18,7 @@ int main(void) {
 
 	int socket;
 
-	iniciar_tall_grass(16,64);
+	iniciar_tall_grass(1024,64);
 	iniciar_semaforos();
 
 	iniciar_conexion();
