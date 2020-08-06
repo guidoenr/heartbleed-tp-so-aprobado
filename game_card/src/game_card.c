@@ -723,7 +723,7 @@ void funcion_hilo_new_pokemon(t_new_pokemon* new_pokemon,uint32_t socket){
 	free(path_metafile);
 	free(dir_path_newpoke);
 
-	log_error(logger,"THREAD FINISHED");
+	log_warning(logger,"THREAD FINISHED");
 
 }
 
@@ -972,7 +972,7 @@ void verificar_apertura_pokemon(char* path_metafile,char* nombre_pokemon){
 
 	while (esta_en_uso){
 		int secs = config_gc->tiempo_retardo_operacion;
-		log_error(logger,"No se puede leer ni escribir este pokemon porque esta lockeado, reintentando en: %d",secs);
+		log_warning(logger,"No se puede leer ni escribir este pokemon porque esta lockeado, reintentando en: %d",secs);
 		sleep(secs);
 		esta_en_uso = esta_lockeado(path_metafile);
 	}
@@ -1261,7 +1261,7 @@ void funcion_hilo_catch_pokemon(t_catch_pokemon* catch_pokemon,uint32_t socket_b
 		log_warning(logger,"Recibo ID del mensaje enviado: %d",id);
 	}
 
-	log_error(logger,"THREAD FINISHED");
+	log_warning(logger,"THREAD FINISHED");
 }
 
 
@@ -1313,14 +1313,25 @@ void verificar_espacio_en_blocks(char* metapath){
 	int block_vacio = hay_algun_block_vacio(blocks);
 
 	if (block_vacio != -1){
-
 		liberar_block_del_bitmap(string_itoa(block_vacio));
 		liberar_block_de_la_indextable(metapath,block_vacio,metaconfig);
+		re_crear_block_en_el_fs(block_vacio);
 	}
 
 	config_save(metaconfig);
 	config_destroy(metaconfig);
 	free(blocks);
+}
+
+void re_crear_block_en_el_fs(int block){
+	char* blockpath = block_path(string_itoa(block));
+
+	remove(blockpath);
+
+	create_file_with_size(blockpath, 64);
+
+	free(blockpath);
+
 }
 
 int hay_algun_block_vacio(char** blocks){
@@ -1432,7 +1443,7 @@ t_caught_pokemon* armar_caught_pokemon(t_catch_pokemon* catch_pokemon,uint32_t r
 
 void funcion_hilo_get_pokemon(t_get_pokemon* get_pokemon,uint32_t socket_br){
 	log_info(logger,"----------------------------------------------------------------");
-	log_error(logger,"THREAD GET_POKEMON");
+	log_info(logger,"THREAD GET_POKEMON");
 	log_info(logger,"Llego un GET_POKEMON de %s",get_pokemon->pokemon);
 
 	char* dir_path = obtener_path_dir_pokemon(get_pokemon->pokemon);
