@@ -18,8 +18,9 @@ int main(void) {
 
 	int socket;
 
-	iniciar_tall_grass(1024,64);
 	iniciar_semaforos();
+	iniciar_tall_grass(1024,64);
+
 
 	iniciar_conexion();
 	iniciar_hilos_suscripcion();
@@ -375,7 +376,16 @@ void crear_bitmap(char* path){
 	fwrite(data,size_in_bytes,1,file);
 	fclose(file);
 
+	t_bitarray* bitarray = obtener_bitmap();
+
+	for (int i=0; i<= fs_metadata.blocks; i++){
+		bitarray_clean_bit(bitarray,i);
+	}
+
+	actualizar_bitmap(bitarray);
+
 	destrozar_fs_metadata(fs_metadata);
+
 	free(bitmapPath);
 	free(metadataPath);
 	free(data);

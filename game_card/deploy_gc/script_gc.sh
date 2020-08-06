@@ -25,6 +25,7 @@ ls -l Montaje/Files
 xxd Montaje/Files/Pikachu/Metadata.bin
 sleep 3
 
+
 echo -e "\e[95m------------------------------------------------------------"
 echo -e "\e[96mEjecutar el script new_pokemon_varios"
 sleep 1
