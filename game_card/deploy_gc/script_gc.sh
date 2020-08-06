@@ -9,7 +9,7 @@ echo -e "\e[95m------------------------------------------------------------"
 echo -e "\e[96mVerificar que no existan archivos dentro del mismo"
 cd Montaje/Files
 pwd
-ll
+ls -l
 sleep 3
 cd /home/utnso/workspace/tp-2020-1c-heartbleed/game_card
 
@@ -57,5 +57,6 @@ sleep 3
 
 echo -e "\e[92mScript finished"
 echo -e "\e[92m--------------------"
+rm -r Montaje
 echo -e "\e[97mMontaje eliminado"
 
