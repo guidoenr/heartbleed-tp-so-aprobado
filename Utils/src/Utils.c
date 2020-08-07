@@ -649,7 +649,7 @@ t_new_pokemon* deserealizar_new_pokemon(void* stream, uint32_t size_mensaje) {
 
 	memcpy(&(mensaje_new_pokemon->id_mensaje), stream + offset,
 			sizeof(uint32_t));
-	log_info(logger,"deserealizado idmensaje: %d", *(int*) (stream+ offset));
+	//log_info(logger,"deserealizado idmensaje: %d", *(int*) (stream+ offset));
 	stream += sizeof(uint32_t);
 
 	memcpy(&tamanio_pokemon, stream + offset, sizeof(uint32_t));
