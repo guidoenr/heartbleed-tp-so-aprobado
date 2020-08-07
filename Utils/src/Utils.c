@@ -98,23 +98,17 @@ void enviar_mensaje_localized_gc(op_code codigo_op, void* mensaje, uint32_t sock
 
 }
 void* recibir_paquete(uint32_t socket_cliente, uint32_t* size,op_code* codigo_operacion) {
-
-	//log_info(logger, "Recibiendo mensaje.");
-
 	//sem_wait(&semaforo);
-
 
 	recv(socket_cliente, size, sizeof(uint32_t), MSG_WAITALL);
 
 	uint32_t tamanio_mensaje = (*size) - sizeof(uint32_t) - sizeof(op_code);
-	//log_warning(logger, "Tamanio de paquete recibido: %d", tamanio_mensaje);
 
 	void* stream = malloc(tamanio_mensaje);
 	(*size) = tamanio_mensaje;
 	recv(socket_cliente, stream, tamanio_mensaje, MSG_WAITALL);
 
 	//sem_post(&semaforo);
-	//log_warning(logger, "Mensaje recibido: %s", stream);
 	return stream;
 
 }
@@ -230,7 +224,7 @@ void iniciar_servidor(char *IP, char *PUERTO) {
 		perror("Fallo el binde0 del servidor");
 	return;
 	}
-	log_info(logger, "Estoy escuchando en el puerto %d\n", nuevo_puerto);
+	//log_info(logger, "Estoy escuchando en el puerto %d\n", nuevo_puerto);
 	listen(_servidor, SOMAXCONN);
 
 	log_info(logger, "Puerto: %s", PUERTO);
@@ -383,7 +377,7 @@ void* serializar_get_pokemon(void* mensaje_get, uint32_t size_mensaje,
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &(mensaje_a_enviar->id_mensaje), sizeof(uint32_t));
-	log_info(logger, "Serializacion idmensaje: %d", *(int*) (stream + offset));
+	//log_info(logger, "Serializacion idmensaje: %d", *(int*) (stream + offset));
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &tamanio_pokemon, sizeof(uint32_t));
@@ -617,7 +611,7 @@ void* serializar_new_pokemon(void* mensaje_new, uint32_t size_mensaje,uint32_t* 
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &(mensaje_a_enviar->id_mensaje), sizeof(uint32_t));
-	log_info(logger,"Sereliazacion idmensaje: %d", *(int*) (stream+ offset));
+	//log_info(logger,"Sereliazacion idmensaje: %d", *(int*) (stream+ offset));
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &tamanio_pokemon, sizeof(uint32_t));
@@ -771,7 +765,7 @@ void* serializar_localized_pokemon(t_localized_pokemon* mensaje_a_enviar,uint32_
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &(mensaje_a_enviar->id_mensaje), sizeof(uint32_t));
-	log_info(logger, "Serialiazacion idmensaje: %d", *(int*) (stream + offset));
+	//log_info(logger, "Serialiazacion idmensaje: %d", *(int*) (stream + offset));
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &tamanio_pokemon, sizeof(uint32_t));
@@ -811,7 +805,7 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_
 	uint32_t offset = 0;
 
 	memcpy(&(mensaje_localized_pokemon->id_mensaje), stream + offset, sizeof(uint32_t));
-	log_info(logger, "Deserealizado idmensaje: %d", *(int*) (stream + offset));
+	//log_info(logger, "Deserealizado idmensaje: %d", *(int*) (stream + offset));
 	offset += sizeof(uint32_t);
 
 	memcpy(&tamanio_pokemon, stream + offset, sizeof(uint32_t));
@@ -840,11 +834,11 @@ t_localized_pokemon* deserealizar_localized_pokemon(void* stream, uint32_t size_
 
 			offset += sizeof(uint32_t);
 			list_add(mensaje_localized_pokemon->posiciones, &posicion[i]);
-			log_warning(logger,"Utils: %u", posicion[i]);
-			log_warning(logger,"Utils 2: %u", *(uint32_t*)(list_get(mensaje_localized_pokemon->posiciones, (mensaje_localized_pokemon->posiciones->elements_count) - 1)));			
+			//log_warning(logger,"Utils: %u", posicion[i]);
+			//log_warning(logger,"Utils 2: %u", *(uint32_t*)(list_get(mensaje_localized_pokemon->posiciones, (mensaje_localized_pokemon->posiciones->elements_count) - 1)));			
 		}
 	} else {
-		log_info(logger,"no me vino ninguna posicion");
+		log_info(logger,"No me vino ninguna posicion.");
 	}
 
 	return mensaje_localized_pokemon;
@@ -869,7 +863,7 @@ void* serializar_ack(void* mensaje_ack, uint32_t size_mensaje,
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &(mensaje_a_enviar->id_mensaje), sizeof(uint32_t));
-	log_info(logger, "Serializacion idmensaje: %d", *(int*) (stream + offset));
+	//log_info(logger, "Serializacion idmensaje: %d", *(int*) (stream + offset));
 	offset += sizeof(uint32_t);
 
 	memcpy(stream + offset, &(mensaje_a_enviar->tipo_mensaje), sizeof(op_code));

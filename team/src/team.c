@@ -1623,11 +1623,11 @@ void agregar_localized_al_mapa(t_localized_pokemon* mensaje_recibido) {
 
 		uint32_t listita[2];
 		listita[0] = *(uint32_t*)cabeza_lista -> data;
-		log_warning(logger, "team: %u", listita[0]);
+		//log_warning(logger, "team: %u", listita[0]);
 		cabeza_lista = cabeza_lista -> next;
 
 		listita[1] = *(uint32_t*)cabeza_lista -> data;
-		log_warning(logger, "team: %u", listita[1]);
+		//log_warning(logger, "team: %u", listita[1]);
 
 		t_pokemon_mapa* pokemon_mapa = malloc(sizeof(t_pokemon_mapa));
 		

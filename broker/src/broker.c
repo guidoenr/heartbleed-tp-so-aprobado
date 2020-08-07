@@ -12,8 +12,7 @@ void iniciar_programa() {
 	id_mensaje_univoco = 0;
 	particiones_liberadas = 0;
 	numero_particion = 1;
-	nodo_id = 0;
-
+	
 	iniciar_semaforos_broker();
 
 	leer_config();
@@ -371,7 +370,6 @@ void encolar_mensaje(t_mensaje* mensaje, op_code codigo_operacion) {
 		break;
 		case LOCALIZED_POKEMON:
 		enviar_mensajes(mensaje, lista_suscriptores_localized);
-		log_warning(logger, "SE ENVIO UN MENSAJE LOCALIZED A TEAM.");
 		list_add(cola_localized, mensaje);
 		log_info(logger, "Un nuevo mensaje fue agregado a la cola de mensajes localized.");
 		break;
@@ -427,7 +425,7 @@ void recibir_suscripcion(t_suscripcion* mensaje_suscripcion,uint32_t socket) {
 		break;
 
 		default:
-		log_info(logger, "...La suscripcion no se puede realizar.");
+		log_error(logger, "...La suscripcion no se puede realizar.");
 		break;
 	}
 }
@@ -565,7 +563,7 @@ void descargar_historial_mensajes(op_code tipo_mensaje, uint32_t socket_cliente,
 			list_iterate(cola_new, mandar_mensajes_viejos);
 		break;
 		default:
-		log_info(logger, "...No se puede enviar el mensaje pedido en descargar historial mensajes.");
+		log_error(logger, "...No se puede enviar el mensaje pedido en descargar historial mensajes.");
 		break;
 	}
 }
@@ -693,7 +691,6 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje) {
 		
 		for(int i=0;i<(un_mensaje -> tamanio_lista_localized);i++) {
 			memcpy(&(posicion[i]), contenido_a_enviar + offset, sizeof(uint32_t));
-			log_warning(logger,"ALGO PARA MOSTRAR NUMERITO : %d",posicion[i]);
 			offset += sizeof(uint32_t);
 			list_add(mensaje_localized -> posiciones, &posicion[i]);
 		}
@@ -716,7 +713,6 @@ t_localized_pokemon* preparar_mensaje_localized(t_mensaje* un_mensaje) {
 
 		for(int i=0;i<(un_mensaje -> tamanio_lista_localized);i++) {
 			memcpy(&(posicion[i]), contenido_a_enviar + offset, sizeof(uint32_t));
-			log_warning(logger,"ALGO PARA MOSTRAR NUMERITO : %d",posicion[i]);
 			offset += sizeof(uint32_t);
 			list_add(mensaje_localized -> posiciones, &posicion[i]);
 		}
@@ -2020,7 +2016,7 @@ void compactar_particiones_dinamicas(t_list* memoria){
 
 	list_iterate(memoria, actualizar_base);
 
-	log_info(logger, "Se inicia la compactacion");
+	log_info(logger, "Se inicia la compactacion.");
 	compactar_memoria_cache(memoria);
 	
 	list_destroy(particiones_vacias);
@@ -2105,7 +2101,7 @@ void liberar_mensaje_de_memoria(t_mensaje* mensaje){
 
 t_mensaje* eliminar_de_message_queue(t_mensaje* mensaje, op_code codigo){
 	if(mensaje == NULL) {
-		log_info(logger, "Se intento remover un mensaje nulo de la message queue");
+		log_info(logger, "Se intento remover un mensaje nulo de la message queue.");
 		return 0;
 	} else {
 
