@@ -1475,12 +1475,11 @@ void process_request(uint32_t cod_op, uint32_t cliente_fd) {
 
 	} else {
 		log_error(logger,"No se encontro el tipo de mensaje");
-		pthread_exit(NULL);
 	}
 
-	sem_post(&mx_paquete);
 	free(codigo_op);
 	free(stream);
+	sem_post(&mx_paquete);
 }
 
 void enviar_ack_broker(uint32_t id_mensaje, op_code codigo) {
