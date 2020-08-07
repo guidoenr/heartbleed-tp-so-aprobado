@@ -850,19 +850,21 @@ void planificar_deadlocks() {
 }
 
 void armar_pedido_intercambio_segun_algoritmo(t_pedido_intercambio* pedido) {
-
+	
+	pedido -> entrenador_esperando = NULL;
+	
 	t_link_element* cabeza_block = estado_block -> head;
-
+	if(!cabeza_block) {
+		return;
+	}
 	while(estoy_esperando_trade(cabeza_block -> data)) {
 
 		cabeza_block = cabeza_block -> next;
 
 		if(!cabeza_block) {
-			log_error(logger, "NO HAY NADIE DESOCUPADO EN BLOCK");
+			return;
 		}
 	}
-
-	pedido -> entrenador_esperando = NULL;
 
 	while(cabeza_block) {
 		pedido -> entrenador_buscando = cabeza_block -> data;
