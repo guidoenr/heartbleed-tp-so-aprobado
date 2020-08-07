@@ -879,14 +879,14 @@ void armar_pedido_intercambio_segun_algoritmo(t_pedido_intercambio* pedido) {
 		pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon_y_esta_libre);
 
 		if(!(pedido -> entrenador_esperando)) {
-			return;
+			//return;
 			bool entrenador_que_le_sobra_pokemon(void* un_entrenador) {
 				t_entrenador* entrenador = un_entrenador;
 
 				return le_sobra_pokemon(entrenador, pedido -> pokemon_a_recibir);
 			}
-			pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon);
-
+			//pedido -> entrenador_esperando = list_find(estado_block, entrenador_que_le_sobra_pokemon);
+			/*
 			if(!(pedido -> entrenador_esperando)) {
 				//log_warning(logger, "A nadie le sobra mi pokemon!! (lo debe tener alguien que se este moviendo)"); // si se llega a este log handlear el case para perseguir.
 				return;
@@ -894,7 +894,7 @@ void armar_pedido_intercambio_segun_algoritmo(t_pedido_intercambio* pedido) {
 				//log_warning(logger, "En este caso el pokemon que busco lo tiene alguien esperando a ser tradeado.");
 				return;
 			}
-			
+			*/
 		} else {
 			break;
 		}
