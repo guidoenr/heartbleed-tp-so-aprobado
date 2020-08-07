@@ -54,7 +54,7 @@ void enviar_mensaje(op_code codigo_op, void* mensaje, uint32_t socket_cliente, u
 		stream = serializar_paquete(mensaje, size_mensaje, codigo_op, size_serializado);
 		uint32_t size_paquete = (*size_serializado);
 
-		int a = send(socket_cliente, stream, size_paquete, 0);
+		send(socket_cliente, stream, size_paquete, 0);
 
 		free(size_serializado);
 		free(stream);
@@ -92,7 +92,7 @@ void enviar_mensaje_localized_gc(op_code codigo_op, void* mensaje, uint32_t sock
 	stream = serializar_paquete(mensaje, size_mensaje, codigo_op, &size_serializado);
 	uint32_t size_paquete = size_serializado;
 
-	int a = send(socket_cliente, stream, size_paquete, 0);
+	send(socket_cliente, stream, size_paquete, 0);
 
 	free(stream);
 
